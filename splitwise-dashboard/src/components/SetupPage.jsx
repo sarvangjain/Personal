@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Wallet, Key, ArrowRight, Loader2, ExternalLink, AlertCircle, CheckCircle2, HelpCircle } from 'lucide-react';
 import { getCurrentUser } from '../api/splitwise';
-import { saveConfig } from '../utils/config';
+import { saveConfig, clearConfig } from '../utils/config';
 
 export default function SetupPage({ onComplete }) {
   const [apiKey, setApiKey] = useState('');
@@ -35,7 +35,7 @@ export default function SetupPage({ onComplete }) {
       setStep(3);
       setTimeout(() => onComplete(), 1000);
     } catch (err) {
-      saveConfig({ apiKey: '', userId: 0 });
+      clearConfig();
       setError(err.message || 'Connection failed. Check your API key.');
       setStep(1);
     } finally {

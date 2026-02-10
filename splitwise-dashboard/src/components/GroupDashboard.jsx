@@ -1,5 +1,5 @@
 import { Loader2, Receipt, Crown, TrendingUp, Users } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { computeExpensesByCategory, computeMonthlySpending, computeTopPayers, computeRecentExpenses, formatCurrency, formatCompact, computeDayOfWeekSpending } from '../utils/analytics';
 import { format, parseISO, subMonths } from 'date-fns';
 
@@ -213,11 +213,11 @@ function ExpenseTimeline({ expenses, userId }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm sm:text-sm text-stone-300 truncate">{exp.description}</p>
                 <p className="text-xs sm:text-[10px] text-stone-600">
-                  {format(parseISO(exp.date), 'MMM d, yyyy')} · {payer?.user?.first_name || 'Unknown'} paid {formatCurrency(parseFloat(exp.cost))}
+                  {format(parseISO(exp.date), 'MMM d, yyyy')} · {payer?.user?.first_name || 'Unknown'} paid {formatCurrency(parseFloat(exp.cost), exp.currency_code || 'INR')}
                 </p>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="text-sm sm:text-xs font-mono text-stone-400">{formatCurrency(myShare)}</p>
+                <p className="text-sm sm:text-xs font-mono text-stone-400">{formatCurrency(myShare, exp.currency_code || 'INR')}</p>
                 <p className="text-xs sm:text-[10px] text-stone-600">{exp.category?.name || ''}</p>
               </div>
             </div>

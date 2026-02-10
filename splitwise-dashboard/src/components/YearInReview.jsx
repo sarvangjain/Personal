@@ -462,28 +462,37 @@ export default function YearInReview({ groups, friends, expenses: initialExpense
         setLoading(true);
         setError(null);
 
-        // Fetch all expenses for the year
-        const yearStart = `${year}-01-01T00:00:00Z`;
-        const yearEnd = `${year}-12-31T23:59:59Z`;
-        
-        let allExpenses = [];
-        let offset = 0;
-        const limit = 100;
-        let hasMore = true;
+        const currentYear = new Date().getFullYear();
+        let allExpenses;
 
-        while (hasMore) {
-          const batch = await getExpenses({ 
-            datedAfter: yearStart, 
-            datedBefore: yearEnd,
-            limit,
-            offset 
-          });
-          allExpenses = [...allExpenses, ...batch];
-          hasMore = batch.length >= limit;
-          offset += limit;
+        // For the current year, try to reuse the already-fetched expenses
+        // (which cover the last 12 months) to avoid redundant API calls
+        if (year === currentYear && initialExpenses && initialExpenses.length > 0) {
+          allExpenses = initialExpenses;
+        } else {
+          // For previous years or if no initial data, fetch from API
+          const yearStart = `${year}-01-01T00:00:00Z`;
+          const yearEnd = `${year}-12-31T23:59:59Z`;
           
-          // Safety limit
-          if (offset > 1000) break;
+          allExpenses = [];
+          let offset = 0;
+          const limit = 100;
+          let hasMore = true;
+
+          while (hasMore) {
+            const batch = await getExpenses({ 
+              datedAfter: yearStart, 
+              datedBefore: yearEnd,
+              limit,
+              offset 
+            });
+            allExpenses = [...allExpenses, ...batch];
+            hasMore = batch.length >= limit;
+            offset += limit;
+            
+            // Safety limit
+            if (offset > 5000) break;
+          }
         }
 
         const yearData = computeYearInReview(allExpenses, groups, friends, userId, year);
@@ -502,7 +511,7 @@ export default function YearInReview({ groups, friends, expenses: initialExpense
     }
 
     loadYearData();
-  }, [groups, friends, userId, year]);
+  }, [groups, friends, userId, year, initialExpenses]);
 
   const slides = data ? [
     { id: 'welcome', component: <WelcomeSlide data={data} year={year} /> },

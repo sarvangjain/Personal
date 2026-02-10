@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Users, MapPin, Home, Briefcase, Loader2, TrendingUp, TrendingDown, ExternalLink } from 'lucide-react';
 import { getAllExpensesForGroup } from '../api/splitwise';
-import { formatCurrency, formatCompact, getUserId } from '../utils/analytics';
+import { formatCurrency, formatCompact, getUserId, computeMemberBalances } from '../utils/analytics';
 import GroupDashboard from './GroupDashboard';
 
 const groupIcons = {
@@ -52,18 +52,13 @@ export default function GroupDetail({ group, onBack }) {
   const Icon = groupIcons[group?.group_type] || Users;
   const memberCount = group?.members?.length || 0;
 
-  // Calculate user's balance in this group
-  let userBalance = 0;
-  const currentUserMember = group?.members?.find(m => m.id === userId);
-  if (currentUserMember?.balance) {
-    currentUserMember.balance.forEach(b => {
-      userBalance += parseFloat(b.amount) || 0;
-    });
-  }
+  // Per-currency balances for the current user in this group
+  const balances = computeMemberBalances(group?.members, userId);
+  const primary = balances[0] || null;
 
   const hasDebt = (group?.simplified_debts?.length > 0) || (group?.original_debts?.length > 0);
-  const isOwed = userBalance > 0;
-  const isOwing = userBalance < 0;
+  const isOwed = primary && primary.amount > 0;
+  const isOwing = primary && primary.amount < 0;
 
   useEffect(() => {
     if (!group?.id) return;
@@ -123,23 +118,32 @@ export default function GroupDetail({ group, onBack }) {
           </div>
           
           {/* Balance Badge */}
-          {hasDebt ? (
+          {hasDebt && balances.length > 0 ? (
+            <div className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5 rounded-lg bg-stone-800/50 border border-stone-700/30">
+              {balances.map((bal, i) => (
+                <span key={bal.currency} className="inline-flex items-center gap-1.5">
+                  {i === 0 && (bal.amount > 0
+                    ? <TrendingUp size={14} className="text-emerald-400" />
+                    : <TrendingDown size={14} className="text-red-400" />
+                  )}
+                  <span className={`font-mono ${
+                    i === 0 ? 'text-sm sm:text-base' : 'text-xs sm:text-sm opacity-70'
+                  } ${
+                    bal.amount > 0 ? 'text-emerald-400' : 'text-red-400'
+                  }`}>
+                    {bal.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(bal.amount), bal.currency)}
+                  </span>
+                  {i === 0 && (
+                    <span className="text-xs sm:text-sm text-stone-500">
+                      {bal.amount > 0 ? 'owed to you' : 'you owe'}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </div>
+          ) : hasDebt ? (
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-stone-800/50 border border-stone-700/30">
-              {isOwed ? (
-                <>
-                  <TrendingUp size={14} className="text-emerald-400" />
-                  <span className="text-sm sm:text-base font-mono text-emerald-400">+{formatCurrency(Math.abs(userBalance))}</span>
-                  <span className="text-xs sm:text-sm text-stone-500">owed to you</span>
-                </>
-              ) : isOwing ? (
-                <>
-                  <TrendingDown size={14} className="text-red-400" />
-                  <span className="text-sm sm:text-base font-mono text-red-400">{formatCurrency(Math.abs(userBalance))}</span>
-                  <span className="text-xs sm:text-sm text-stone-500">you owe</span>
-                </>
-              ) : (
-                <span className="text-sm sm:text-base text-stone-400">Has unsettled activity</span>
-              )}
+              <span className="text-sm sm:text-base text-stone-400">Has unsettled activity</span>
             </div>
           ) : (
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">

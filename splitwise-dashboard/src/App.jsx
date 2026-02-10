@@ -214,7 +214,14 @@ function Dashboard() {
     if (found) { setSelectedFriend(found); setActiveTab('friends'); return; }
     const raw = friends.find(f => f.id === friendId);
     if (raw) {
-      setSelectedFriend({ id: raw.id, name: `${raw.first_name} ${raw.last_name || ''}`.trim(), picture: raw.picture?.medium, balance: 0, currency: 'INR' });
+      const allBalances = (raw.balance || []).map(b => ({
+        amount: parseFloat(b.amount), currency: b.currency_code || 'INR'
+      })).filter(b => Math.abs(b.amount) > 0.01);
+      const primary = allBalances[0] || { amount: 0, currency: 'INR' };
+      setSelectedFriend({
+        id: raw.id, name: `${raw.first_name} ${raw.last_name || ''}`.trim(),
+        picture: raw.picture?.medium, balance: primary.amount, currency: primary.currency, allBalances,
+      });
       setActiveTab('friends');
     }
   }

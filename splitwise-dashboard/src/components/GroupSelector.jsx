@@ -1,5 +1,5 @@
 import { Users, MapPin, Home, Briefcase, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
-import { formatCurrency, formatCompact, getUserId } from '../utils/analytics';
+import { formatCurrency, formatCompact, getUserId, computeMemberBalances } from '../utils/analytics';
 
 const groupIcons = {
   trip: MapPin,
@@ -44,21 +44,13 @@ function GroupCard({ group, onSelect }) {
   const memberCount = group.members?.length || 0;
   const userId = getUserId();
   
-  // Calculate user's balance in this group
+  // Per-currency balances for the current user in this group
   const debts = group.simplified_debts || group.original_debts || [];
-  let userBalance = 0;
-  
-  // Find current user's balance from group members
-  const currentUserMember = group.members?.find(m => m.id === userId);
-  if (currentUserMember?.balance) {
-    currentUserMember.balance.forEach(b => {
-      userBalance += parseFloat(b.amount) || 0;
-    });
-  }
-
+  const balances = computeMemberBalances(group.members, userId);
+  const primary = balances[0] || null;
   const hasDebt = debts.length > 0;
-  const isOwed = userBalance > 0;
-  const isOwing = userBalance < 0;
+  const isOwed = primary && primary.amount > 0;
+  const isOwing = primary && primary.amount < 0;
 
   return (
     <button
@@ -82,27 +74,33 @@ function GroupCard({ group, onSelect }) {
       </h3>
 
       {/* Balance Info */}
-      {hasDebt ? (
+      {hasDebt && balances.length > 0 ? (
+        <div className="mb-3 space-y-0.5">
+          {balances.map((bal, i) => {
+            const color = bal.amount > 0 ? 'text-emerald-400' : 'text-red-400';
+            return (
+              <div key={bal.currency} className="flex items-center gap-1.5">
+                {i === 0 && (bal.amount > 0
+                  ? <TrendingUp size={12} className="text-emerald-400" />
+                  : <TrendingDown size={12} className="text-red-400" />
+                )}
+                <span className={`font-mono ${color} ${
+                  i === 0 ? 'text-sm sm:text-base' : 'text-xs sm:text-sm opacity-70'
+                }`}>
+                  {bal.amount > 0 ? '+' : ''}{formatCompact(bal.amount, bal.currency)}
+                </span>
+                {i === 0 && (
+                  <span className="text-xs sm:text-sm text-stone-500">
+                    {bal.amount > 0 ? 'owed to you' : 'you owe'}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : hasDebt ? (
         <div className="flex items-center gap-1.5 mb-3">
-          {isOwed ? (
-            <>
-              <TrendingUp size={12} className="text-emerald-400" />
-              <span className="text-sm sm:text-base font-mono text-emerald-400">
-                +{formatCompact(Math.abs(userBalance))}
-              </span>
-              <span className="text-xs sm:text-sm text-stone-500">owed to you</span>
-            </>
-          ) : isOwing ? (
-            <>
-              <TrendingDown size={12} className="text-red-400" />
-              <span className="text-sm sm:text-base font-mono text-red-400">
-                {formatCompact(Math.abs(userBalance))}
-              </span>
-              <span className="text-xs sm:text-sm text-stone-500">you owe</span>
-            </>
-          ) : (
-            <span className="text-xs sm:text-sm text-stone-500">Has activity</span>
-          )}
+          <span className="text-xs sm:text-sm text-stone-500">Has activity</span>
         </div>
       ) : (
         <div className="flex items-center gap-1.5 mb-3">
