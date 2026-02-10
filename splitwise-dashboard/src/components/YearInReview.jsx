@@ -429,12 +429,12 @@ function SummarySlide({ data, year, userName }) {
 }
 
 // Main Year in Review Component
-export default function YearInReview({ groups, friends, expenses: initialExpenses, onClose, userName }) {
+export default function YearInReview({ groups, friends, expenses: initialExpenses, onClose, userName, year: yearProp }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [year] = useState(new Date().getFullYear());
+  const year = yearProp || new Date().getFullYear();
   const userId = getUserId();
 
   // Load full year expenses

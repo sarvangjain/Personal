@@ -113,6 +113,7 @@ function Dashboard() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [showUpdateBanner, setShowUpdateBanner] = useState(true);
   const [showYearInReview, setShowYearInReview] = useState(false);
+  const [yearInReviewYear, setYearInReviewYear] = useState(new Date().getFullYear());
 
   const userId = getUserId();
   
@@ -130,8 +131,27 @@ function Dashboard() {
       setUser(userData);
       setGroups(groupsData);
       setFriends(friendsData);
-      const recentExpenses = await getExpenses({ limit: 100 });
-      setAllExpenses(recentExpenses.filter(e => !e.deleted_at && !e.payment));
+      
+      // Fetch expenses from the last 12 months for comprehensive analytics
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const datedAfter = oneYearAgo.toISOString();
+      
+      let allExpensesList = [];
+      let offset = 0;
+      const limit = 100;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const batch = await getExpenses({ limit, offset, datedAfter });
+        allExpensesList = [...allExpensesList, ...batch];
+        hasMore = batch.length >= limit;
+        offset += limit;
+        // Safety limit to prevent infinite loops
+        if (offset > 2000) break;
+      }
+      
+      setAllExpenses(allExpensesList.filter(e => !e.deleted_at && !e.payment));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -311,36 +331,68 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* Year in Review Card */}
-            <button
-              onClick={() => { haptic.medium(); setShowYearInReview(true); }}
-              className="w-full glass-card p-6 text-left hover:border-emerald-500/30 transition-all group"
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                  <Sparkles size={24} className="text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-display text-lg text-white">Year in Review</h3>
-                    <span className="px-2 py-0.5 text-[9px] font-semibold bg-emerald-500/15 text-emerald-400 rounded-full uppercase tracking-wider">New</span>
+            {/* Year in Review Cards */}
+            <div className="space-y-3">
+              {/* Current Year */}
+              <button
+                onClick={() => { haptic.medium(); setYearInReviewYear(new Date().getFullYear()); setShowYearInReview(true); }}
+                className="w-full glass-card p-5 sm:p-6 text-left hover:border-emerald-500/30 transition-all group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <Sparkles size={22} className="text-white sm:w-6 sm:h-6" />
                   </div>
-                  <p className="text-sm text-stone-400 mb-3">
-                    Discover your {new Date().getFullYear()} spending story with beautiful insights, patterns, and your unique Splitwise personality.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">📊 Spending Insights</span>
-                    <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">👥 Social Stats</span>
-                    <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">🎭 Personality</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-display text-base sm:text-lg text-white">{new Date().getFullYear()} Wrapped</h3>
+                      <span className="px-2 py-0.5 text-[9px] font-semibold bg-emerald-500/15 text-emerald-400 rounded-full uppercase tracking-wider">New</span>
+                    </div>
+                    <p className="text-sm text-stone-400 mb-3">
+                      Discover your {new Date().getFullYear()} spending story with insights, patterns, and your Splitwise personality.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">📊 Insights</span>
+                      <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">👥 Social</span>
+                      <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">🎭 Personality</span>
+                    </div>
+                  </div>
+                  <div className="text-stone-600 group-hover:text-emerald-400 transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
                 </div>
-                <div className="text-stone-600 group-hover:text-emerald-400 transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+              </button>
+
+              {/* Previous Year */}
+              <button
+                onClick={() => { haptic.medium(); setYearInReviewYear(new Date().getFullYear() - 1); setShowYearInReview(true); }}
+                className="w-full glass-card p-5 sm:p-6 text-left hover:border-amber-500/30 transition-all group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <Sparkles size={22} className="text-white sm:w-6 sm:h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-display text-base sm:text-lg text-white">{new Date().getFullYear() - 1} Wrapped</h3>
+                    </div>
+                    <p className="text-sm text-stone-400 mb-2">
+                      Look back at your {new Date().getFullYear() - 1} spending journey and see how your habits have evolved.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">📆 Throwback</span>
+                      <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">📈 Compare</span>
+                    </div>
+                  </div>
+                  <div className="text-stone-600 group-hover:text-amber-400 transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            </div>
 
             {/* Coming Soon Cards */}
             <div className="grid sm:grid-cols-2 gap-4">
@@ -429,6 +481,7 @@ function Dashboard() {
           expenses={allExpenses}
           onClose={() => setShowYearInReview(false)}
           userName={user?.first_name || 'User'}
+          year={yearInReviewYear}
         />
       )}
     </div>

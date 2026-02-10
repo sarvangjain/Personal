@@ -74,7 +74,7 @@ export async function getFriends() {
 }
 
 export async function getExpenses({ groupId, friendId, limit = 100, offset = 0, datedAfter, datedBefore } = {}) {
-  const params = { visible: true, order: 'date', limit, offset };
+  const params = { limit, offset };
   if (groupId) params.group_id = groupId;
   if (friendId) params.friend_id = friendId;
   if (datedAfter) params.dated_after = datedAfter;
