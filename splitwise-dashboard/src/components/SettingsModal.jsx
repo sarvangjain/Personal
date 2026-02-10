@@ -19,14 +19,19 @@ export default function SettingsModal({ onClose, onSave, onLogout }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="glass-card w-full max-w-md p-6 animate-slide-up"
+        className="glass-card w-full sm:max-w-md sm:mx-4 p-4 sm:p-6 animate-slide-up rounded-t-3xl sm:rounded-2xl safe-bottom max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-display text-xl text-stone-100">Settings</h2>
-          <button onClick={onClose} className="text-stone-500 hover:text-stone-300 transition-colors">
+        {/* Drag handle for mobile */}
+        <div className="sm:hidden flex justify-center pb-2">
+          <div className="w-10 h-1 rounded-full bg-stone-700" />
+        </div>
+        
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <h2 className="font-display text-lg sm:text-xl text-stone-100">Settings</h2>
+          <button onClick={onClose} className="text-stone-500 hover:text-stone-300 transition-colors p-1 -mr-1 min-touch">
             <X size={18} />
           </button>
         </div>
@@ -44,9 +49,9 @@ export default function SettingsModal({ onClose, onSave, onLogout }) {
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div>
-            <label className="flex items-center gap-2 text-xs font-medium text-stone-400 mb-1.5">
+            <label className="flex items-center gap-2 text-[11px] sm:text-xs font-medium text-stone-400 mb-1 sm:mb-1.5">
               <Key size={12} /> API Key
             </label>
             <input
@@ -54,20 +59,21 @@ export default function SettingsModal({ onClose, onSave, onLogout }) {
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
               placeholder="Your Splitwise API key"
-              className="w-full px-3 py-2.5 bg-stone-800/80 border border-stone-700/50 rounded-lg text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all font-mono"
+              className="w-full px-3 py-3 sm:py-2.5 bg-stone-800/80 border border-stone-700/50 rounded-xl sm:rounded-lg text-[15px] sm:text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all font-mono"
             />
           </div>
 
           <div>
-            <label className="flex items-center gap-2 text-xs font-medium text-stone-400 mb-1.5">
+            <label className="flex items-center gap-2 text-[11px] sm:text-xs font-medium text-stone-400 mb-1 sm:mb-1.5">
               <Hash size={12} /> User ID
             </label>
             <input
               type="text"
+              inputMode="numeric"
               value={userId}
               onChange={e => setUserId(e.target.value)}
               placeholder="Auto-detected from API key"
-              className="w-full px-3 py-2.5 bg-stone-800/80 border border-stone-700/50 rounded-lg text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all font-mono"
+              className="w-full px-3 py-3 sm:py-2.5 bg-stone-800/80 border border-stone-700/50 rounded-xl sm:rounded-lg text-[15px] sm:text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all font-mono"
             />
           </div>
         </div>

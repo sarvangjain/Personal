@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { isLoggedIn } from './utils/config';
 import { getCurrentUser, getGroups, getFriends, getExpenses, getAllExpensesForGroup } from './api/splitwise';
 import { getUserId, computeOverallBalances, computeFriendBalances, computeSmartInsights, computeSettleUpSuggestions } from './utils/analytics';
+import { usePWA, usePullToRefresh, useHaptic } from './hooks/usePWA';
 import SetupPage from './components/SetupPage';
 import Header from './components/Header';
 import SettingsModal from './components/SettingsModal';
@@ -16,6 +17,85 @@ import FriendBalances from './components/FriendBalances';
 import FriendDetail from './components/FriendDetail';
 import LoadingState from './components/LoadingState';
 import ErrorState from './components/ErrorState';
+import { WifiOff, RefreshCw, Download, X } from 'lucide-react';
+
+// Offline Banner Component
+function OfflineBanner() {
+  return (
+    <div className="offline-banner">
+      <WifiOff size={12} className="inline mr-1.5" />
+      You're offline — some features may be limited
+    </div>
+  );
+}
+
+// Update Available Banner
+function UpdateBanner({ onUpdate, onDismiss }) {
+  return (
+    <div className="update-banner">
+      <div className="flex-1">
+        <p className="text-sm font-medium text-stone-200">Update available</p>
+        <p className="text-[10px] text-stone-500">Refresh to get the latest version</p>
+      </div>
+      <button onClick={onUpdate} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg transition-colors">
+        Update
+      </button>
+      <button onClick={onDismiss} className="p-1.5 text-stone-500 hover:text-stone-300">
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
+// Install Prompt Component
+function InstallPrompt({ onInstall, onDismiss }) {
+  return (
+    <div className="install-prompt">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
+          <Download size={18} className="text-emerald-400" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-medium text-stone-200">Install SpendLens</p>
+          <p className="text-[11px] text-stone-500 mt-0.5">Add to your home screen for quick access and offline support</p>
+        </div>
+        <button onClick={onDismiss} className="p-1 text-stone-500 hover:text-stone-300">
+          <X size={14} />
+        </button>
+      </div>
+      <div className="flex gap-2 mt-3">
+        <button onClick={onInstall} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors">
+          Install
+        </button>
+        <button onClick={onDismiss} className="px-4 py-2 text-stone-400 hover:text-stone-200 text-sm transition-colors">
+          Not now
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Pull to Refresh Indicator
+function PullIndicator({ distance, isRefreshing }) {
+  const progress = Math.min(distance / 80, 1);
+  const rotation = isRefreshing ? 'animate-spin' : '';
+  
+  if (distance <= 0 && !isRefreshing) return null;
+  
+  return (
+    <div 
+      className="fixed top-0 left-0 right-0 flex items-center justify-center z-50 pointer-events-none pt-safe-top"
+      style={{ 
+        transform: `translateY(${Math.min(distance, 100)}px)`,
+        opacity: progress 
+      }}
+    >
+      <div className="w-8 h-8 rounded-full bg-stone-800 border border-stone-700 flex items-center justify-center shadow-lg">
+        <RefreshCw size={14} className={`text-emerald-400 ${rotation}`} style={{ transform: `rotate(${progress * 360}deg)` }} />
+      </div>
+    </div>
+  );
+}
 
 function Dashboard() {
   const [user, setUser] = useState(null);
@@ -31,8 +111,14 @@ function Dashboard() {
   const [showCreateExpense, setShowCreateExpense] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedFriend, setSelectedFriend] = useState(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(true);
 
   const userId = getUserId();
+  
+  // PWA hooks
+  const { isOnline, canInstall, install, updateAvailable, applyUpdate, isInstalled } = usePWA();
+  const haptic = useHaptic();
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -54,6 +140,40 @@ function Dashboard() {
   }, []);
 
   useEffect(() => { loadInitialData(); }, [loadInitialData]);
+  
+  // Pull to refresh
+  const { isPulling, pullDistance, isRefreshing } = usePullToRefresh(async () => {
+    haptic.light();
+    await loadInitialData();
+    haptic.success();
+  });
+  
+  // Show install prompt after delay (only on first visit, not installed)
+  useEffect(() => {
+    if (canInstall && !isInstalled) {
+      const timer = setTimeout(() => {
+        const dismissed = localStorage.getItem('install_prompt_dismissed');
+        if (!dismissed) {
+          setShowInstallPrompt(true);
+        }
+      }, 30000); // Show after 30 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [canInstall, isInstalled]);
+  
+  const handleInstall = async () => {
+    haptic.medium();
+    const installed = await install();
+    if (installed) {
+      setShowInstallPrompt(false);
+      haptic.success();
+    }
+  };
+  
+  const dismissInstallPrompt = () => {
+    setShowInstallPrompt(false);
+    localStorage.setItem('install_prompt_dismissed', 'true');
+  };
 
   useEffect(() => {
     if (!selectedGroupId) { setGroupExpenses([]); return; }
@@ -88,7 +208,7 @@ function Dashboard() {
   }
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} onRetry={loadInitialData} onSettings={() => setShowSettings(true)} />;
+  if (error) return <ErrorState message={error} onRetry={loadInitialData} onSettings={() => setShowSettings(true)} isOnline={isOnline} />;
 
   const balances = computeOverallBalances(groups, userId);
   const friendBalances = computeFriendBalances(friends, userId);
@@ -105,15 +225,26 @@ function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen min-h-[100dvh]">
+      {/* PWA UI Elements */}
+      {!isOnline && <OfflineBanner />}
+      <PullIndicator distance={pullDistance} isRefreshing={isRefreshing} />
+      {updateAvailable && showUpdateBanner && (
+        <UpdateBanner onUpdate={applyUpdate} onDismiss={() => setShowUpdateBanner(false)} />
+      )}
+      {showInstallPrompt && canInstall && (
+        <InstallPrompt onInstall={handleInstall} onDismiss={dismissInstallPrompt} />
+      )}
+      
       <Header
         user={user}
-        onSettings={() => setShowSettings(true)}
-        onAddExpense={() => setShowCreateExpense(true)}
+        onSettings={() => { haptic.light(); setShowSettings(true); }}
+        onAddExpense={() => { haptic.light(); setShowCreateExpense(true); }}
         groups={groups} friends={friends} expenses={allExpenses}
         onSelectGroup={handleSearchSelectGroup}
         onSelectFriend={handleSearchSelectFriend}
         onNavigate={setActiveTab}
+        isOnline={isOnline}
       />
 
       <main className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 pb-20 sm:pb-16">

@@ -40,19 +40,19 @@ export default function SearchBar({ groups, friends, expenses, onSelectGroup, on
 
   return (
     <div ref={wrapperRef} className="relative w-full max-w-xl">
-      <div className={`flex items-center gap-2 px-3 py-2 bg-stone-800/50 border rounded-xl transition-all ${open ? 'border-emerald-500/40 ring-1 ring-emerald-500/10' : 'border-stone-700/40'}`}>
-        <Search size={15} className="text-stone-500 flex-shrink-0" />
+      <div className={`flex items-center gap-2 px-2.5 sm:px-3 py-2 bg-stone-800/50 border rounded-xl transition-all ${open ? 'border-emerald-500/40 ring-1 ring-emerald-500/10' : 'border-stone-700/40'}`}>
+        <Search size={14} className="text-stone-500 flex-shrink-0 sm:w-[15px] sm:h-[15px]" />
         <input
           ref={inputRef}
           type="text"
           value={query}
           onChange={e => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
-          placeholder="Search groups, friends, expenses...  ⌘K"
-          className="flex-1 bg-transparent text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none"
+          placeholder="Search..."
+          className="flex-1 bg-transparent text-[15px] sm:text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none min-w-0"
         />
         {query && (
-          <button onClick={() => { setQuery(''); setOpen(false); }} className="text-stone-500 hover:text-stone-300">
+          <button onClick={() => { setQuery(''); setOpen(false); }} className="text-stone-500 hover:text-stone-300 p-1 -mr-1 touch-manipulation">
             <X size={14} />
           </button>
         )}

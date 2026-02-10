@@ -3,23 +3,70 @@
 @tailwind utilities;
 
 @layer base {
+  /* CSS Custom Properties for safe areas */
+  :root {
+    --sat: env(safe-area-inset-top);
+    --sar: env(safe-area-inset-right);
+    --sab: env(safe-area-inset-bottom);
+    --sal: env(safe-area-inset-left);
+  }
+
+  html {
+    /* Prevent pull-to-refresh in standalone mode */
+    overscroll-behavior-y: contain;
+  }
+
   body {
     @apply bg-surface-950 text-stone-200 font-body antialiased;
     background-image: 
       radial-gradient(ellipse at 0% 0%, rgba(16, 185, 129, 0.04) 0%, transparent 50%),
       radial-gradient(ellipse at 100% 100%, rgba(245, 158, 11, 0.03) 0%, transparent 50%);
     min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+    
+    /* Prevent text selection on tap (better touch feel) */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
   }
   
-  ::-webkit-scrollbar {
-    width: 6px;
+  /* Hide scrollbar on mobile for cleaner look */
+  @media (max-width: 640px) {
+    ::-webkit-scrollbar {
+      display: none;
+    }
+    body {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
   }
-  ::-webkit-scrollbar-track {
-    background: transparent;
+  
+  /* Desktop scrollbar */
+  @media (min-width: 641px) {
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(120, 113, 108, 0.3);
+      border-radius: 3px;
+    }
   }
-  ::-webkit-scrollbar-thumb {
-    background: rgba(120, 113, 108, 0.3);
-    border-radius: 3px;
+
+  /* Better touch targets */
+  button, a, input, select, textarea {
+    touch-action: manipulation;
+  }
+
+  /* Prevent zoom on input focus (iOS) */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+  @media (min-width: 641px) {
+    input, select, textarea {
+      font-size: inherit !important;
+    }
   }
 }
 
@@ -34,12 +81,22 @@
   .glass-card-hover {
     @apply glass-card transition-all duration-300;
   }
-  .glass-card-hover:hover {
+  
+  /* Touch-friendly hover states */
+  @media (hover: hover) {
+    .glass-card-hover:hover {
+      @apply border-stone-700/60;
+      box-shadow: 
+        0 0 0 1px rgba(255,255,255,0.05) inset,
+        0 8px 32px -4px rgba(0,0,0,0.4);
+      transform: translateY(-1px);
+    }
+  }
+  
+  /* Active state for touch devices */
+  .glass-card-hover:active {
     @apply border-stone-700/60;
-    box-shadow: 
-      0 0 0 1px rgba(255,255,255,0.05) inset,
-      0 8px 32px -4px rgba(0,0,0,0.4);
-    transform: translateY(-1px);
+    transform: scale(0.98);
   }
 
   .stat-glow-green {
@@ -62,6 +119,102 @@
   .tab-inactive {
     @apply text-stone-500 hover:text-stone-300 border-b-2 border-transparent transition-colors;
   }
+
+  /* Safe area utilities */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  .safe-x {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  .safe-y {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-all {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  /* Touch-friendly button */
+  .touch-btn {
+    @apply relative;
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Hide horizontal scrollbar utility */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Pull to refresh indicator */
+  .pull-indicator {
+    @apply fixed top-0 left-0 right-0 flex items-center justify-center z-50 pointer-events-none;
+    transform: translateY(-100%);
+    transition: transform 0.2s ease-out;
+  }
+  .pull-indicator.active {
+    transform: translateY(0);
+  }
+
+  /* Offline indicator */
+  .offline-banner {
+    @apply fixed top-0 left-0 right-0 bg-amber-500/90 text-stone-900 text-xs font-medium text-center py-1.5 z-[100];
+    padding-top: calc(env(safe-area-inset-top) + 6px);
+  }
+
+  /* Update available banner */
+  .update-banner {
+    @apply fixed bottom-20 sm:bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm;
+    @apply glass-card p-3 flex items-center gap-3 z-50;
+    animation: slideUp 0.3s ease-out;
+  }
+
+  /* Install prompt */
+  .install-prompt {
+    @apply fixed bottom-24 sm:bottom-8 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm;
+    @apply glass-card p-4 z-50;
+    animation: slideUp 0.4s ease-out;
+  }
+}
+
+@layer utilities {
+  /* Minimum touch target utility */
+  .min-touch {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Responsive text that scales nicely */
+  .text-responsive-xs {
+    font-size: clamp(0.65rem, 2vw, 0.75rem);
+  }
+  .text-responsive-sm {
+    font-size: clamp(0.75rem, 2.5vw, 0.875rem);
+  }
+  .text-responsive-base {
+    font-size: clamp(0.875rem, 3vw, 1rem);
+  }
+  .text-responsive-lg {
+    font-size: clamp(1rem, 3.5vw, 1.125rem);
+  }
+  .text-responsive-xl {
+    font-size: clamp(1.125rem, 4vw, 1.25rem);
+  }
 }
 
 /* Recharts overrides */
@@ -83,4 +236,51 @@
   font-family: 'Plus Jakarta Sans', sans-serif !important;
   font-size: 13px !important;
   padding: 2px 0 !important;
+}
+
+/* Better chart responsiveness on mobile */
+@media (max-width: 640px) {
+  .recharts-default-tooltip {
+    padding: 8px 12px !important;
+    font-size: 11px !important;
+  }
+  .recharts-tooltip-label {
+    font-size: 10px !important;
+  }
+  .recharts-tooltip-item {
+    font-size: 11px !important;
+  }
+  
+  /* Smaller axis labels on mobile */
+  .recharts-cartesian-axis-tick-value {
+    font-size: 9px !important;
+  }
+}
+
+/* Animations */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px -5px rgba(16, 185, 129, 0.5);
+  }
+}
+
+/* Standalone mode adjustments */
+@media (display-mode: standalone) {
+  .header-standalone {
+    padding-top: env(safe-area-inset-top);
+  }
 }

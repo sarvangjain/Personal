@@ -107,37 +107,42 @@ export default function CreateExpenseModal({ groups, friends, onClose, onCreated
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="glass-card w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto animate-slide-up"
+        className="glass-card w-full sm:max-w-lg sm:mx-4 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto animate-slide-up rounded-t-3xl sm:rounded-2xl safe-bottom"
         onClick={e => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-stone-900/95 backdrop-blur-xl px-6 pt-5 pb-4 border-b border-stone-800/40 z-10">
+        {/* Drag handle for mobile */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-stone-700" />
+        </div>
+        
+        <div className="sticky top-0 bg-stone-900/95 backdrop-blur-xl px-4 sm:px-6 pt-3 sm:pt-5 pb-3 sm:pb-4 border-b border-stone-800/40 z-10">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl text-stone-100">Add Expense</h2>
-            <button onClick={onClose} className="text-stone-500 hover:text-stone-300 transition-colors">
+            <h2 className="font-display text-lg sm:text-xl text-stone-100">Add Expense</h2>
+            <button onClick={onClose} className="text-stone-500 hover:text-stone-300 transition-colors p-1 -mr-1 min-touch">
               <X size={18} />
             </button>
           </div>
 
           {/* Mode Toggle */}
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-3 sm:mt-4">
             <button
               onClick={() => setMode('group')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-2 rounded-lg text-[13px] sm:text-sm font-medium transition-all touch-manipulation ${
                 mode === 'group'
                   ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-stone-800/40 text-stone-500 border border-stone-700/30 hover:text-stone-300'
+                  : 'bg-stone-800/40 text-stone-500 border border-stone-700/30 active:bg-stone-700/40'
               }`}
             >
               <Users size={14} /> Group Split
             </button>
             <button
               onClick={() => setMode('friend')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-2 rounded-lg text-[13px] sm:text-sm font-medium transition-all touch-manipulation ${
                 mode === 'friend'
                   ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-stone-800/40 text-stone-500 border border-stone-700/30 hover:text-stone-300'
+                  : 'bg-stone-800/40 text-stone-500 border border-stone-700/30 active:bg-stone-700/40'
               }`}
             >
               <User size={14} /> With Friend
@@ -145,40 +150,41 @@ export default function CreateExpenseModal({ groups, friends, onClose, onCreated
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-3 sm:space-y-4">
           {/* Description */}
           <div>
-            <label className="text-xs font-medium text-stone-400 mb-1.5 block">Description*</label>
+            <label className="text-[11px] sm:text-xs font-medium text-stone-400 mb-1 sm:mb-1.5 block">Description*</label>
             <input
               type="text"
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="e.g. Dinner at Pizza Place"
-              className="w-full px-3 py-2.5 bg-stone-800/60 border border-stone-700/40 rounded-lg text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-emerald-500/50 transition-all"
+              className="w-full px-3 py-3 sm:py-2.5 bg-stone-800/60 border border-stone-700/40 rounded-xl sm:rounded-lg text-[15px] sm:text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-emerald-500/50 transition-all"
               autoFocus
             />
           </div>
 
           {/* Amount + Currency */}
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <div className="flex-1">
-              <label className="text-xs font-medium text-stone-400 mb-1.5 block">Amount*</label>
+              <label className="text-[11px] sm:text-xs font-medium text-stone-400 mb-1 sm:mb-1.5 block">Amount*</label>
               <input
                 type="number"
+                inputMode="decimal"
                 step="0.01"
                 min="0"
                 value={cost}
                 onChange={e => handleCostChange(e.target.value)}
                 placeholder="0.00"
-                className="w-full px-3 py-2.5 bg-stone-800/60 border border-stone-700/40 rounded-lg text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-emerald-500/50 transition-all font-mono"
+                className="w-full px-3 py-3 sm:py-2.5 bg-stone-800/60 border border-stone-700/40 rounded-xl sm:rounded-lg text-[15px] sm:text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-emerald-500/50 transition-all font-mono"
               />
             </div>
-            <div className="w-28">
-              <label className="text-xs font-medium text-stone-400 mb-1.5 block">Currency</label>
+            <div className="w-24 sm:w-28">
+              <label className="text-[11px] sm:text-xs font-medium text-stone-400 mb-1 sm:mb-1.5 block">Currency</label>
               <select
                 value={currency}
                 onChange={e => setCurrency(e.target.value)}
-                className="w-full px-3 py-2.5 bg-stone-800/60 border border-stone-700/40 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-emerald-500/50 transition-all"
+                className="w-full px-2 sm:px-3 py-3 sm:py-2.5 bg-stone-800/60 border border-stone-700/40 rounded-xl sm:rounded-lg text-[15px] sm:text-sm text-stone-200 focus:outline-none focus:border-emerald-500/50 transition-all"
               >
                 <option value="INR">INR ₹</option>
                 <option value="USD">USD $</option>

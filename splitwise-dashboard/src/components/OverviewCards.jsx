@@ -11,15 +11,15 @@ function StatCard({ icon: Icon, label, value, subtext, type = 'neutral' }) {
   const iconBg = type === 'positive' ? 'bg-emerald-500/10' : type === 'negative' ? 'bg-red-500/10' : 'bg-amber-500/10';
 
   return (
-    <div className={`glass-card p-5 ${glowClass}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center`}>
-          <Icon size={16} className={textColor} />
+    <div className={`glass-card p-3 sm:p-5 ${glowClass}`}>
+      <div className="flex items-start justify-between mb-2 sm:mb-3">
+        <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl ${iconBg} flex items-center justify-center`}>
+          <Icon size={14} className={`${textColor} sm:w-4 sm:h-4`} />
         </div>
       </div>
-      <p className={`font-display text-2xl ${textColor}`}>{value}</p>
-      <p className="text-xs text-stone-500 mt-1 font-medium">{label}</p>
-      {subtext && <p className="text-[10px] text-stone-600 mt-0.5">{subtext}</p>}
+      <p className={`font-display text-lg sm:text-2xl ${textColor}`}>{value}</p>
+      <p className="text-[10px] sm:text-xs text-stone-500 mt-0.5 sm:mt-1 font-medium">{label}</p>
+      {subtext && <p className="text-[9px] sm:text-[10px] text-stone-600 mt-0.5">{subtext}</p>}
     </div>
   );
 }
@@ -29,28 +29,28 @@ function CategoryChart({ data }) {
   const total = top6.reduce((s, d) => s + d.amount, 0);
 
   return (
-    <div className="glass-card p-6">
-      <h3 className="font-display text-base text-stone-200 mb-4">Spending by Category</h3>
+    <div className="glass-card p-4 sm:p-6">
+      <h3 className="font-display text-sm sm:text-base text-stone-200 mb-3 sm:mb-4">Spending by Category</h3>
       {data.length === 0 ? (
         <p className="text-sm text-stone-500 py-8 text-center">No categorized expenses yet</p>
       ) : (
-        <div className="flex gap-6 items-center">
-          <div className="w-40 h-40 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center">
+          <div className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0">
             <ResponsiveContainer>
               <PieChart>
-                <Pie data={top6} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="amount" strokeWidth={2} stroke="rgba(12,10,9,0.8)">
+                <Pie data={top6} cx="50%" cy="50%" innerRadius={32} outerRadius={55} dataKey="amount" strokeWidth={2} stroke="rgba(12,10,9,0.8)">
                   {top6.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex-1 space-y-2.5 overflow-hidden">
+          <div className="flex-1 w-full space-y-2 sm:space-y-2.5 overflow-hidden">
             {top6.map((cat, i) => (
               <div key={cat.name} className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: CHART_COLORS[i] }} />
-                <span className="text-xs text-stone-400 truncate flex-1">{cat.name}</span>
-                <span className="text-xs font-mono text-stone-300">{formatCompact(cat.amount)}</span>
-                <span className="text-[10px] text-stone-600 w-8 text-right">
+                <span className="text-[11px] sm:text-xs text-stone-400 truncate flex-1">{cat.name}</span>
+                <span className="text-[11px] sm:text-xs font-mono text-stone-300">{formatCompact(cat.amount)}</span>
+                <span className="text-[9px] sm:text-[10px] text-stone-600 w-7 sm:w-8 text-right">
                   {total > 0 ? Math.round((cat.amount / total) * 100) : 0}%
                 </span>
               </div>
@@ -64,11 +64,11 @@ function CategoryChart({ data }) {
 
 function MonthlyChart({ data }) {
   return (
-    <div className="glass-card p-6">
-      <h3 className="font-display text-base text-stone-200 mb-4">Monthly Spending Trend</h3>
-      <div className="h-56">
+    <div className="glass-card p-4 sm:p-6">
+      <h3 className="font-display text-sm sm:text-base text-stone-200 mb-3 sm:mb-4">Monthly Spending Trend</h3>
+      <div className="h-44 sm:h-56">
         <ResponsiveContainer>
-          <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+          <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
             <defs>
               <linearGradient id="colorShare" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
@@ -76,9 +76,9 @@ function MonthlyChart({ data }) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
-            <XAxis dataKey="shortMonth" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} />
-            <Tooltip formatter={(value) => [formatCurrency(value), '']} contentStyle={{ background: 'rgba(28,25,23,0.95)', border: '1px solid rgba(120,113,108,0.3)', borderRadius: 12, fontSize: 12 }} />
+            <XAxis dataKey="shortMonth" tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+            <YAxis tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={35} />
+            <Tooltip formatter={(value) => [formatCurrency(value), '']} contentStyle={{ background: 'rgba(28,25,23,0.95)', border: '1px solid rgba(120,113,108,0.3)', borderRadius: 12, fontSize: 11 }} />
             <Area type="monotone" dataKey="share" name="Your Share" stroke="#10b981" fill="url(#colorShare)" strokeWidth={2} />
             <Area type="monotone" dataKey="paid" name="You Paid" stroke="#f59e0b" fill="transparent" strokeWidth={1.5} strokeDasharray="4 4" />
           </AreaChart>
@@ -96,14 +96,14 @@ function CategoryTrendChart({ data }) {
   if (catKeys.length === 0) return null;
 
   return (
-    <div className="glass-card p-6">
-      <h3 className="font-display text-base text-stone-200 mb-4">Category Trend (4 Months)</h3>
-      <div className="h-56">
+    <div className="glass-card p-4 sm:p-6">
+      <h3 className="font-display text-sm sm:text-base text-stone-200 mb-3 sm:mb-4">Category Trend (4 Months)</h3>
+      <div className="h-44 sm:h-56">
         <ResponsiveContainer>
-          <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -10 }} stackOffset="none">
+          <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -15 }} stackOffset="none">
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} />
+            <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={35} />
             <Tooltip formatter={(value) => [formatCurrency(value), '']} />
             {catKeys.map((cat, i) => (
               <Area
@@ -121,11 +121,11 @@ function CategoryTrendChart({ data }) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex flex-wrap gap-3 mt-3">
+      <div className="flex flex-wrap gap-2 sm:gap-3 mt-2 sm:mt-3">
         {catKeys.map((cat, i) => (
-          <div key={cat} className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-            <span className="text-[10px] text-stone-500">{cat}</span>
+          <div key={cat} className="flex items-center gap-1 sm:gap-1.5">
+            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+            <span className="text-[9px] sm:text-[10px] text-stone-500">{cat}</span>
           </div>
         ))}
       </div>
@@ -135,16 +135,16 @@ function CategoryTrendChart({ data }) {
 
 function DayOfWeekChart({ data }) {
   return (
-    <div className="glass-card p-6">
-      <h3 className="font-display text-base text-stone-200 mb-4">Spending by Day of Week</h3>
-      <div className="h-44">
+    <div className="glass-card p-4 sm:p-6">
+      <h3 className="font-display text-sm sm:text-base text-stone-200 mb-3 sm:mb-4">Spending by Day of Week</h3>
+      <div className="h-36 sm:h-44">
         <ResponsiveContainer>
-          <BarChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+          <BarChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} />
+            <XAxis dataKey="day" tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={32} />
             <Tooltip formatter={(value) => [formatCurrency(value), 'Spent']} />
-            <Bar dataKey="amount" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={32} />
+            <Bar dataKey="amount" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={28} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -154,9 +154,9 @@ function DayOfWeekChart({ data }) {
 
 function RecentTransactions({ expenses, userId }) {
   return (
-    <div className="glass-card p-6">
-      <h3 className="font-display text-base text-stone-200 mb-4">Recent Expenses</h3>
-      <div className="space-y-1 max-h-[360px] overflow-y-auto pr-1">
+    <div className="glass-card p-4 sm:p-6">
+      <h3 className="font-display text-sm sm:text-base text-stone-200 mb-3 sm:mb-4">Recent Expenses</h3>
+      <div className="space-y-0.5 sm:space-y-1 max-h-[300px] sm:max-h-[360px] overflow-y-auto pr-1 -mr-1">
         {expenses.length === 0 ? (
           <p className="text-sm text-stone-500 py-4 text-center">No recent expenses</p>
         ) : (
@@ -168,18 +168,18 @@ function RecentTransactions({ expenses, userId }) {
             const payerName = payer ? `${payer.user?.first_name || ''}` : '';
 
             return (
-              <div key={exp.id} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-stone-800/30 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-stone-800/60 flex items-center justify-center flex-shrink-0 border border-stone-700/30">
-                  <Receipt size={12} className="text-stone-500" />
+              <div key={exp.id} className="flex items-center gap-2 sm:gap-3 py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-lg hover:bg-stone-800/30 active:bg-stone-800/40 transition-colors touch-manipulation">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-800/60 flex items-center justify-center flex-shrink-0 border border-stone-700/30">
+                  <Receipt size={11} className="text-stone-500 sm:w-3 sm:h-3" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-stone-300 truncate">{exp.description}</p>
-                  <p className="text-[10px] text-stone-600">
+                  <p className="text-[13px] sm:text-sm text-stone-300 truncate">{exp.description}</p>
+                  <p className="text-[9px] sm:text-[10px] text-stone-600">
                     {format(parseISO(exp.date), 'MMM d')} · {payerName} paid {formatCurrency(parseFloat(exp.cost))}
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className={`text-sm font-mono ${iPaid > 0 && iPaid > myShare ? 'text-emerald-400' : 'text-stone-400'}`}>
+                  <p className={`text-[13px] sm:text-sm font-mono ${iPaid > 0 && iPaid > myShare ? 'text-emerald-400' : 'text-stone-400'}`}>
                     {formatCurrency(myShare)}
                   </p>
                 </div>
