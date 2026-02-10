@@ -54,9 +54,11 @@ export default function GroupDetail({ group, onBack }) {
 
   // Calculate user's balance in this group
   let userBalance = 0;
-  const userMember = group?.members?.[0];
-  if (userMember?.balance?.[0]) {
-    userBalance = parseFloat(userMember.balance[0].amount) || 0;
+  const currentUserMember = group?.members?.find(m => m.id === userId);
+  if (currentUserMember?.balance) {
+    currentUserMember.balance.forEach(b => {
+      userBalance += parseFloat(b.amount) || 0;
+    });
   }
 
   const hasDebt = (group?.simplified_debts?.length > 0) || (group?.original_debts?.length > 0);

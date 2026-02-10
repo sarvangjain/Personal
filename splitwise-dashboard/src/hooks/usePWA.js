@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * Custom hook for PWA functionality
@@ -136,9 +136,14 @@ export function usePullToRefresh(onRefresh, threshold = 80) {
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Use refs to avoid stale closures and excessive listener re-registration
+  const pullDistanceRef = useRef(0);
+  const isRefreshingRef = useRef(false);
+  const onRefreshRef = useRef(onRefresh);
+  onRefreshRef.current = onRefresh;
+
   useEffect(() => {
     let startY = 0;
-    let currentY = 0;
 
     const handleTouchStart = (e) => {
       if (window.scrollY === 0) {
@@ -147,14 +152,16 @@ export function usePullToRefresh(onRefresh, threshold = 80) {
     };
 
     const handleTouchMove = (e) => {
-      if (startY === 0 || isRefreshing) return;
+      if (startY === 0 || isRefreshingRef.current) return;
       
-      currentY = e.touches[0].clientY;
+      const currentY = e.touches[0].clientY;
       const distance = currentY - startY;
 
       if (distance > 0 && window.scrollY === 0) {
+        const clamped = Math.min(distance * 0.5, threshold * 1.5);
+        pullDistanceRef.current = clamped;
         setIsPulling(true);
-        setPullDistance(Math.min(distance * 0.5, threshold * 1.5));
+        setPullDistance(clamped);
         
         if (distance > threshold) {
           e.preventDefault();
@@ -163,15 +170,18 @@ export function usePullToRefresh(onRefresh, threshold = 80) {
     };
 
     const handleTouchEnd = async () => {
-      if (pullDistance >= threshold && !isRefreshing && onRefresh) {
+      if (pullDistanceRef.current >= threshold && !isRefreshingRef.current && onRefreshRef.current) {
+        isRefreshingRef.current = true;
         setIsRefreshing(true);
         try {
-          await onRefresh();
+          await onRefreshRef.current();
         } finally {
+          isRefreshingRef.current = false;
           setIsRefreshing(false);
         }
       }
       
+      pullDistanceRef.current = 0;
       setIsPulling(false);
       setPullDistance(0);
       startY = 0;
@@ -186,7 +196,7 @@ export function usePullToRefresh(onRefresh, threshold = 80) {
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [onRefresh, threshold, pullDistance, isRefreshing]);
+  }, [threshold]);
 
   return { isPulling, pullDistance, isRefreshing };
 }

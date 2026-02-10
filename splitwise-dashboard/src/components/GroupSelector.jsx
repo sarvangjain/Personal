@@ -1,5 +1,5 @@
 import { Users, MapPin, Home, Briefcase, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
-import { formatCurrency, formatCompact } from '../utils/analytics';
+import { formatCurrency, formatCompact, getUserId } from '../utils/analytics';
 
 const groupIcons = {
   trip: MapPin,
@@ -42,31 +42,18 @@ function MemberAvatars({ members, maxShow = 4 }) {
 function GroupCard({ group, onSelect }) {
   const Icon = groupIcons[group.group_type] || Users;
   const memberCount = group.members?.length || 0;
+  const userId = getUserId();
   
   // Calculate user's balance in this group
   const debts = group.simplified_debts || group.original_debts || [];
   let userBalance = 0;
   
-  // Find current user's balance from the group members
-  const currentUserMember = group.members?.find(m => {
-    // Check if this member has balance info
-    return m.balance && m.balance.length > 0;
-  });
-  
-  // Calculate from debts - positive means you're owed, negative means you owe
-  group.members?.forEach(member => {
-    if (member.balance) {
-      member.balance.forEach(b => {
-        // This is for the current user in the group
-        userBalance += parseFloat(b.amount) || 0;
-      });
-    }
-  });
-
-  // Get the first member's balance as user's balance indicator
-  const userMember = group.members?.[0];
-  if (userMember?.balance?.[0]) {
-    userBalance = parseFloat(userMember.balance[0].amount) || 0;
+  // Find current user's balance from group members
+  const currentUserMember = group.members?.find(m => m.id === userId);
+  if (currentUserMember?.balance) {
+    currentUserMember.balance.forEach(b => {
+      userBalance += parseFloat(b.amount) || 0;
+    });
   }
 
   const hasDebt = debts.length > 0;

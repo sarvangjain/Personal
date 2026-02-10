@@ -27,13 +27,20 @@ export function computeFriendBalances(friends, userId) {
   return friends
     .filter(f => f.balance && f.balance.length > 0)
     .map(f => {
-      const bal = f.balance.reduce((sum, b) => sum + parseFloat(b.amount), 0);
+      // Use the primary (largest absolute amount) currency balance
+      // to avoid incorrectly summing different currencies
+      const primaryBalance = f.balance.reduce((best, b) => {
+        const amt = parseFloat(b.amount);
+        return Math.abs(amt) > Math.abs(best.amount) ? { amount: amt, currency: b.currency_code } : best;
+      }, { amount: 0, currency: f.balance[0]?.currency_code || 'INR' });
+
       return {
         id: f.id,
         name: `${f.first_name} ${f.last_name || ''}`.trim(),
         picture: f.picture?.medium,
-        balance: bal,
-        currency: f.balance[0]?.currency_code || 'INR',
+        balance: primaryBalance.amount,
+        currency: primaryBalance.currency,
+        hasMultipleCurrencies: f.balance.length > 1,
       };
     })
     .filter(f => Math.abs(f.balance) > 0.5)
