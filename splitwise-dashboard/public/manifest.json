@@ -1,6 +1,6 @@
 {
-  "name": "SpendLens — Splitwise Analytics",
-  "short_name": "SpendLens",
+  "name": "SplitSight — Splitwise Analytics",
+  "short_name": "SplitSight",
   "description": "Premium expense analytics dashboard for Splitwise - track spending, balances, and insights",
   "start_url": "/",
   "scope": "/",

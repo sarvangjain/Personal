@@ -100,7 +100,7 @@ function SummaryCard({ data, year, userName }) {
 
         {/* Footer */}
         <div className="pt-3 text-center border-t border-stone-800/50">
-          <p className="text-[9px] text-stone-600">Generated with SpendLens</p>
+          <p className="text-[9px] text-stone-600">Generated with SplitSight</p>
         </div>
       </div>
     </div>
@@ -170,7 +170,7 @@ function StatsCard({ data, year, userName }) {
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
               <span className="text-xs">✨</span>
             </div>
-            <span className="text-[10px] text-stone-600">SpendLens Year in Review</span>
+            <span className="text-[10px] text-stone-600">SplitSight Year in Review</span>
           </div>
         </div>
       </div>
@@ -244,7 +244,7 @@ function CategoriesCard({ data, year, userName }) {
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
               <span className="text-xs">✨</span>
             </div>
-            <span className="text-[10px] text-stone-600">SpendLens Year in Review</span>
+            <span className="text-[10px] text-stone-600">SplitSight Year in Review</span>
           </div>
         </div>
       </div>
@@ -313,7 +313,7 @@ function PersonalityCard({ data, year, userName }) {
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
               <span className="text-xs">✨</span>
             </div>
-            <span className="text-[10px] text-stone-600">SpendLens Year in Review</span>
+            <span className="text-[10px] text-stone-600">SplitSight Year in Review</span>
           </div>
         </div>
       </div>
@@ -395,7 +395,7 @@ function SocialCard({ data, year, userName }) {
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
               <span className="text-xs">✨</span>
             </div>
-            <span className="text-[10px] text-stone-600">SpendLens Year in Review</span>
+            <span className="text-[10px] text-stone-600">SplitSight Year in Review</span>
           </div>
         </div>
       </div>
@@ -460,7 +460,7 @@ function HighlightsCard({ data, year, userName }) {
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
               <span className="text-xs">✨</span>
             </div>
-            <span className="text-[10px] text-stone-600">SpendLens Year in Review</span>
+            <span className="text-[10px] text-stone-600">SplitSight Year in Review</span>
           </div>
         </div>
       </div>
@@ -514,7 +514,7 @@ export default function ShareableReview({ data, year, userName, onClose }) {
     if (!canvas) return;
 
     const link = document.createElement('a');
-    link.download = `spendlens-${year}-${cards[currentCard].id}.png`;
+    link.download = `splitsight-${year}-${cards[currentCard].id}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
     
@@ -530,12 +530,12 @@ export default function ShareableReview({ data, year, userName, onClose }) {
       canvas.toBlob(async (blob) => {
         if (!blob) return;
         
-        const file = new File([blob], `spendlens-${year}-${cards[currentCard].id}.png`, { type: 'image/png' });
+        const file = new File([blob], `splitsight-${year}-${cards[currentCard].id}.png`, { type: 'image/png' });
         
         if (navigator.share && navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
-            title: `My ${year} SpendLens Wrapped`,
+            title: `My ${year} SplitSight Wrapped`,
             text: `Check out my ${year} spending wrapped!`,
           });
         } else {

@@ -1,4 +1,4 @@
-# SpendLens — Splitwise Analytics Dashboard
+# SplitSight — Splitwise Analytics Dashboard
 
 A premium expense analytics dashboard powered by the Splitwise API. Visualize your shared expenses, track balances, and gain deep insights into your spending patterns.
 

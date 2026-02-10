@@ -391,7 +391,7 @@ function SummarySlide({ data, year, userName, onShare }) {
           <Sparkles size={20} className="text-white" />
         </div>
         <h3 className="font-display text-xl text-white mb-1">{userName}'s {year}</h3>
-        <p className="text-xs text-emerald-400 mb-4">SpendLens Year in Review</p>
+        <p className="text-xs text-emerald-400 mb-4">SplitSight Year in Review</p>
         
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-stone-800/50 rounded-xl p-3">
@@ -418,7 +418,7 @@ function SummarySlide({ data, year, userName, onShare }) {
         </div>
 
         <div className="mt-4 pt-4 border-t border-stone-800/50">
-          <p className="text-[10px] text-stone-600">Generated with SpendLens</p>
+          <p className="text-[10px] text-stone-600">Generated with SplitSight</p>
         </div>
       </div>
 

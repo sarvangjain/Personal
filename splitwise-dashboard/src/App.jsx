@@ -57,7 +57,7 @@ function InstallPrompt({ onInstall, onDismiss }) {
           <Download size={18} className="text-emerald-400" />
         </div>
         <div className="flex-1">
-          <p className="text-sm font-medium text-stone-200">Install SpendLens</p>
+          <p className="text-sm font-medium text-stone-200">Install SplitSight</p>
           <p className="text-[11px] text-stone-500 mt-0.5">Add to your home screen for quick access and offline support</p>
         </div>
         <button onClick={onDismiss} className="p-1 text-stone-500 hover:text-stone-300">

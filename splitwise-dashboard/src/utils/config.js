@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'spendlens_config';
+const STORAGE_KEY = 'splitsight_config';
 
 const defaults = {
   apiKey: '',

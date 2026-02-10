@@ -57,7 +57,7 @@ export default function SetupPage({ onComplete }) {
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-emerald-500/20">
             <Wallet size={28} className="text-white" />
           </div>
-          <h1 className="font-display text-3xl sm:text-4xl text-stone-100">SpendLens</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-stone-100">SplitSight</h1>
           <p className="text-stone-500 text-sm mt-2">Splitwise Analytics Dashboard</p>
         </div>
 

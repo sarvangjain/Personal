@@ -16,7 +16,7 @@ export default function Header({ user, onSettings, onAddExpense, groups, friends
             )}
           </div>
           <div className="hidden sm:block">
-            <h1 className="font-display text-lg text-stone-100 leading-tight">SpendLens</h1>
+            <h1 className="font-display text-lg text-stone-100 leading-tight">SplitSight</h1>
             <p className="text-[10px] text-stone-500 font-medium tracking-widest uppercase">Splitwise Analytics</p>
           </div>
         </div>
