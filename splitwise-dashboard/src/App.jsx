@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { isLoggedIn } from './utils/config';
-import { getCurrentUser, getGroups, getFriends, getExpenses, getAllExpensesForGroup } from './api/splitwise';
+import { getCurrentUser, getGroups, getFriends, getExpenses } from './api/splitwise';
 import { getUserId, computeOverallBalances, computeFriendBalances, computeSmartInsights, computeSettleUpSuggestions } from './utils/analytics';
 import { usePWA, usePullToRefresh, useHaptic } from './hooks/usePWA';
 import SetupPage from './components/SetupPage';
@@ -12,7 +12,7 @@ import SmartInsights from './components/SmartInsights';
 import RecurringExpenses from './components/RecurringExpenses';
 import SettleUpPanel from './components/SettleUpPanel';
 import GroupSelector from './components/GroupSelector';
-import GroupDashboard from './components/GroupDashboard';
+import GroupDetail from './components/GroupDetail';
 import FriendBalances from './components/FriendBalances';
 import FriendDetail from './components/FriendDetail';
 import LoadingState from './components/LoadingState';
@@ -103,10 +103,8 @@ function Dashboard() {
   const [groups, setGroups] = useState([]);
   const [friends, setFriends] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
-  const [groupExpenses, setGroupExpenses] = useState([]);
   const [allExpenses, setAllExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingExpenses, setLoadingExpenses] = useState(false);
   const [error, setError] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showCreateExpense, setShowCreateExpense] = useState(false);
@@ -177,23 +175,14 @@ function Dashboard() {
     localStorage.setItem('install_prompt_dismissed', 'true');
   };
 
-  useEffect(() => {
-    if (!selectedGroupId) { setGroupExpenses([]); return; }
-    let cancelled = false;
-    (async () => {
-      setLoadingExpenses(true);
-      try {
-        const expenses = await getAllExpensesForGroup(selectedGroupId);
-        if (!cancelled) setGroupExpenses(expenses);
-      } catch (err) { console.error(err); }
-      finally { if (!cancelled) setLoadingExpenses(false); }
-    })();
-    return () => { cancelled = true; };
-  }, [selectedGroupId]);
-
   function handleExpenseCreated() {
     loadInitialData();
-    if (selectedGroupId) getAllExpensesForGroup(selectedGroupId).then(setGroupExpenses);
+    // Reset group selection to force reload when returning to group detail
+    if (selectedGroupId) {
+      const gid = selectedGroupId;
+      setSelectedGroupId(null);
+      setTimeout(() => setSelectedGroupId(gid), 100);
+    }
   }
 
   function handleSearchSelectGroup(groupId) { setSelectedGroupId(groupId); setActiveTab('groups'); }
@@ -256,7 +245,7 @@ function Dashboard() {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => { setActiveTab(tab.id); if (tab.id === 'friends') setSelectedFriend(null); }}
+              onClick={() => { setActiveTab(tab.id); if (tab.id === 'friends') setSelectedFriend(null); if (tab.id === 'groups') setSelectedGroupId(null); }}
               className={`pb-2.5 sm:pb-3 text-xs sm:text-sm font-medium tracking-wide transition-all whitespace-nowrap px-2 sm:px-0 flex items-center gap-1.5 ${
                 activeTab === tab.id ? 'tab-active' : 'tab-inactive'
               }`}
@@ -279,9 +268,12 @@ function Dashboard() {
         )}
 
         {activeTab === 'groups' && (
-          <div className="animate-fade-in space-y-6 sm:space-y-8">
-            <GroupSelector groups={activeGroups} selectedGroupId={selectedGroupId} onSelect={setSelectedGroupId} />
-            {selectedGroupId && <GroupDashboard group={selectedGroup} expenses={groupExpenses} loading={loadingExpenses} userId={userId} />}
+          <div className="animate-fade-in">
+            {selectedGroup ? (
+              <GroupDetail group={selectedGroup} onBack={() => setSelectedGroupId(null)} />
+            ) : (
+              <GroupSelector groups={activeGroups} onSelect={setSelectedGroupId} />
+            )}
           </div>
         )}
 
@@ -384,6 +376,21 @@ function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* Footer */}
+        <footer className="mt-12 sm:mt-16 pb-4 text-center">
+          <p className="text-sm sm:text-xs text-stone-600">
+            Vibe Coded with <span className="text-red-400">{' '}❤️{' '}</span> by{' '}
+            <a 
+              href="https://www.linkedin.com/in/sarvangjain/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-stone-400 hover:text-emerald-400 transition-colors"
+            >
+              Sarvang Jain
+            </a>
+          </p>
+        </footer>
       </main>
 
       {/* Mobile Bottom Nav */}
@@ -391,14 +398,10 @@ function Dashboard() {
         <div className="flex justify-around py-2">
           {tabs.map(tab => {
             const isActive = activeTab === tab.id;
-            const iconColor = tab.id === 'beta' ? (isActive ? 'text-purple-400' : 'text-purple-500/50') : '';
             return (
-              <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === 'friends') setSelectedFriend(null); }}
-                className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${isActive ? 'text-emerald-400' : 'text-stone-500'}`}>
-                {tab.icon ? (
-                  <tab.icon size={16} className={iconColor} />
-                ) : null}
-                <span className="text-[10px] font-medium">{tab.label}</span>
+              <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === 'friends') setSelectedFriend(null); if (tab.id === 'groups') setSelectedGroupId(null); }}
+                className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${isActive ? (tab.id === 'beta' ? 'text-purple-400' : 'text-emerald-400') : 'text-stone-500'}`}>
+                <span className="text-[11px] font-medium">{tab.label}</span>
                 {isActive && <div className={`w-4 h-0.5 rounded-full ${tab.id === 'beta' ? 'bg-purple-400' : 'bg-emerald-400'}`} />}
               </button>
             );

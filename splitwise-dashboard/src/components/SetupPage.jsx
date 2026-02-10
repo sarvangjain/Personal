@@ -158,6 +158,21 @@ export default function SetupPage({ onComplete }) {
             </p>
           </div>
         )}
+
+        {/* Footer */}
+        <footer className="mt-8 text-center">
+          <p className="text-sm sm:text-xs text-stone-600">
+            Vibe Coded with <span className="text-red-400">{' '}❤️{' '}</span> by{' '}
+            <a 
+              href="https://www.linkedin.com/in/sarvangjain/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-stone-400 hover:text-emerald-400 transition-colors"
+            >
+              Sarvang Jain
+            </a>
+          </p>
+        </footer>
       </div>
     </div>
   );

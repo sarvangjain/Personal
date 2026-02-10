@@ -27,9 +27,9 @@ function GroupSummaryCards({ expenses, group, userId }) {
         { label: 'Your Net', value: `${netForMe >= 0 ? '+' : ''}${formatCurrency(netForMe)}`, color: netForMe >= 0 ? 'text-emerald-400' : 'text-red-400' },
         { label: 'Avg/Person', value: formatCurrency(totalCost / memberCount), color: 'text-indigo-400' },
       ].map(item => (
-        <div key={item.label} className="glass-card p-4">
-          <p className={`font-display text-xl ${item.color}`}>{item.value}</p>
-          <p className="text-[10px] text-stone-500 mt-1 font-medium uppercase tracking-wide">{item.label}</p>
+        <div key={item.label} className="glass-card p-3 sm:p-4">
+          <p className={`font-display text-lg sm:text-xl ${item.color}`}>{item.value}</p>
+          <p className="text-[11px] sm:text-[10px] text-stone-500 mt-1 font-medium uppercase tracking-wide">{item.label}</p>
         </div>
       ))}
     </div>
@@ -198,9 +198,9 @@ function ExpenseTimeline({ expenses, userId }) {
   const recent = computeRecentExpenses(expenses, 25);
 
   return (
-    <div className="glass-card p-6">
-      <h3 className="font-display text-base text-stone-200 mb-4 flex items-center gap-2">
-        <Receipt size={14} className="text-stone-400" /> Expense Timeline ({expenses.length} total)
+    <div className="glass-card p-4 sm:p-6">
+      <h3 className="font-display text-base sm:text-lg text-stone-200 mb-4 flex items-center gap-2">
+        <Receipt size={16} className="text-stone-400 sm:w-[14px] sm:h-[14px]" /> Expense Timeline ({expenses.length} total)
       </h3>
       <div className="space-y-0.5 max-h-[450px] overflow-y-auto pr-2">
         {recent.map(exp => {
@@ -208,17 +208,17 @@ function ExpenseTimeline({ expenses, userId }) {
           const myShare = userEntry ? parseFloat(userEntry.owed_share) : 0;
           const payer = exp.users?.find(u => parseFloat(u.paid_share) > 0);
           return (
-            <div key={exp.id} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-stone-800/30 transition-colors">
+            <div key={exp.id} className="flex items-center gap-3 py-3 sm:py-2.5 px-2 rounded-lg hover:bg-stone-800/30 transition-colors">
               <div className="w-1 h-8 rounded-full bg-gradient-to-b from-emerald-500/40 to-transparent flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-stone-300 truncate">{exp.description}</p>
-                <p className="text-[10px] text-stone-600">
+                <p className="text-sm sm:text-sm text-stone-300 truncate">{exp.description}</p>
+                <p className="text-xs sm:text-[10px] text-stone-600">
                   {format(parseISO(exp.date), 'MMM d, yyyy')} · {payer?.user?.first_name || 'Unknown'} paid {formatCurrency(parseFloat(exp.cost))}
                 </p>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="text-xs font-mono text-stone-400">{formatCurrency(myShare)}</p>
-                <p className="text-[10px] text-stone-600">{exp.category?.name || ''}</p>
+                <p className="text-sm sm:text-xs font-mono text-stone-400">{formatCurrency(myShare)}</p>
+                <p className="text-xs sm:text-[10px] text-stone-600">{exp.category?.name || ''}</p>
               </div>
             </div>
           );

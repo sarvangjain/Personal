@@ -18,35 +18,35 @@ export default function FriendBalances({ friends, onSelectFriend }) {
       <button
         key={f.id}
         onClick={() => onSelectFriend?.(f)}
-        className="w-full flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-stone-800/30 transition-colors text-left group"
+        className="w-full flex items-center gap-3 py-3 sm:py-2.5 px-2 rounded-lg hover:bg-stone-800/30 active:bg-stone-800/40 transition-colors text-left group touch-manipulation"
       >
         {f.picture ? (
-          <img src={f.picture} className="w-8 h-8 rounded-full" alt="" />
+          <img src={f.picture} className="w-9 h-9 sm:w-8 sm:h-8 rounded-full" alt="" />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-stone-400 font-medium">
+          <div className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-stone-700 flex items-center justify-center text-sm sm:text-xs text-stone-400 font-medium">
             {f.name[0]}
           </div>
         )}
-        <span className="flex-1 text-sm text-stone-300">{f.name}</span>
-        <span className={`text-sm font-mono ${colorClass}`}>
+        <span className="flex-1 text-base sm:text-sm text-stone-300">{f.name}</span>
+        <span className={`text-base sm:text-sm font-mono ${colorClass}`}>
           {formatCurrency(Math.abs(f.balance))}
         </span>
-        <ChevronRight size={12} className="text-stone-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <ChevronRight size={14} className="text-stone-600 opacity-0 group-hover:opacity-100 transition-opacity sm:w-3 sm:h-3" />
       </button>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Balance Chart */}
-      <div className="glass-card p-6">
-        <h3 className="font-display text-lg text-stone-200 mb-4">Balance Overview</h3>
+      <div className="glass-card p-4 sm:p-6">
+        <h3 className="font-display text-lg sm:text-lg text-stone-200 mb-4">Balance Overview</h3>
         {chartData.length > 0 ? (
-          <div className="h-64">
+          <div className="h-56 sm:h-64">
             <ResponsiveContainer>
               <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#78716c' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} />
                 <Tooltip formatter={(value) => [formatCurrency(value), 'Balance']} />
                 <Bar dataKey="balance" radius={[4, 4, 0, 0]} maxBarSize={36}>
@@ -58,22 +58,22 @@ export default function FriendBalances({ friends, onSelectFriend }) {
             </ResponsiveContainer>
           </div>
         ) : (
-          <p className="text-sm text-stone-500 py-8 text-center">No outstanding balances</p>
+          <p className="text-base sm:text-sm text-stone-500 py-8 text-center">No outstanding balances</p>
         )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* They owe you */}
-        <div className="glass-card p-6">
-          <h3 className="font-display text-base text-stone-200 mb-1 flex items-center gap-2">
-            <ArrowDownRight size={16} className="text-emerald-400" />
+        <div className="glass-card p-4 sm:p-6">
+          <h3 className="font-display text-lg sm:text-base text-stone-200 mb-1 flex items-center gap-2">
+            <ArrowDownRight size={18} className="text-emerald-400 sm:w-4 sm:h-4" />
             They Owe You
           </h3>
-          <p className="text-xs text-stone-500 mb-4">
+          <p className="text-sm sm:text-xs text-stone-500 mb-4">
             Total: {formatCurrency(owedToYou.reduce((s, f) => s + f.balance, 0))}
           </p>
           {owedToYou.length === 0 ? (
-            <p className="text-sm text-stone-500 py-4 text-center">Nobody owes you</p>
+            <p className="text-base sm:text-sm text-stone-500 py-4 text-center">Nobody owes you</p>
           ) : (
             <div className="space-y-1">
               {owedToYou.map(f => <FriendRow key={f.id} f={f} colorClass="text-emerald-400" />)}
@@ -82,16 +82,16 @@ export default function FriendBalances({ friends, onSelectFriend }) {
         </div>
 
         {/* You owe them */}
-        <div className="glass-card p-6">
-          <h3 className="font-display text-base text-stone-200 mb-1 flex items-center gap-2">
-            <ArrowUpRight size={16} className="text-red-400" />
+        <div className="glass-card p-4 sm:p-6">
+          <h3 className="font-display text-lg sm:text-base text-stone-200 mb-1 flex items-center gap-2">
+            <ArrowUpRight size={18} className="text-red-400 sm:w-4 sm:h-4" />
             You Owe Them
           </h3>
-          <p className="text-xs text-stone-500 mb-4">
+          <p className="text-sm sm:text-xs text-stone-500 mb-4">
             Total: {formatCurrency(Math.abs(youOwe.reduce((s, f) => s + f.balance, 0)))}
           </p>
           {youOwe.length === 0 ? (
-            <p className="text-sm text-stone-500 py-4 text-center">You don't owe anyone</p>
+            <p className="text-base sm:text-sm text-stone-500 py-4 text-center">You don't owe anyone</p>
           ) : (
             <div className="space-y-1">
               {youOwe.map(f => <FriendRow key={f.id} f={f} colorClass="text-red-400" />)}
@@ -100,7 +100,7 @@ export default function FriendBalances({ friends, onSelectFriend }) {
         </div>
       </div>
 
-      <p className="text-[10px] text-stone-600 text-center">Click on a friend to see your full expense history together</p>
+      <p className="text-xs sm:text-[10px] text-stone-600 text-center">Tap on a friend to see your full expense history together</p>
     </div>
   );
 }

@@ -27,6 +27,16 @@
     /* Prevent text selection on tap (better touch feel) */
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
+    
+    /* Slightly larger base font on mobile */
+    font-size: 16px;
+  }
+  
+  /* Increase base font size slightly on mobile for better readability */
+  @media (max-width: 640px) {
+    body {
+      font-size: 17px;
+    }
   }
   
   /* Hide scrollbar on mobile for cleaner look */
@@ -214,6 +224,28 @@
   }
   .text-responsive-xl {
     font-size: clamp(1.125rem, 4vw, 1.25rem);
+  }
+}
+
+/* Mobile-friendly font size overrides */
+@media (max-width: 640px) {
+  /* Increase tiny text sizes for readability */
+  .text-\[9px\] {
+    font-size: 11px !important;
+  }
+  .text-\[10px\] {
+    font-size: 12px !important;
+  }
+  .text-xs {
+    font-size: 0.8125rem !important; /* 13px instead of 12px */
+  }
+  .text-sm {
+    font-size: 0.9375rem !important; /* 15px instead of 14px */
+  }
+  
+  /* Glass card slightly larger padding on mobile */
+  .glass-card {
+    padding: 1rem;
   }
 }
 

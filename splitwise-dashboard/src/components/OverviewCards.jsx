@@ -155,8 +155,8 @@ function DayOfWeekChart({ data }) {
 function RecentTransactions({ expenses, userId }) {
   return (
     <div className="glass-card p-4 sm:p-6">
-      <h3 className="font-display text-sm sm:text-base text-stone-200 mb-3 sm:mb-4">Recent Expenses</h3>
-      <div className="space-y-0.5 sm:space-y-1 max-h-[300px] sm:max-h-[360px] overflow-y-auto pr-1 -mr-1">
+      <h3 className="font-display text-base sm:text-base text-stone-200 mb-3 sm:mb-4">Recent Expenses</h3>
+      <div className="space-y-0.5 sm:space-y-1 max-h-[320px] sm:max-h-[360px] overflow-y-auto pr-1 -mr-1">
         {expenses.length === 0 ? (
           <p className="text-sm text-stone-500 py-4 text-center">No recent expenses</p>
         ) : (
@@ -168,18 +168,18 @@ function RecentTransactions({ expenses, userId }) {
             const payerName = payer ? `${payer.user?.first_name || ''}` : '';
 
             return (
-              <div key={exp.id} className="flex items-center gap-2 sm:gap-3 py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-lg hover:bg-stone-800/30 active:bg-stone-800/40 transition-colors touch-manipulation">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-stone-800/60 flex items-center justify-center flex-shrink-0 border border-stone-700/30">
-                  <Receipt size={11} className="text-stone-500 sm:w-3 sm:h-3" />
+              <div key={exp.id} className="flex items-center gap-2.5 sm:gap-3 py-2.5 sm:py-2.5 px-2 sm:px-2 rounded-lg hover:bg-stone-800/30 active:bg-stone-800/40 transition-colors touch-manipulation">
+                <div className="w-8 h-8 sm:w-8 sm:h-8 rounded-lg bg-stone-800/60 flex items-center justify-center flex-shrink-0 border border-stone-700/30">
+                  <Receipt size={13} className="text-stone-500 sm:w-3 sm:h-3" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] sm:text-sm text-stone-300 truncate">{exp.description}</p>
-                  <p className="text-[9px] sm:text-[10px] text-stone-600">
+                  <p className="text-sm sm:text-sm text-stone-300 truncate">{exp.description}</p>
+                  <p className="text-xs sm:text-[10px] text-stone-600">
                     {format(parseISO(exp.date), 'MMM d')} · {payerName} paid {formatCurrency(parseFloat(exp.cost))}
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className={`text-[13px] sm:text-sm font-mono ${iPaid > 0 && iPaid > myShare ? 'text-emerald-400' : 'text-stone-400'}`}>
+                  <p className={`text-sm sm:text-sm font-mono ${iPaid > 0 && iPaid > myShare ? 'text-emerald-400' : 'text-stone-400'}`}>
                     {formatCurrency(myShare)}
                   </p>
                 </div>
