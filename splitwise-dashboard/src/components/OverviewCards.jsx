@@ -1,6 +1,6 @@
-import { TrendingUp, TrendingDown, Scale, ArrowUpRight, ArrowDownRight, Receipt } from 'lucide-react';
+import { TrendingUp, TrendingDown, Scale, Receipt } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
-import { formatCurrency, formatCompact, computeExpensesByCategory, computeMonthlySpending, computeRecentExpenses, computeDayOfWeekSpending } from '../utils/analytics';
+import { formatCurrency, formatCompact, computeExpensesByCategory, computeMonthlySpending, computeRecentExpenses, computeDayOfWeekSpending, computeCategoryTrend } from '../utils/analytics';
 import { format, parseISO } from 'date-fns';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#6366f1', '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4', '#84cc16', '#e11d48'];
@@ -38,19 +38,8 @@ function CategoryChart({ data }) {
           <div className="w-40 h-40 flex-shrink-0">
             <ResponsiveContainer>
               <PieChart>
-                <Pie
-                  data={top6}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={70}
-                  dataKey="amount"
-                  strokeWidth={2}
-                  stroke="rgba(12,10,9,0.8)"
-                >
-                  {top6.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                  ))}
+                <Pie data={top6} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="amount" strokeWidth={2} stroke="rgba(12,10,9,0.8)">
+                  {top6.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
@@ -89,14 +78,56 @@ function MonthlyChart({ data }) {
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
             <XAxis dataKey="shortMonth" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} />
-            <Tooltip
-              formatter={(value) => [formatCurrency(value), '']}
-              contentStyle={{ background: 'rgba(28,25,23,0.95)', border: '1px solid rgba(120,113,108,0.3)', borderRadius: 12, fontSize: 12 }}
-            />
+            <Tooltip formatter={(value) => [formatCurrency(value), '']} contentStyle={{ background: 'rgba(28,25,23,0.95)', border: '1px solid rgba(120,113,108,0.3)', borderRadius: 12, fontSize: 12 }} />
             <Area type="monotone" dataKey="share" name="Your Share" stroke="#10b981" fill="url(#colorShare)" strokeWidth={2} />
             <Area type="monotone" dataKey="paid" name="You Paid" stroke="#f59e0b" fill="transparent" strokeWidth={1.5} strokeDasharray="4 4" />
           </AreaChart>
         </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function CategoryTrendChart({ data }) {
+  if (!data || data.length === 0) return null;
+
+  // Get category keys (everything except 'month')
+  const catKeys = Object.keys(data[0] || {}).filter(k => k !== 'month');
+  if (catKeys.length === 0) return null;
+
+  return (
+    <div className="glass-card p-6">
+      <h3 className="font-display text-base text-stone-200 mb-4">Category Trend (4 Months)</h3>
+      <div className="h-56">
+        <ResponsiveContainer>
+          <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -10 }} stackOffset="none">
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} />
+            <Tooltip formatter={(value) => [formatCurrency(value), '']} />
+            {catKeys.map((cat, i) => (
+              <Area
+                key={cat}
+                type="monotone"
+                dataKey={cat}
+                name={cat}
+                stackId="1"
+                stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                fill={CHART_COLORS[i % CHART_COLORS.length]}
+                fillOpacity={0.3}
+                strokeWidth={1.5}
+              />
+            ))}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex flex-wrap gap-3 mt-3">
+        {catKeys.map((cat, i) => (
+          <div key={cat} className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+            <span className="text-[10px] text-stone-500">{cat}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -125,7 +156,7 @@ function RecentTransactions({ expenses, userId }) {
   return (
     <div className="glass-card p-6">
       <h3 className="font-display text-base text-stone-200 mb-4">Recent Expenses</h3>
-      <div className="space-y-1">
+      <div className="space-y-1 max-h-[360px] overflow-y-auto pr-1">
         {expenses.length === 0 ? (
           <p className="text-sm text-stone-500 py-4 text-center">No recent expenses</p>
         ) : (
@@ -137,7 +168,7 @@ function RecentTransactions({ expenses, userId }) {
             const payerName = payer ? `${payer.user?.first_name || ''}` : '';
 
             return (
-              <div key={exp.id} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-stone-800/30 transition-colors group">
+              <div key={exp.id} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-stone-800/30 transition-colors">
                 <div className="w-8 h-8 rounded-lg bg-stone-800/60 flex items-center justify-center flex-shrink-0 border border-stone-700/30">
                   <Receipt size={12} className="text-stone-500" />
                 </div>
@@ -164,54 +195,37 @@ function RecentTransactions({ expenses, userId }) {
 export default function OverviewCards({ balances, expenses, userId }) {
   const categories = computeExpensesByCategory(expenses, userId);
   const monthly = computeMonthlySpending(expenses, userId, 6);
-  const recent = computeRecentExpenses(expenses, 10);
+  const recent = computeRecentExpenses(expenses, 15);
   const dayOfWeek = computeDayOfWeekSpending(expenses, userId);
+  const categoryTrend = computeCategoryTrend(expenses, userId, 4);
   const totalYourExpenses = categories.reduce((s, c) => s + c.amount, 0);
 
   return (
     <>
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          icon={TrendingUp}
-          label="Others Owe You"
-          value={formatCurrency(balances.totalOwed)}
-          type="positive"
-        />
-        <StatCard
-          icon={TrendingDown}
-          label="You Owe Others"
-          value={formatCurrency(balances.totalOwe)}
-          type="negative"
-        />
-        <StatCard
-          icon={Scale}
-          label="Net Balance"
-          value={formatCurrency(balances.netBalance)}
-          type={balances.netBalance >= 0 ? 'positive' : 'negative'}
-        />
-        <StatCard
-          icon={Receipt}
-          label="Your Total Share"
-          value={formatCurrency(totalYourExpenses)}
-          subtext={`from ${expenses.length} expenses`}
-          type="neutral"
-        />
+        <StatCard icon={TrendingUp} label="Others Owe You" value={formatCurrency(balances.totalOwed)} type="positive" />
+        <StatCard icon={TrendingDown} label="You Owe Others" value={formatCurrency(balances.totalOwe)} type="negative" />
+        <StatCard icon={Scale} label="Net Balance" value={formatCurrency(balances.netBalance)} type={balances.netBalance >= 0 ? 'positive' : 'negative'} />
+        <StatCard icon={Receipt} label="Your Total Share" value={formatCurrency(totalYourExpenses)} subtext={`from ${expenses.length} expenses`} type="neutral" />
       </div>
 
-      {/* Charts Row */}
+      {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <MonthlyChart data={monthly} />
         <CategoryChart data={categories} />
       </div>
 
-      {/* Bottom Row */}
+      {/* Charts Row 2 — Category Trend + Day of Week */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <RecentTransactions expenses={recent} userId={userId} />
+          <CategoryTrendChart data={categoryTrend} />
         </div>
         <DayOfWeekChart data={dayOfWeek} />
       </div>
+
+      {/* Recent Transactions */}
+      <RecentTransactions expenses={recent} userId={userId} />
     </>
   );
 }

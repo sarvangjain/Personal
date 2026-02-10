@@ -1,8 +1,8 @@
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { formatCurrency, formatCompact } from '../utils/analytics';
 
-export default function FriendBalances({ friends }) {
+export default function FriendBalances({ friends, onSelectFriend }) {
   const owedToYou = friends.filter(f => f.balance > 0);
   const youOwe = friends.filter(f => f.balance < 0);
 
@@ -12,6 +12,29 @@ export default function FriendBalances({ friends }) {
       name: f.name.split(' ')[0],
       balance: Math.round(f.balance),
     }));
+
+  function FriendRow({ f, colorClass }) {
+    return (
+      <button
+        key={f.id}
+        onClick={() => onSelectFriend?.(f)}
+        className="w-full flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-stone-800/30 transition-colors text-left group"
+      >
+        {f.picture ? (
+          <img src={f.picture} className="w-8 h-8 rounded-full" alt="" />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-stone-400 font-medium">
+            {f.name[0]}
+          </div>
+        )}
+        <span className="flex-1 text-sm text-stone-300">{f.name}</span>
+        <span className={`text-sm font-mono ${colorClass}`}>
+          {formatCurrency(Math.abs(f.balance))}
+        </span>
+        <ChevronRight size={12} className="text-stone-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </button>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -53,19 +76,7 @@ export default function FriendBalances({ friends }) {
             <p className="text-sm text-stone-500 py-4 text-center">Nobody owes you</p>
           ) : (
             <div className="space-y-1">
-              {owedToYou.map(f => (
-                <div key={f.id} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-stone-800/30 transition-colors">
-                  {f.picture ? (
-                    <img src={f.picture} className="w-8 h-8 rounded-full" alt="" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-stone-400 font-medium">
-                      {f.name[0]}
-                    </div>
-                  )}
-                  <span className="flex-1 text-sm text-stone-300">{f.name}</span>
-                  <span className="text-sm font-mono text-emerald-400">{formatCurrency(f.balance)}</span>
-                </div>
-              ))}
+              {owedToYou.map(f => <FriendRow key={f.id} f={f} colorClass="text-emerald-400" />)}
             </div>
           )}
         </div>
@@ -83,23 +94,13 @@ export default function FriendBalances({ friends }) {
             <p className="text-sm text-stone-500 py-4 text-center">You don't owe anyone</p>
           ) : (
             <div className="space-y-1">
-              {youOwe.map(f => (
-                <div key={f.id} className="flex items-center gap-3 py-2.5 px-2 rounded-lg hover:bg-stone-800/30 transition-colors">
-                  {f.picture ? (
-                    <img src={f.picture} className="w-8 h-8 rounded-full" alt="" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-stone-400 font-medium">
-                      {f.name[0]}
-                    </div>
-                  )}
-                  <span className="flex-1 text-sm text-stone-300">{f.name}</span>
-                  <span className="text-sm font-mono text-red-400">{formatCurrency(Math.abs(f.balance))}</span>
-                </div>
-              ))}
+              {youOwe.map(f => <FriendRow key={f.id} f={f} colorClass="text-red-400" />)}
             </div>
           )}
         </div>
       </div>
+
+      <p className="text-[10px] text-stone-600 text-center">Click on a friend to see your full expense history together</p>
     </div>
   );
 }
