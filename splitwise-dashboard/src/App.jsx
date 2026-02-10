@@ -17,7 +17,8 @@ import FriendBalances from './components/FriendBalances';
 import FriendDetail from './components/FriendDetail';
 import LoadingState from './components/LoadingState';
 import ErrorState from './components/ErrorState';
-import { WifiOff, RefreshCw, Download, X } from 'lucide-react';
+import YearInReview from './components/YearInReview';
+import { WifiOff, RefreshCw, Download, X, Sparkles, FlaskConical } from 'lucide-react';
 
 // Offline Banner Component
 function OfflineBanner() {
@@ -113,6 +114,7 @@ function Dashboard() {
   const [selectedFriend, setSelectedFriend] = useState(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [showUpdateBanner, setShowUpdateBanner] = useState(true);
+  const [showYearInReview, setShowYearInReview] = useState(false);
 
   const userId = getUserId();
   
@@ -222,6 +224,7 @@ function Dashboard() {
     { id: 'groups', label: 'Groups' },
     { id: 'friends', label: 'Balances' },
     { id: 'settle', label: 'Settle Up' },
+    { id: 'beta', label: 'Beta', icon: FlaskConical },
   ];
 
   return (
@@ -254,10 +257,11 @@ function Dashboard() {
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); if (tab.id === 'friends') setSelectedFriend(null); }}
-              className={`pb-2.5 sm:pb-3 text-xs sm:text-sm font-medium tracking-wide transition-all whitespace-nowrap px-2 sm:px-0 ${
+              className={`pb-2.5 sm:pb-3 text-xs sm:text-sm font-medium tracking-wide transition-all whitespace-nowrap px-2 sm:px-0 flex items-center gap-1.5 ${
                 activeTab === tab.id ? 'tab-active' : 'tab-inactive'
               }`}
             >
+              {tab.icon && <tab.icon size={14} className={tab.id === 'beta' ? 'text-purple-400' : ''} />}
               {tab.label}
               {tab.id === 'settle' && settleUpSuggestions.length > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 text-[9px] bg-amber-500/15 text-amber-400 rounded-full font-mono">{settleUpSuggestions.length}</span>
@@ -302,6 +306,84 @@ function Dashboard() {
             )}
           </div>
         )}
+
+        {activeTab === 'beta' && (
+          <div className="animate-fade-in space-y-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                <FlaskConical size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-display text-stone-200">Beta Features</h2>
+                <p className="text-xs text-stone-500">Try out experimental features</p>
+              </div>
+            </div>
+
+            {/* Year in Review Card */}
+            <button
+              onClick={() => { haptic.medium(); setShowYearInReview(true); }}
+              className="w-full glass-card p-6 text-left hover:border-emerald-500/30 transition-all group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                  <Sparkles size={24} className="text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-display text-lg text-white">Year in Review</h3>
+                    <span className="px-2 py-0.5 text-[9px] font-semibold bg-emerald-500/15 text-emerald-400 rounded-full uppercase tracking-wider">New</span>
+                  </div>
+                  <p className="text-sm text-stone-400 mb-3">
+                    Discover your {new Date().getFullYear()} spending story with beautiful insights, patterns, and your unique Splitwise personality.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">📊 Spending Insights</span>
+                    <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">👥 Social Stats</span>
+                    <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">🎭 Personality</span>
+                  </div>
+                </div>
+                <div className="text-stone-600 group-hover:text-emerald-400 transition-colors">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </button>
+
+            {/* Coming Soon Cards */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="glass-card p-5 opacity-60">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-stone-800 flex items-center justify-center">
+                    <span className="text-lg">📅</span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-display text-stone-300">Spending Heatmap</h4>
+                    <span className="text-[10px] text-stone-600">Coming Soon</span>
+                  </div>
+                </div>
+                <p className="text-xs text-stone-500">GitHub-style calendar showing your daily spending patterns</p>
+              </div>
+
+              <div className="glass-card p-5 opacity-60">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-stone-800 flex items-center justify-center">
+                    <span className="text-lg">🎯</span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-display text-stone-300">Budget Goals</h4>
+                    <span className="text-[10px] text-stone-600">Coming Soon</span>
+                  </div>
+                </div>
+                <p className="text-xs text-stone-500">Set and track spending limits for categories</p>
+              </div>
+            </div>
+
+            <div className="text-center pt-4">
+              <p className="text-xs text-stone-600">Have feature ideas? We'd love to hear from you!</p>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Mobile Bottom Nav */}
@@ -309,11 +391,15 @@ function Dashboard() {
         <div className="flex justify-around py-2">
           {tabs.map(tab => {
             const isActive = activeTab === tab.id;
+            const iconColor = tab.id === 'beta' ? (isActive ? 'text-purple-400' : 'text-purple-500/50') : '';
             return (
               <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === 'friends') setSelectedFriend(null); }}
                 className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${isActive ? 'text-emerald-400' : 'text-stone-500'}`}>
+                {tab.icon ? (
+                  <tab.icon size={16} className={iconColor} />
+                ) : null}
                 <span className="text-[10px] font-medium">{tab.label}</span>
-                {isActive && <div className="w-4 h-0.5 rounded-full bg-emerald-400" />}
+                {isActive && <div className={`w-4 h-0.5 rounded-full ${tab.id === 'beta' ? 'bg-purple-400' : 'bg-emerald-400'}`} />}
               </button>
             );
           })}
@@ -331,6 +417,16 @@ function Dashboard() {
       {showCreateExpense && (
         <CreateExpenseModal groups={groups} friends={friends}
           onClose={() => setShowCreateExpense(false)} onCreated={handleExpenseCreated} />
+      )}
+
+      {showYearInReview && (
+        <YearInReview
+          groups={groups}
+          friends={friends}
+          expenses={allExpenses}
+          onClose={() => setShowYearInReview(false)}
+          userName={user?.first_name || 'User'}
+        />
       )}
     </div>
   );
