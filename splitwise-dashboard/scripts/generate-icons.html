@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PWA Icon Generator - SplitSight</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1c1917; 
+      color: #e7e5e4;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+    h1 { color: #10b981; margin-bottom: 0.5rem; }
+    p { color: #78716c; margin-bottom: 2rem; }
+    .icons { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+    .icon-item { 
+      background: #292524; 
+      border-radius: 12px; 
+      padding: 1rem; 
+      text-align: center;
+    }
+    .icon-item canvas { display: block; margin: 0 auto 0.5rem; border-radius: 8px; }
+    .icon-item span { font-size: 12px; color: #a8a29e; }
+    button {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-right: 1rem;
+      margin-bottom: 1rem;
+    }
+    button:hover { background: #059669; }
+    .instructions {
+      background: #292524;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-top: 2rem;
+    }
+    .instructions h3 { color: #10b981; margin-top: 0; }
+    .instructions ol { color: #a8a29e; line-height: 1.8; }
+    code { background: #1c1917; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>🎨 SplitSight PWA Icon Generator</h1>
+  <p>Generate all required PWA icons for your app. Click "Download All" to get a ZIP file.</p>
+  
+  <button onclick="downloadAll()">📦 Download All Icons</button>
+  <button onclick="downloadIndividual()">📥 Download Individual Files</button>
+  
+  <div class="icons" id="iconGrid"></div>
+  
+  <div class="instructions">
+    <h3>📋 Instructions</h3>
+    <ol>
+      <li>Click "Download All Icons" above</li>
+      <li>Extract the downloaded files</li>
+      <li>Copy all PNG files to <code>public/icons/</code> folder</li>
+      <li>The SVG icons are already in place</li>
+      <li>Deploy your app - PWA icons will now work!</li>
+    </ol>
+  </div>
+
+  <script>
+    // Icon SVG templates
+    const regularSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+      <defs>
+        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#10b981"/>
+          <stop offset="100%" style="stop-color:#0d9488"/>
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="108" fill="url(#bgGrad)"/>
+      <circle cx="200" cy="256" r="100" fill="none" stroke="white" stroke-width="36" stroke-opacity="0.95"/>
+      <circle cx="312" cy="256" r="100" fill="none" stroke="white" stroke-width="36" stroke-opacity="0.95"/>
+      <ellipse cx="256" cy="256" rx="24" ry="80" fill="white" opacity="0.9"/>
+    </svg>`;
+
+    const maskableSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+      <defs>
+        <linearGradient id="bgGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#10b981"/>
+          <stop offset="100%" style="stop-color:#0d9488"/>
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" fill="url(#bgGrad2)"/>
+      <circle cx="210" cy="256" r="70" fill="none" stroke="white" stroke-width="26" stroke-opacity="0.95"/>
+      <circle cx="302" cy="256" r="70" fill="none" stroke="white" stroke-width="26" stroke-opacity="0.95"/>
+      <ellipse cx="256" cy="256" rx="17" ry="56" fill="white" opacity="0.9"/>
+    </svg>`;
+
+    const appleSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+      <defs>
+        <linearGradient id="bgGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#10b981"/>
+          <stop offset="100%" style="stop-color:#0d9488"/>
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" fill="url(#bgGrad3)"/>
+      <circle cx="205" cy="256" r="85" fill="none" stroke="white" stroke-width="30" stroke-opacity="0.95"/>
+      <circle cx="307" cy="256" r="85" fill="none" stroke="white" stroke-width="30" stroke-opacity="0.95"/>
+      <ellipse cx="256" cy="256" rx="20" ry="68" fill="white" opacity="0.9"/>
+    </svg>`;
+
+    // Icon configurations
+    const icons = [
+      { name: 'icon-192.png', size: 192, svg: regularSvg },
+      { name: 'icon-512.png', size: 512, svg: regularSvg },
+      { name: 'icon-maskable-192.png', size: 192, svg: maskableSvg },
+      { name: 'icon-maskable-512.png', size: 512, svg: maskableSvg },
+      { name: 'apple-touch-icon.png', size: 180, svg: appleSvg },
+    ];
+
+    const generatedIcons = [];
+
+    // Generate icons on page load
+    async function generateIcons() {
+      const grid = document.getElementById('iconGrid');
+      
+      for (const icon of icons) {
+        const canvas = document.createElement('canvas');
+        canvas.width = icon.size;
+        canvas.height = icon.size;
+        const ctx = canvas.getContext('2d');
+        
+        const img = new Image();
+        const svgBlob = new Blob([icon.svg], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(svgBlob);
+        
+        await new Promise((resolve) => {
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0, icon.size, icon.size);
+            URL.revokeObjectURL(url);
+            
+            generatedIcons.push({
+              name: icon.name,
+              dataUrl: canvas.toDataURL('image/png')
+            });
+            
+            // Display preview
+            const item = document.createElement('div');
+            item.className = 'icon-item';
+            
+            const preview = document.createElement('canvas');
+            preview.width = Math.min(icon.size, 128);
+            preview.height = Math.min(icon.size, 128);
+            const previewCtx = preview.getContext('2d');
+            previewCtx.drawImage(canvas, 0, 0, preview.width, preview.height);
+            
+            const label = document.createElement('span');
+            label.textContent = `${icon.name} (${icon.size}px)`;
+            
+            item.appendChild(preview);
+            item.appendChild(label);
+            grid.appendChild(item);
+            
+            resolve();
+          };
+          img.src = url;
+        });
+      }
+    }
+
+    function downloadAll() {
+      // Download each file
+      generatedIcons.forEach((icon, i) => {
+        setTimeout(() => {
+          const link = document.createElement('a');
+          link.download = icon.name;
+          link.href = icon.dataUrl;
+          link.click();
+        }, i * 200);
+      });
+    }
+
+    function downloadIndividual() {
+      const name = prompt('Enter icon name (e.g., icon-192.png):');
+      const icon = generatedIcons.find(i => i.name === name);
+      if (icon) {
+        const link = document.createElement('a');
+        link.download = icon.name;
+        link.href = icon.dataUrl;
+        link.click();
+      } else {
+        alert('Icon not found. Available: ' + generatedIcons.map(i => i.name).join(', '));
+      }
+    }
+
+    // Generate on load
+    generateIcons();
+  </script>
+</body>
+</html>
