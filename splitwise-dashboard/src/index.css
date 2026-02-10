@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface-950 text-stone-200 font-body antialiased;
+    background-image: 
+      radial-gradient(ellipse at 0% 0%, rgba(16, 185, 129, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 100% 100%, rgba(245, 158, 11, 0.03) 0%, transparent 50%);
+    min-height: 100vh;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(120, 113, 108, 0.3);
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-stone-900/60 backdrop-blur-xl border border-stone-800/50 rounded-2xl;
+    box-shadow: 
+      0 0 0 1px rgba(255,255,255,0.03) inset,
+      0 4px 24px -4px rgba(0,0,0,0.3);
+  }
+  
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300;
+  }
+  .glass-card-hover:hover {
+    @apply border-stone-700/60;
+    box-shadow: 
+      0 0 0 1px rgba(255,255,255,0.05) inset,
+      0 8px 32px -4px rgba(0,0,0,0.4);
+    transform: translateY(-1px);
+  }
+
+  .stat-glow-green {
+    box-shadow: 0 0 40px -10px rgba(16, 185, 129, 0.15);
+  }
+  .stat-glow-red {
+    box-shadow: 0 0 40px -10px rgba(239, 68, 68, 0.15);
+  }
+  .stat-glow-amber {
+    box-shadow: 0 0 40px -10px rgba(245, 158, 11, 0.15);
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent;
+  }
+
+  .tab-active {
+    @apply text-emerald-400 border-b-2 border-emerald-400;
+  }
+  .tab-inactive {
+    @apply text-stone-500 hover:text-stone-300 border-b-2 border-transparent transition-colors;
+  }
+}
+
+/* Recharts overrides */
+.recharts-default-tooltip {
+  background: rgba(28, 25, 23, 0.95) !important;
+  border: 1px solid rgba(120, 113, 108, 0.3) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(12px);
+  padding: 12px 16px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important;
+}
+.recharts-tooltip-label {
+  color: #a8a29e !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 12px !important;
+  margin-bottom: 4px !important;
+}
+.recharts-tooltip-item {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 13px !important;
+  padding: 2px 0 !important;
+}
