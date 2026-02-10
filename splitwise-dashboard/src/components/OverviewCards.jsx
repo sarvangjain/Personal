@@ -202,18 +202,18 @@ export default function OverviewCards({ balances, expenses, userId }) {
 
   return (
     <>
+      {/* Monthly Spending & Category Charts - Top */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <MonthlyChart data={monthly} />
+        <CategoryChart data={categories} />
+      </div>
+
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard icon={TrendingUp} label="Others Owe You" value={formatCurrency(balances.totalOwed)} type="positive" />
         <StatCard icon={TrendingDown} label="You Owe Others" value={formatCurrency(balances.totalOwe)} type="negative" />
         <StatCard icon={Scale} label="Net Balance" value={formatCurrency(balances.netBalance)} type={balances.netBalance >= 0 ? 'positive' : 'negative'} />
         <StatCard icon={Receipt} label="Your Total Share" value={formatCurrency(totalYourExpenses)} subtext={`from ${expenses.length} expenses`} type="neutral" />
-      </div>
-
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <MonthlyChart data={monthly} />
-        <CategoryChart data={categories} />
       </div>
 
       {/* Charts Row 2 — Category Trend + Day of Week */}

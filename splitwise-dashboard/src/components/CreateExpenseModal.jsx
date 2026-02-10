@@ -1,7 +1,119 @@
-import { useState } from 'react';
-import { X, Plus, Users, User, Loader2, Check, AlertCircle } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { X, Plus, Users, User, Loader2, Check, AlertCircle, Search, ChevronDown } from 'lucide-react';
 import { createExpenseEqualSplit, createExpenseCustomSplit } from '../api/splitwise';
 import { getUserId, formatCurrency } from '../utils/analytics';
+
+// Searchable Dropdown Component
+function SearchableDropdown({ 
+  options, 
+  value, 
+  onChange, 
+  placeholder, 
+  renderOption, 
+  renderSelected,
+  searchKeys = ['name'],
+  icon: Icon,
+  emptyText = "No options available"
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const wrapperRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClick(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+        setSearch('');
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  // Filter options based on search
+  const filteredOptions = options.filter(opt => {
+    if (!search) return true;
+    const searchLower = search.toLowerCase();
+    return searchKeys.some(key => {
+      const value = key.split('.').reduce((o, k) => o?.[k], opt);
+      return value?.toString().toLowerCase().includes(searchLower);
+    });
+  });
+
+  const selectedOption = options.find(o => o.id?.toString() === value?.toString());
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      {/* Selected value display / trigger */}
+      <button
+        type="button"
+        onClick={() => { setOpen(!open); if (!open) setTimeout(() => inputRef.current?.focus(), 50); }}
+        className={`w-full flex items-center gap-2 px-3 py-3 sm:py-2.5 bg-stone-800/60 border rounded-xl sm:rounded-lg text-left transition-all ${
+          open ? 'border-emerald-500/50 ring-1 ring-emerald-500/10' : 'border-stone-700/40'
+        }`}
+      >
+        {Icon && <Icon size={14} className="text-stone-500 flex-shrink-0" />}
+        <span className={`flex-1 text-[15px] sm:text-sm truncate ${selectedOption ? 'text-stone-200' : 'text-stone-600'}`}>
+          {selectedOption ? renderSelected(selectedOption) : placeholder}
+        </span>
+        <ChevronDown size={14} className={`text-stone-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-stone-900 border border-stone-700/50 rounded-xl shadow-2xl z-50 overflow-hidden" style={{ boxShadow: '0 8px 32px -4px rgba(0,0,0,0.8)' }}>
+          {/* Search input */}
+          <div className="p-2 border-b border-stone-800/50">
+            <div className="flex items-center gap-2 px-2.5 py-2 bg-stone-800/60 rounded-lg">
+              <Search size={13} className="text-stone-500 flex-shrink-0" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search..."
+                className="flex-1 bg-transparent text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="text-stone-500 hover:text-stone-300">
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Options list */}
+          <div className="max-h-52 overflow-y-auto py-1">
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-4 text-center">
+                <p className="text-xs text-stone-500">{search ? `No results for "${search}"` : emptyText}</p>
+              </div>
+            ) : (
+              filteredOptions.map(opt => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.id.toString());
+                    setOpen(false);
+                    setSearch('');
+                  }}
+                  className={`w-full px-3 py-2.5 text-left hover:bg-stone-800/60 transition-colors flex items-center gap-2 ${
+                    opt.id?.toString() === value?.toString() ? 'bg-emerald-500/10' : ''
+                  }`}
+                >
+                  {renderOption(opt, opt.id?.toString() === value?.toString())}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CreateExpenseModal({ groups, friends, onClose, onCreated }) {
   const userId = getUserId();
@@ -197,33 +309,61 @@ export default function CreateExpenseModal({ groups, friends, onClose, onCreated
           {/* Group or Friend Selector */}
           {mode === 'group' ? (
             <div>
-              <label className="text-xs font-medium text-stone-400 mb-1.5 block">Group*</label>
-              <select
+              <label className="text-[11px] sm:text-xs font-medium text-stone-400 mb-1 sm:mb-1.5 block">Group*</label>
+              <SearchableDropdown
+                options={activeGroups}
                 value={selectedGroupId}
-                onChange={e => setSelectedGroupId(e.target.value)}
-                className="w-full px-3 py-2.5 bg-stone-800/60 border border-stone-700/40 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-emerald-500/50 transition-all"
-              >
-                <option value="">Select a group...</option>
-                {activeGroups.map(g => (
-                  <option key={g.id} value={g.id}>{g.name} ({g.members?.length} members)</option>
-                ))}
-              </select>
+                onChange={setSelectedGroupId}
+                placeholder="Search or select a group..."
+                searchKeys={['name']}
+                icon={Users}
+                emptyText="No groups available"
+                renderOption={(g, isSelected) => (
+                  <>
+                    <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
+                      <Users size={12} className="text-indigo-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-stone-300 truncate">{g.name}</p>
+                      <p className="text-[10px] text-stone-600">{g.members?.length} members</p>
+                    </div>
+                    {isSelected && <Check size={14} className="text-emerald-400 flex-shrink-0" />}
+                  </>
+                )}
+                renderSelected={(g) => `${g.name} (${g.members?.length} members)`}
+              />
               <p className="text-[10px] text-stone-600 mt-1">Split equally among all group members. You are the payer.</p>
             </div>
           ) : (
             <>
               <div>
-                <label className="text-xs font-medium text-stone-400 mb-1.5 block">Friend*</label>
-                <select
+                <label className="text-[11px] sm:text-xs font-medium text-stone-400 mb-1 sm:mb-1.5 block">Friend*</label>
+                <SearchableDropdown
+                  options={friends}
                   value={selectedFriendId}
-                  onChange={e => setSelectedFriendId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-stone-800/60 border border-stone-700/40 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-emerald-500/50 transition-all"
-                >
-                  <option value="">Select a friend...</option>
-                  {friends.map(f => (
-                    <option key={f.id} value={f.id}>{f.first_name} {f.last_name || ''}</option>
-                  ))}
-                </select>
+                  onChange={setSelectedFriendId}
+                  placeholder="Search or select a friend..."
+                  searchKeys={['first_name', 'last_name', 'email']}
+                  icon={User}
+                  emptyText="No friends available"
+                  renderOption={(f, isSelected) => (
+                    <>
+                      {f.picture?.medium ? (
+                        <img src={f.picture.medium} className="w-7 h-7 rounded-full flex-shrink-0" alt="" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                          <User size={12} className="text-teal-400" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-stone-300 truncate">{f.first_name} {f.last_name || ''}</p>
+                        {f.email && <p className="text-[10px] text-stone-600 truncate">{f.email}</p>}
+                      </div>
+                      {isSelected && <Check size={14} className="text-emerald-400 flex-shrink-0" />}
+                    </>
+                  )}
+                  renderSelected={(f) => `${f.first_name} ${f.last_name || ''}`}
+                />
               </div>
 
               {/* Split Type for Friend */}

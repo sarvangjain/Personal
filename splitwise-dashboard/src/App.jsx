@@ -18,7 +18,7 @@ import FriendDetail from './components/FriendDetail';
 import LoadingState from './components/LoadingState';
 import ErrorState from './components/ErrorState';
 import YearInReview from './components/YearInReview';
-import { WifiOff, RefreshCw, Download, X, Sparkles, FlaskConical } from 'lucide-react';
+import { WifiOff, RefreshCw, Download, X, Sparkles, FlaskConical, Share2 } from 'lucide-react';
 
 // Offline Banner Component
 function OfflineBanner() {
@@ -114,6 +114,7 @@ function Dashboard() {
   const [showUpdateBanner, setShowUpdateBanner] = useState(true);
   const [showYearInReview, setShowYearInReview] = useState(false);
   const [yearInReviewYear, setYearInReviewYear] = useState(new Date().getFullYear());
+  const [startWithShare, setStartWithShare] = useState(false);
 
   const userId = getUserId();
   
@@ -334,10 +335,7 @@ function Dashboard() {
             {/* Year in Review Cards */}
             <div className="space-y-3">
               {/* Current Year */}
-              <button
-                onClick={() => { haptic.medium(); setYearInReviewYear(new Date().getFullYear()); setShowYearInReview(true); }}
-                className="w-full glass-card p-5 sm:p-6 text-left hover:border-emerald-500/30 transition-all group"
-              >
+              <div className="glass-card p-5 sm:p-6 hover:border-emerald-500/30 transition-all group">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
                     <Sparkles size={22} className="text-white sm:w-6 sm:h-6" />
@@ -350,25 +348,33 @@ function Dashboard() {
                     <p className="text-sm text-stone-400 mb-3">
                       Discover your {new Date().getFullYear()} spending story with insights, patterns, and your Splitwise personality.
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 mb-3">
                       <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">📊 Insights</span>
                       <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">👥 Social</span>
                       <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">🎭 Personality</span>
                     </div>
-                  </div>
-                  <div className="text-stone-600 group-hover:text-emerald-400 transition-colors">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { haptic.medium(); setYearInReviewYear(new Date().getFullYear()); setStartWithShare(false); setShowYearInReview(true); }}
+                        className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Sparkles size={14} />
+                        View Wrapped
+                      </button>
+                      <button
+                        onClick={() => { haptic.medium(); setYearInReviewYear(new Date().getFullYear()); setStartWithShare(true); setShowYearInReview(true); }}
+                        className="py-2.5 px-4 bg-stone-800 hover:bg-stone-700 text-stone-300 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Share2 size={14} />
+                        Share
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </button>
+              </div>
 
               {/* Previous Year */}
-              <button
-                onClick={() => { haptic.medium(); setYearInReviewYear(new Date().getFullYear() - 1); setShowYearInReview(true); }}
-                className="w-full glass-card p-5 sm:p-6 text-left hover:border-amber-500/30 transition-all group"
-              >
+              <div className="glass-card p-5 sm:p-6 hover:border-amber-500/30 transition-all group">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
                     <Sparkles size={22} className="text-white sm:w-6 sm:h-6" />
@@ -377,21 +383,32 @@ function Dashboard() {
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-display text-base sm:text-lg text-white">{new Date().getFullYear() - 1} Wrapped</h3>
                     </div>
-                    <p className="text-sm text-stone-400 mb-2">
+                    <p className="text-sm text-stone-400 mb-3">
                       Look back at your {new Date().getFullYear() - 1} spending journey and see how your habits have evolved.
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 mb-3">
                       <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">📆 Throwback</span>
                       <span className="px-2 py-1 text-[10px] bg-stone-800/80 text-stone-400 rounded-md">📈 Compare</span>
                     </div>
-                  </div>
-                  <div className="text-stone-600 group-hover:text-amber-400 transition-colors">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { haptic.medium(); setYearInReviewYear(new Date().getFullYear() - 1); setStartWithShare(false); setShowYearInReview(true); }}
+                        className="flex-1 py-2.5 px-4 bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Sparkles size={14} />
+                        View Wrapped
+                      </button>
+                      <button
+                        onClick={() => { haptic.medium(); setYearInReviewYear(new Date().getFullYear() - 1); setStartWithShare(true); setShowYearInReview(true); }}
+                        className="py-2.5 px-4 bg-stone-800 hover:bg-stone-700 text-stone-300 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Share2 size={14} />
+                        Share
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </button>
+              </div>
             </div>
 
             {/* Coming Soon Cards */}
@@ -479,9 +496,10 @@ function Dashboard() {
           groups={groups}
           friends={friends}
           expenses={allExpenses}
-          onClose={() => setShowYearInReview(false)}
+          onClose={() => { setShowYearInReview(false); setStartWithShare(false); }}
           userName={user?.first_name || 'User'}
           year={yearInReviewYear}
+          startWithShare={startWithShare}
         />
       )}
     </div>

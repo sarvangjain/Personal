@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns';
 import { getExpenses } from '../api/splitwise';
 import { getUserId } from '../utils/analytics';
 import { computeYearInReview, formatYIRCurrency, getCategoryGradient } from '../utils/yearInReview';
+import ShareableReview from './ShareableReview';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#6366f1', '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4'];
 
@@ -382,7 +383,7 @@ function FunFactsSlide({ data }) {
   );
 }
 
-function SummarySlide({ data, year, userName }) {
+function SummarySlide({ data, year, userName, onShare }) {
   return (
     <div className="flex flex-col items-center justify-center h-full px-6">
       <div className="glass-card p-6 w-full max-w-sm text-center" id="yir-summary-card">
@@ -421,21 +422,38 @@ function SummarySlide({ data, year, userName }) {
         </div>
       </div>
 
-      <p className="text-stone-400 text-sm mt-6 text-center">
-        Thanks for an amazing year! 🎉
+      {/* Share Button */}
+      <button
+        onClick={onShare}
+        className="mt-6 flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+      >
+        <Share2 size={18} />
+        Share Your Wrapped
+      </button>
+      
+      <p className="text-stone-500 text-xs mt-3 text-center">
+        Create beautiful images to share with friends
       </p>
     </div>
   );
 }
 
 // Main Year in Review Component
-export default function YearInReview({ groups, friends, expenses: initialExpenses, onClose, userName, year: yearProp }) {
+export default function YearInReview({ groups, friends, expenses: initialExpenses, onClose, userName, year: yearProp, startWithShare = false }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [showShareModal, setShowShareModal] = useState(false);
   const year = yearProp || new Date().getFullYear();
   const userId = getUserId();
+
+  // Open share modal directly if startWithShare is true
+  useEffect(() => {
+    if (startWithShare && data && !loading) {
+      setShowShareModal(true);
+    }
+  }, [startWithShare, data, loading]);
 
   // Load full year expenses
   useEffect(() => {
@@ -496,7 +514,7 @@ export default function YearInReview({ groups, friends, expenses: initialExpense
     { id: 'notable', component: <NotableSlide data={data} /> },
     { id: 'patterns', component: <DayPatternSlide data={data} /> },
     { id: 'facts', component: <FunFactsSlide data={data} /> },
-    { id: 'summary', component: <SummarySlide data={data} year={year} userName={userName} /> },
+    { id: 'summary', component: <SummarySlide data={data} year={year} userName={userName} onShare={() => setShowShareModal(true)} /> },
   ] : [];
 
   const goNext = useCallback(() => {
@@ -584,13 +602,17 @@ export default function YearInReview({ groups, friends, expenses: initialExpense
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-stone-800/80 hover:bg-stone-700 flex items-center justify-center transition-colors"
+        className="absolute right-4 z-50 w-10 h-10 rounded-full bg-stone-800/80 hover:bg-stone-700 flex items-center justify-center transition-colors"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
       >
         <X size={18} className="text-stone-400" />
       </button>
 
       {/* Progress bar */}
-      <div className="absolute top-4 left-4 right-16 z-50 flex gap-1">
+      <div 
+        className="absolute left-4 right-16 z-50 flex gap-1"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)' }}
+      >
         {slides.map((_, i) => (
           <div
             key={i}
@@ -609,7 +631,7 @@ export default function YearInReview({ groups, friends, expenses: initialExpense
       </div>
 
       {/* Main slide content */}
-      <div className="h-full pt-12 pb-20">
+      <div className="h-full pb-20" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 3rem)' }}>
         <div className="h-full overflow-hidden">
           <div 
             className="h-full transition-transform duration-500 ease-out"
@@ -663,6 +685,16 @@ export default function YearInReview({ groups, friends, expenses: initialExpense
           <ChevronRight size={20} />
         </button>
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && data && (
+        <ShareableReview
+          data={data}
+          year={year}
+          userName={userName}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }

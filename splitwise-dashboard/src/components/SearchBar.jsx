@@ -60,7 +60,7 @@ export default function SearchBar({ groups, friends, expenses, onSelectGroup, on
 
       {/* Results Dropdown */}
       {open && query.length >= 2 && (
-        <div className="absolute top-full left-0 right-0 mt-2 glass-card max-h-[420px] overflow-y-auto z-50 shadow-2xl">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-stone-900/95 backdrop-blur-xl border border-stone-800/50 rounded-2xl max-h-[420px] overflow-y-auto z-50 shadow-2xl" style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.03) inset, 0 8px 32px -4px rgba(0,0,0,0.6)' }}>
           {!hasResults ? (
             <div className="p-6 text-center">
               <p className="text-sm text-stone-500">No results for "{query}"</p>
