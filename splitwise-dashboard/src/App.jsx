@@ -11,6 +11,7 @@ import OverviewCards from './components/OverviewCards';
 import SmartInsights from './components/SmartInsights';
 import RecurringExpenses from './components/RecurringExpenses';
 import SettleUpPanel from './components/SettleUpPanel';
+import DebtGraph from './components/DebtGraph';
 import GroupSelector from './components/GroupSelector';
 import GroupDetail from './components/GroupDetail';
 import FriendBalances from './components/FriendBalances';
@@ -317,6 +318,7 @@ function Dashboard() {
 
         {activeTab === 'settle' && (
           <div className="animate-fade-in space-y-6">
+            <DebtGraph groups={groups} userId={userId} />
             <SettleUpPanel suggestions={settleUpSuggestions} />
             {settleUpSuggestions.length === 0 && (
               <div className="glass-card p-8 sm:p-12 text-center">
