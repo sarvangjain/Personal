@@ -1,7 +1,8 @@
 import { format, parseISO, subMonths, differenceInDays } from 'date-fns';
+import { getUserId as getConfigUserId } from './config';
 
 export function getUserId() {
-  return parseInt(import.meta.env.VITE_SPLITWISE_USER_ID) || 0;
+  return getConfigUserId();
 }
 
 export function computeOverallBalances(groups, userId) {
