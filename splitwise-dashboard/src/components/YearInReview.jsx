@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, Share2, Sparkles, TrendingUp, Users, Calendar, Trophy, Heart, Zap, Download } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, BarChart, Bar } from 'recharts';
 import { format, parseISO } from 'date-fns';
@@ -6,6 +6,7 @@ import { getExpenses } from '../api/splitwise';
 import { getUserId } from '../utils/analytics';
 import { computeYearInReview, formatYIRCurrency, getCategoryGradient } from '../utils/yearInReview';
 import ShareableReview from './ShareableReview';
+import { trackWrappedView, trackWrappedShare } from '../firebase/userService';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#6366f1', '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4'];
 
@@ -447,6 +448,24 @@ export default function YearInReview({ groups, friends, expenses: initialExpense
   const [showShareModal, setShowShareModal] = useState(false);
   const year = yearProp || new Date().getFullYear();
   const userId = getUserId();
+
+  // Track wrapped view in Firebase (once on mount)
+  const hasTrackedView = useRef(false);
+  useEffect(() => {
+    if (userId && !hasTrackedView.current) {
+      hasTrackedView.current = true;
+      trackWrappedView(userId).catch(() => {});
+    }
+  }, [userId]);
+
+  // Track wrapped share when share modal opens
+  const hasTrackedShare = useRef(false);
+  useEffect(() => {
+    if (showShareModal && userId && !hasTrackedShare.current) {
+      hasTrackedShare.current = true;
+      trackWrappedShare(userId).catch(() => {});
+    }
+  }, [showShareModal, userId]);
 
   // Open share modal directly if startWithShare is true
   useEffect(() => {
