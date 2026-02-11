@@ -75,6 +75,7 @@ export async function createOrUpdateUser(userData) {
             groups: 0,
             friends: 0,
             settle: 0,
+            budget: 0,
             beta: 0,
           },
           wrappedViews: 0,
