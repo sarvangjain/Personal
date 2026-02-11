@@ -7,7 +7,7 @@ import { updateLastLogin, trackTabView, trackGroupView, trackFriendView } from '
 import SetupPage from './components/SetupPage';
 import Header from './components/Header';
 import SettingsModal from './components/SettingsModal';
-import CreateExpenseModal from './components/CreateExpenseModal';
+import CreateExpensePage from './components/CreateExpensePage';
 import OverviewCards from './components/OverviewCards';
 import SmartInsights from './components/SmartInsights';
 import RecurringExpenses from './components/RecurringExpenses';
@@ -20,7 +20,9 @@ import FriendDetail from './components/FriendDetail';
 import LoadingState from './components/LoadingState';
 import ErrorState from './components/ErrorState';
 import YearInReview from './components/YearInReview';
-import { WifiOff, RefreshCw, Download, X, Sparkles, FlaskConical, Share2, Wallet } from 'lucide-react';
+import Activity, { RecentActivityPreview } from './components/Activity';
+import RefreshButton from './components/RefreshButton';
+import { WifiOff, RefreshCw, Download, X, Sparkles, FlaskConical, Share2, Wallet, Receipt } from 'lucide-react';
 import Budget from './components/Budget';
 import BudgetSummaryWidget from './components/BudgetSummaryWidget';
 
@@ -111,7 +113,6 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [showCreateExpense, setShowCreateExpense] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedFriend, setSelectedFriend] = useState(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
@@ -119,6 +120,8 @@ function Dashboard() {
   const [showYearInReview, setShowYearInReview] = useState(false);
   const [yearInReviewYear, setYearInReviewYear] = useState(new Date().getFullYear());
   const [startWithShare, setStartWithShare] = useState(false);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const [showCreateExpensePage, setShowCreateExpensePage] = useState(false);
 
   const userId = getUserId();
   
@@ -165,6 +168,18 @@ function Dashboard() {
   }, []);
 
   useEffect(() => { loadInitialData(); }, [loadInitialData]);
+  
+  // Manual refresh function for refresh button
+  const handleManualRefresh = useCallback(async () => {
+    setIsManualRefreshing(true);
+    haptic.light();
+    try {
+      await loadInitialData();
+      haptic.success();
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  }, [loadInitialData, haptic]);
   
   // Track login in Firebase (non-blocking)
   const hasTrackedLogin = useRef(false);
@@ -272,6 +287,7 @@ function Dashboard() {
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
+    { id: 'activity', label: 'Activity', icon: Receipt },
     { id: 'groups', label: 'Groups' },
     { id: 'friends', label: 'Balances' },
     { id: 'settle', label: 'Settle Up' },
@@ -294,7 +310,7 @@ function Dashboard() {
       <Header
         user={user}
         onSettings={() => { haptic.light(); setShowSettings(true); }}
-        onAddExpense={() => { haptic.light(); setShowCreateExpense(true); }}
+        onAddExpense={() => { haptic.light(); setShowCreateExpensePage(true); }}
         groups={groups} friends={friends} expenses={allExpenses}
         onSelectGroup={handleSearchSelectGroup}
         onSelectFriend={handleSearchSelectFriend}
@@ -303,6 +319,19 @@ function Dashboard() {
       />
 
       <main className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 pb-20 sm:pb-16">
+        {/* Create Expense Page (full page) */}
+        {showCreateExpensePage ? (
+          <CreateExpensePage
+            groups={groups}
+            friends={friends}
+            onBack={() => setShowCreateExpensePage(false)}
+            onCreated={() => {
+              handleExpenseCreated();
+              setShowCreateExpensePage(false);
+            }}
+          />
+        ) : (
+          <>
         {/* Tabs */}
         <nav className="flex gap-1 sm:gap-6 mb-6 sm:mb-8 border-b border-stone-800/50 pt-2 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
           {tabs.map(tab => (
@@ -313,7 +342,7 @@ function Dashboard() {
                 activeTab === tab.id ? 'tab-active' : 'tab-inactive'
               }`}
             >
-              {tab.icon && <tab.icon size={14} className={tab.id === 'beta' ? 'text-purple-400' : ''} />}
+              {tab.icon && <tab.icon size={14} className={tab.id === 'beta' ? 'text-purple-400' : tab.id === 'activity' ? 'text-purple-400' : ''} />}
               {tab.label}
               {tab.id === 'settle' && settleUpSuggestions.length > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 text-[9px] bg-amber-500/15 text-amber-400 rounded-full font-mono">{settleUpSuggestions.length}</span>
@@ -324,10 +353,30 @@ function Dashboard() {
 
         {activeTab === 'overview' && (
           <div className="animate-fade-in space-y-4 sm:space-y-6">
+            <div className="flex justify-end">
+              <RefreshButton onRefresh={handleManualRefresh} isRefreshing={isManualRefreshing} />
+            </div>
             <OverviewCards balances={balances} expenses={allExpenses} userId={userId} />
             <BudgetSummaryWidget expenses={allExpenses} userId={userId} onNavigate={handleTabChange} />
+            <RecentActivityPreview 
+              expenses={allExpenses} 
+              userId={userId} 
+              limit={5} 
+              onViewAll={() => handleTabChange('activity')} 
+            />
             <SmartInsights insights={insights} />
             <RecurringExpenses expenses={allExpenses} userId={userId} />
+          </div>
+        )}
+
+        {activeTab === 'activity' && (
+          <div className="animate-fade-in">
+            <Activity 
+              expenses={allExpenses} 
+              userId={userId} 
+              onRefresh={handleManualRefresh}
+              isRefreshing={isManualRefreshing}
+            />
           </div>
         )}
 
@@ -512,23 +561,27 @@ function Dashboard() {
             </a>
           </p>
         </footer>
+          </>
+        )}
       </main>
 
-      {/* Mobile Bottom Nav */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/50 z-40 safe-bottom">
-        <div className="flex justify-around py-2">
-          {tabs.map(tab => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button key={tab.id} onClick={() => handleTabChange(tab.id)}
-                className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${isActive ? (tab.id === 'beta' ? 'text-purple-400' : 'text-emerald-400') : 'text-stone-500'}`}>
-                <span className="text-[11px] font-medium">{tab.label}</span>
-                {isActive && <div className={`w-4 h-0.5 rounded-full ${tab.id === 'beta' ? 'bg-purple-400' : 'bg-emerald-400'}`} />}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+      {/* Mobile Bottom Nav - hidden when create expense page is shown */}
+      {!showCreateExpensePage && (
+        <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/50 z-40 safe-bottom">
+          <div className="flex justify-around py-2">
+            {tabs.map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button key={tab.id} onClick={() => handleTabChange(tab.id)}
+                  className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${isActive ? (tab.id === 'beta' || tab.id === 'activity' ? 'text-purple-400' : 'text-emerald-400') : 'text-stone-500'}`}>
+                  <span className="text-[11px] font-medium">{tab.label}</span>
+                  {isActive && <div className={`w-4 h-0.5 rounded-full ${tab.id === 'beta' || tab.id === 'activity' ? 'bg-purple-400' : 'bg-emerald-400'}`} />}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
 
       {showSettings && (
         <SettingsModal
@@ -536,11 +589,6 @@ function Dashboard() {
           onSave={() => { setShowSettings(false); window.location.reload(); }}
           onLogout={() => window.location.reload()}
         />
-      )}
-
-      {showCreateExpense && (
-        <CreateExpenseModal groups={groups} friends={friends}
-          onClose={() => setShowCreateExpense(false)} onCreated={handleExpenseCreated} />
       )}
 
       {showYearInReview && (
