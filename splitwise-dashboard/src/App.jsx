@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { isLoggedIn } from './utils/config';
 import { getCurrentUser, getGroups, getFriends, getExpenses } from './api/splitwise';
 import { getUserId, computeOverallBalances, computeFriendBalances, computeSmartInsights, computeSettleUpSuggestions } from './utils/analytics';
 import { usePWA, usePullToRefresh, useHaptic } from './hooks/usePWA';
+import { updateLastLogin, trackTabView, trackGroupView, trackFriendView } from './firebase/userService';
 import SetupPage from './components/SetupPage';
 import Header from './components/Header';
 import SettingsModal from './components/SettingsModal';
@@ -163,6 +164,15 @@ function Dashboard() {
 
   useEffect(() => { loadInitialData(); }, [loadInitialData]);
   
+  // Track login in Firebase (non-blocking)
+  const hasTrackedLogin = useRef(false);
+  useEffect(() => {
+    if (userId && !hasTrackedLogin.current) {
+      hasTrackedLogin.current = true;
+      updateLastLogin(userId).catch(() => {});
+    }
+  }, [userId]);
+  
   // Pull to refresh
   const { isPulling, pullDistance, isRefreshing } = usePullToRefresh(async () => {
     haptic.light();
@@ -197,6 +207,17 @@ function Dashboard() {
     localStorage.setItem('install_prompt_dismissed', 'true');
   };
 
+  // Track tab changes in Firebase
+  const handleTabChange = useCallback((tabId) => {
+    setActiveTab(tabId);
+    if (tabId === 'friends') setSelectedFriend(null);
+    if (tabId === 'groups') setSelectedGroupId(null);
+    // Track in Firebase (non-blocking)
+    if (userId) {
+      trackTabView(userId, tabId).catch(() => {});
+    }
+  }, [userId]);
+
   function handleExpenseCreated() {
     loadInitialData();
     // Reset group selection to force reload when returning to group detail
@@ -207,12 +228,12 @@ function Dashboard() {
     }
   }
 
-  function handleSearchSelectGroup(groupId) { setSelectedGroupId(groupId); setActiveTab('groups'); }
+  function handleSearchSelectGroup(groupId) { setSelectedGroupId(groupId); handleTabChange('groups'); }
 
   function handleSearchSelectFriend(friendId) {
     const fb = computeFriendBalances(friends, userId);
     const found = fb.find(f => f.id === friendId);
-    if (found) { setSelectedFriend(found); setActiveTab('friends'); return; }
+    if (found) { setSelectedFriend(found); handleTabChange('friends'); return; }
     const raw = friends.find(f => f.id === friendId);
     if (raw) {
       const allBalances = (raw.balance || []).map(b => ({
@@ -223,7 +244,7 @@ function Dashboard() {
         id: raw.id, name: `${raw.first_name} ${raw.last_name || ''}`.trim(),
         picture: raw.picture?.medium, balance: primary.amount, currency: primary.currency, allBalances,
       });
-      setActiveTab('friends');
+      handleTabChange('friends');
     }
   }
 
@@ -264,7 +285,7 @@ function Dashboard() {
         groups={groups} friends={friends} expenses={allExpenses}
         onSelectGroup={handleSearchSelectGroup}
         onSelectFriend={handleSearchSelectFriend}
-        onNavigate={setActiveTab}
+        onNavigate={handleTabChange}
         isOnline={isOnline}
       />
 
@@ -274,7 +295,7 @@ function Dashboard() {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => { setActiveTab(tab.id); if (tab.id === 'friends') setSelectedFriend(null); if (tab.id === 'groups') setSelectedGroupId(null); }}
+              onClick={() => handleTabChange(tab.id)}
               className={`pb-2.5 sm:pb-3 text-xs sm:text-sm font-medium tracking-wide transition-all whitespace-nowrap px-2 sm:px-0 flex items-center gap-1.5 ${
                 activeTab === tab.id ? 'tab-active' : 'tab-inactive'
               }`}
@@ -301,7 +322,7 @@ function Dashboard() {
             {selectedGroup ? (
               <GroupDetail group={selectedGroup} onBack={() => setSelectedGroupId(null)} />
             ) : (
-              <GroupSelector groups={activeGroups} onSelect={setSelectedGroupId} />
+              <GroupSelector groups={activeGroups} onSelect={(gid) => { setSelectedGroupId(gid); if (userId) trackGroupView(userId).catch(() => {}); }} />
             )}
           </div>
         )}
@@ -311,7 +332,7 @@ function Dashboard() {
             {selectedFriend ? (
               <FriendDetail friend={selectedFriend} onBack={() => setSelectedFriend(null)} />
             ) : (
-              <FriendBalances friends={friendBalances} onSelectFriend={f => setSelectedFriend(f)} />
+              <FriendBalances friends={friendBalances} onSelectFriend={f => { setSelectedFriend(f); if (userId) trackFriendView(userId).catch(() => {}); }} />
             )}
           </div>
         )}
@@ -479,7 +500,7 @@ function Dashboard() {
           {tabs.map(tab => {
             const isActive = activeTab === tab.id;
             return (
-              <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === 'friends') setSelectedFriend(null); if (tab.id === 'groups') setSelectedGroupId(null); }}
+              <button key={tab.id} onClick={() => handleTabChange(tab.id)}
                 className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${isActive ? (tab.id === 'beta' ? 'text-purple-400' : 'text-emerald-400') : 'text-stone-500'}`}>
                 <span className="text-[11px] font-medium">{tab.label}</span>
                 {isActive && <div className={`w-4 h-0.5 rounded-full ${tab.id === 'beta' ? 'bg-purple-400' : 'bg-emerald-400'}`} />}

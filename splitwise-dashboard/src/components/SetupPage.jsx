@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Wallet, Key, ArrowRight, Loader2, ExternalLink, AlertCircle, CheckCircle2, HelpCircle } from 'lucide-react';
 import { getCurrentUser } from '../api/splitwise';
 import { saveConfig, clearConfig } from '../utils/config';
+import { createOrUpdateUser } from '../firebase/userService';
 
 export default function SetupPage({ onComplete }) {
   const [apiKey, setApiKey] = useState('');
@@ -31,6 +32,9 @@ export default function SetupPage({ onComplete }) {
         userId: user.id,
         userName: `${user.first_name} ${user.last_name || ''}`.trim(),
       });
+
+      // Track user in Firebase (non-blocking)
+      createOrUpdateUser(user).catch(() => {});
 
       setStep(3);
       setTimeout(() => onComplete(), 1000);
