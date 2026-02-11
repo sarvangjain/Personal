@@ -233,12 +233,18 @@ export default function ExpensePreview({ parseResult, onBack, onSave }) {
     setExpenses(prev => prev.filter(exp => exp.id !== id));
   };
 
+  const [saveError, setSaveError] = useState(null);
+
   const handleSave = async () => {
     if (expenses.length === 0) return;
     
     setSaving(true);
+    setSaveError(null);
     try {
       await onSave(expenses);
+    } catch (err) {
+      console.error('Save error:', err);
+      setSaveError(err.message || 'Failed to save expenses. Check console for details.');
     } finally {
       setSaving(false);
     }
@@ -347,6 +353,13 @@ export default function ExpensePreview({ parseResult, onBack, onSave }) {
 
       {/* Actions */}
       <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-stone-950 via-stone-950/95 to-transparent -mx-3 px-3">
+        {/* Save Error */}
+        {saveError && (
+          <div className="mb-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">
+            <p className="font-medium">Failed to save</p>
+            <p className="text-xs text-red-400/80 mt-1">{saveError}</p>
+          </div>
+        )}
         <div className="flex gap-3">
           <button
             onClick={onBack}
