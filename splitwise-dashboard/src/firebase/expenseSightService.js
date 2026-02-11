@@ -11,11 +11,9 @@ import {
   getDocs, 
   deleteDoc, 
   query, 
-  where, 
   orderBy, 
   limit,
   writeBatch,
-  Timestamp,
   serverTimestamp
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './config';

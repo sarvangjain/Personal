@@ -184,6 +184,7 @@ function ExpenseRow({ expense, onUpdate, onDelete }) {
 export default function ExpensePreview({ parseResult, onBack, onSave }) {
   const [expenses, setExpenses] = useState(parseResult.expenses);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   // Group expenses by date
   const groupedExpenses = useMemo(() => {
@@ -232,8 +233,6 @@ export default function ExpensePreview({ parseResult, onBack, onSave }) {
   const handleDelete = (id) => {
     setExpenses(prev => prev.filter(exp => exp.id !== id));
   };
-
-  const [saveError, setSaveError] = useState(null);
 
   const handleSave = async () => {
     if (expenses.length === 0) return;
