@@ -423,6 +423,165 @@ export function computeSettleUpSuggestions(groups, userId, friends = [], current
   return suggestions.sort((a, b) => b.amount - a.amount);
 }
 
+// ── Budget Helpers ──
+
+/**
+ * Compute expenses by category for a specific month
+ * @param {Array} expenses - All expenses
+ * @param {number} userId - Current user ID
+ * @param {string} month - Month in YYYY-MM format
+ * @returns {Object} Category spending { "Food & Drink": { amount, count }, ... }
+ */
+export function computeMonthlyExpensesByCategory(expenses, userId, month) {
+  const categories = {};
+
+  expenses.forEach(exp => {
+    if (exp.payment || exp.deleted_at) return;
+    
+    // Filter to the specific month
+    const expMonth = format(parseISO(exp.date), 'yyyy-MM');
+    if (expMonth !== month) return;
+
+    const catName = exp.category?.name || 'Other';
+    const userShare = exp.users?.find(u => u.user_id === userId);
+    const amount = userShare ? parseFloat(userShare.owed_share) : 0;
+    if (amount <= 0) return;
+
+    if (!categories[catName]) {
+      categories[catName] = { name: catName, amount: 0, count: 0 };
+    }
+    categories[catName].amount += amount;
+    categories[catName].count += 1;
+  });
+
+  return categories;
+}
+
+/**
+ * Compute overall spending for a specific month
+ * @param {Array} expenses - All expenses
+ * @param {number} userId - Current user ID
+ * @param {string} month - Month in YYYY-MM format
+ * @returns {number} Total spending for the month
+ */
+export function computeMonthlyTotal(expenses, userId, month) {
+  let total = 0;
+
+  expenses.forEach(exp => {
+    if (exp.payment || exp.deleted_at) return;
+    
+    const expMonth = format(parseISO(exp.date), 'yyyy-MM');
+    if (expMonth !== month) return;
+
+    const userShare = exp.users?.find(u => u.user_id === userId);
+    const amount = userShare ? parseFloat(userShare.owed_share) : 0;
+    if (amount > 0) total += amount;
+  });
+
+  return total;
+}
+
+/**
+ * Compute budget status with alerts
+ * @param {Object} budget - Budget configuration from Firestore
+ * @param {Object} splitwiseSpending - Category spending from computeMonthlyExpensesByCategory
+ * @param {number} splitwiseTotal - Total Splitwise spending
+ * @returns {Object} Budget status with overall and per-category status
+ */
+export function computeBudgetStatus(budget, splitwiseSpending, splitwiseTotal) {
+  if (!budget) return null;
+
+  // Calculate manual entries totals
+  const manualByCategory = {};
+  let manualTotal = 0;
+  
+  (budget.manualEntries || []).forEach(entry => {
+    const cat = entry.category || 'Other';
+    manualByCategory[cat] = (manualByCategory[cat] || 0) + entry.amount;
+    manualTotal += entry.amount;
+  });
+
+  // Overall status
+  const overallSpent = splitwiseTotal + manualTotal;
+  const overallLimit = budget.overallLimit || 0;
+  const overallPercentage = overallLimit > 0 ? (overallSpent / overallLimit) * 100 : 0;
+  const overallRemaining = overallLimit - overallSpent;
+
+  // Category statuses
+  const categoryStatuses = {};
+  const allCategories = new Set([
+    ...Object.keys(budget.categoryLimits || {}),
+    ...Object.keys(splitwiseSpending || {}),
+    ...Object.keys(manualByCategory),
+  ]);
+
+  allCategories.forEach(cat => {
+    const limit = budget.categoryLimits?.[cat] || 0;
+    const splitwiseAmount = splitwiseSpending?.[cat]?.amount || 0;
+    const manualAmount = manualByCategory[cat] || 0;
+    const spent = splitwiseAmount + manualAmount;
+    const percentage = limit > 0 ? (spent / limit) * 100 : (spent > 0 ? 100 : 0);
+    const remaining = limit - spent;
+
+    categoryStatuses[cat] = {
+      name: cat,
+      limit,
+      spent,
+      splitwiseAmount,
+      manualAmount,
+      percentage: Math.round(percentage),
+      remaining,
+      status: getAlertStatus(percentage, limit),
+      hasLimit: limit > 0,
+    };
+  });
+
+  return {
+    overall: {
+      limit: overallLimit,
+      spent: overallSpent,
+      splitwiseAmount: splitwiseTotal,
+      manualAmount: manualTotal,
+      percentage: Math.round(overallPercentage),
+      remaining: overallRemaining,
+      status: getAlertStatus(overallPercentage, overallLimit),
+    },
+    categories: categoryStatuses,
+    currency: budget.currency || 'INR',
+  };
+}
+
+/**
+ * Get alert status based on percentage
+ * @param {number} percentage - Spending percentage
+ * @param {number} limit - Budget limit
+ * @returns {string} Status: 'on_track', 'warning', 'critical', 'over_budget', 'no_limit'
+ */
+function getAlertStatus(percentage, limit) {
+  if (limit <= 0) return 'no_limit';
+  if (percentage > 100) return 'over_budget';
+  if (percentage >= 90) return 'critical';
+  if (percentage >= 70) return 'warning';
+  return 'on_track';
+}
+
+/**
+ * Get unique categories from expenses
+ * @param {Array} expenses - All expenses
+ * @returns {Array} Sorted array of unique category names
+ */
+export function getUniqueCategories(expenses) {
+  const categories = new Set();
+  
+  expenses.forEach(exp => {
+    if (exp.payment || exp.deleted_at) return;
+    const catName = exp.category?.name;
+    if (catName) categories.add(catName);
+  });
+
+  return Array.from(categories).sort();
+}
+
 // ── Search ──
 
 export function searchEverything(query, { groups, friends, expenses, userId }) {

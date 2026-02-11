@@ -20,7 +20,9 @@ import FriendDetail from './components/FriendDetail';
 import LoadingState from './components/LoadingState';
 import ErrorState from './components/ErrorState';
 import YearInReview from './components/YearInReview';
-import { WifiOff, RefreshCw, Download, X, Sparkles, FlaskConical, Share2 } from 'lucide-react';
+import { WifiOff, RefreshCw, Download, X, Sparkles, FlaskConical, Share2, Wallet } from 'lucide-react';
+import Budget from './components/Budget';
+import BudgetSummaryWidget from './components/BudgetSummaryWidget';
 
 // Offline Banner Component
 function OfflineBanner() {
@@ -273,6 +275,7 @@ function Dashboard() {
     { id: 'groups', label: 'Groups' },
     { id: 'friends', label: 'Balances' },
     { id: 'settle', label: 'Settle Up' },
+    { id: 'budget', label: 'Budget', icon: Wallet },
     { id: 'beta', label: 'Beta', icon: FlaskConical },
   ];
 
@@ -322,6 +325,7 @@ function Dashboard() {
         {activeTab === 'overview' && (
           <div className="animate-fade-in space-y-4 sm:space-y-6">
             <OverviewCards balances={balances} expenses={allExpenses} userId={userId} />
+            <BudgetSummaryWidget expenses={allExpenses} userId={userId} onNavigate={handleTabChange} />
             <SmartInsights insights={insights} />
             <RecurringExpenses expenses={allExpenses} userId={userId} />
           </div>
@@ -356,6 +360,12 @@ function Dashboard() {
                 <p className="text-sm text-stone-500 mt-2">No outstanding debts to clear.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'budget' && (
+          <div className="animate-fade-in">
+            <Budget expenses={allExpenses} userId={userId} />
           </div>
         )}
 
@@ -468,14 +478,14 @@ function Dashboard() {
               <div className="glass-card p-5 opacity-60">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 rounded-xl bg-stone-800 flex items-center justify-center">
-                    <span className="text-lg">🎯</span>
+                    <span className="text-lg">🔔</span>
                   </div>
                   <div>
-                    <h4 className="text-sm font-display text-stone-300">Budget Goals</h4>
+                    <h4 className="text-sm font-display text-stone-300">Smart Alerts</h4>
                     <span className="text-[10px] text-stone-600">Coming Soon</span>
                   </div>
                 </div>
-                <p className="text-xs text-stone-500">Set and track spending limits for categories</p>
+                <p className="text-xs text-stone-500">Get notified when you're approaching budget limits</p>
               </div>
             </div>
 
