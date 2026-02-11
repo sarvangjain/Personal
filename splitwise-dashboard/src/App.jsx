@@ -235,7 +235,7 @@ function Dashboard() {
   const activeGroups = groups.filter(g => g.id !== 0 && g.members?.length > 1);
   const selectedGroup = groups.find(g => g.id === selectedGroupId);
   const insights = computeSmartInsights(allExpenses, friends, groups, userId);
-  const settleUpSuggestions = computeSettleUpSuggestions(groups, userId);
+  const settleUpSuggestions = computeSettleUpSuggestions(groups, userId, friends, user);
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -318,7 +318,6 @@ function Dashboard() {
 
         {activeTab === 'settle' && (
           <div className="animate-fade-in space-y-6">
-            <DebtGraph groups={groups} userId={userId} />
             <SettleUpPanel suggestions={settleUpSuggestions} />
             {settleUpSuggestions.length === 0 && (
               <div className="glass-card p-8 sm:p-12 text-center">
@@ -448,6 +447,9 @@ function Dashboard() {
                 <p className="text-xs text-stone-500">Set and track spending limits for categories</p>
               </div>
             </div>
+
+            {/* Debt Network Graph */}
+            <DebtGraph groups={groups} userId={userId} />
 
             <div className="text-center pt-4">
               <p className="text-xs text-stone-600">Have feature ideas? We'd love to hear from you!</p>

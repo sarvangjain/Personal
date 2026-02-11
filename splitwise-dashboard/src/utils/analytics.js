@@ -366,28 +366,52 @@ export function computeSmartInsights(expenses, friends, groups, userId) {
   return insights;
 }
 
-export function computeSettleUpSuggestions(groups, userId) {
+export function computeSettleUpSuggestions(groups, userId, friends = [], currentUser = null) {
   const suggestions = [];
+
+  // Build a lookup map for resolving user names
+  // Priority: group members -> friends -> current user
+  const buildNameLookup = (group) => {
+    const lookup = {};
+    
+    // Add group members
+    group.members?.forEach(m => {
+      lookup[m.id] = `${m.first_name} ${m.last_name || ''}`.trim();
+    });
+    
+    // Add friends (for non-group expenses where members might be empty)
+    friends.forEach(f => {
+      if (!lookup[f.id]) {
+        lookup[f.id] = `${f.first_name} ${f.last_name || ''}`.trim();
+      }
+    });
+    
+    // Add current user
+    if (currentUser && !lookup[userId]) {
+      lookup[userId] = `${currentUser.first_name} ${currentUser.last_name || ''}`.trim();
+    }
+    
+    return lookup;
+  };
 
   groups.forEach(group => {
     const debts = group.simplified_debts || group.original_debts || [];
+    const nameLookup = buildNameLookup(group);
+    
     debts.forEach(debt => {
       const fromId = debt.from;
       const toId = debt.to;
       const amount = parseFloat(debt.amount);
       if (amount < 1) return;
 
-      const fromMember = group.members?.find(m => m.id === fromId);
-      const toMember = group.members?.find(m => m.id === toId);
-
       if (fromId === userId || toId === userId) {
         suggestions.push({
           groupId: group.id,
-          groupName: group.name,
+          groupName: group.id === 0 ? 'Non-group expenses' : group.name,
           from: fromId,
-          fromName: fromMember ? `${fromMember.first_name} ${fromMember.last_name || ''}`.trim() : 'Unknown',
+          fromName: nameLookup[fromId] || 'Unknown',
           to: toId,
-          toName: toMember ? `${toMember.first_name} ${toMember.last_name || ''}`.trim() : 'Unknown',
+          toName: nameLookup[toId] || 'Unknown',
           amount,
           currency: debt.currency_code || 'INR',
           youPay: fromId === userId,

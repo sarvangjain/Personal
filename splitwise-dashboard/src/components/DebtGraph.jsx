@@ -4,12 +4,12 @@ import { formatCurrency, getCurrencySymbol } from '../utils/analytics';
 
 // ─── Data Extraction ──────────────────────────────────────────────────────────
 
-function extractGraphData(groups, userId) {
+function extractGraphData(groupList, userId, onlyUserDebts = false) {
   const nodeMap = {};
   const originalLinks = [];
   const simplifiedLinks = [];
 
-  groups.forEach(group => {
+  groupList.forEach(group => {
     if (group.id === 0) return;
     group.members?.forEach(m => {
       if (!nodeMap[m.id]) {
@@ -27,6 +27,12 @@ function extractGraphData(groups, userId) {
       (debts || []).forEach(debt => {
         const amount = parseFloat(debt.amount);
         if (amount < 1) return;
+        
+        // If onlyUserDebts is true, only include debts involving the current user
+        if (onlyUserDebts && debt.from !== userId && debt.to !== userId) {
+          return;
+        }
+        
         target.push({
           source: debt.from,
           target: debt.to,
@@ -109,10 +115,10 @@ function computeOptimizedDebts(links) {
 // ─── Force Simulation Engine ────────────────────────────────────────────────
 
 const SIM_CONFIG = {
-  repulsion: 4500,
-  attraction: 0.035,
-  centerStrength: 0.06,
-  collisionRadius: 56,
+  repulsion: 6000,
+  attraction: 0.025,
+  centerStrength: 0.04,
+  collisionRadius: 72,
   damping: 0.82,
   minAlpha: 0.002,
   initialAlpha: 1,
@@ -120,7 +126,8 @@ const SIM_CONFIG = {
 
 function initSimNodes(nodes, width, height) {
   const cx = width / 2, cy = height / 2;
-  const r = Math.min(width, height) * 0.28;
+  // Use a larger initial radius to spread nodes more
+  const r = Math.min(width, height) * 0.35;
   const n = nodes.length;
   return nodes.map((node, i) => ({
     ...node,
@@ -169,7 +176,8 @@ function tickSimulation(simNodes, links, width, height, dragId) {
       let dx = other.x - simNodes[i].x;
       let dy = other.y - simNodes[i].y;
       let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      const restLength = 120 + Math.min(n * 8, 80);
+      // Increase rest length to keep connected nodes further apart
+      const restLength = 140 + Math.min(n * 12, 100);
       fx += attraction * (dist - restLength) * (dx / dist);
       fy += attraction * (dist - restLength) * (dy / dist);
     });
@@ -183,8 +191,8 @@ function tickSimulation(simNodes, links, width, height, dragId) {
     simNodes[i].x += simNodes[i].vx;
     simNodes[i].y += simNodes[i].vy;
 
-    // Bounds
-    const pad = 40;
+    // Bounds - use larger padding to keep nodes away from edges
+    const pad = 50;
     simNodes[i].x = Math.max(pad, Math.min(width - pad, simNodes[i].x));
     simNodes[i].y = Math.max(pad, Math.min(height - pad, simNodes[i].y));
   }
@@ -243,16 +251,16 @@ function AnimCount({ value }) {
 
 // ─── Mode Toggle ────────────────────────────────────────────────────────────
 
-const MODES = [
+const ALL_MODES = [
   { id: 'original', label: 'All Debts', color: 'text-red-400', bg: 'bg-red-500/15', border: 'border-red-500/30', dot: 'bg-red-400' },
   { id: 'simplified', label: 'Simplified', color: 'text-amber-400', bg: 'bg-amber-500/15', border: 'border-amber-500/30', dot: 'bg-amber-400' },
   { id: 'optimized', label: 'Optimized', color: 'text-emerald-400', bg: 'bg-emerald-500/15', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
 ];
 
-function ModeToggle({ mode, onChange }) {
+function ModeToggle({ mode, onChange, modes }) {
   return (
     <div className="flex gap-1.5 sm:gap-2">
-      {MODES.map(m => (
+      {modes.map(m => (
         <button
           key={m.id}
           onClick={() => onChange(m.id)}
@@ -272,8 +280,8 @@ function ModeToggle({ mode, onChange }) {
 
 // ─── Info Panel ─────────────────────────────────────────────────────────────
 
-function InfoPanel({ mode, onClose }) {
-  const info = {
+function InfoPanel({ mode, onClose, isSingleGroup }) {
+  const multiGroupInfo = {
     original: {
       title: 'All Debts',
       desc: 'Every individual debt from each group. This is the raw data \u2014 one transaction per debt per group. Often redundant when the same pair appears in multiple groups.',
@@ -287,7 +295,18 @@ function InfoPanel({ mode, onClose }) {
       desc: 'The minimum possible transactions across ALL groups. If you owe Rahul \u20b9500 in one group but he owes you \u20b9300 in another, this nets it to a single \u20b9200 payment.',
     },
   };
-  const i = info[mode];
+  const singleGroupInfo = {
+    original: {
+      title: 'All Debts',
+      desc: 'Every individual debt in this group before simplification. Shows the raw pairwise balances between all members.',
+    },
+    simplified: {
+      title: 'Simplified',
+      desc: 'Splitwise combines debts between the same pair. If A owes B \u20b9500 and B owes A \u20b9300, it becomes a single A \u2192 B \u20b9200 transaction.',
+    },
+  };
+  const i = (isSingleGroup ? singleGroupInfo : multiGroupInfo)[mode];
+  if (!i) return null;
   return (
     <div className="absolute top-12 right-0 sm:right-2 z-20 w-72 glass-card p-4 animate-fade-in shadow-2xl">
       <div className="flex items-start justify-between mb-2">
@@ -304,7 +323,31 @@ function InfoPanel({ mode, onClose }) {
 const NODE_RADIUS = 22;
 const NODE_RADIUS_SM = 18;
 
-export default function DebtGraph({ groups, userId }) {
+/**
+ * Debt Network Graph.
+ * 
+ * @param {object} props
+ * @param {Array} [props.groups]  - All groups (multi-group / global mode)
+ * @param {object} [props.group]  - Single group (per-group mode)
+ * @param {number} props.userId
+ * @param {string} [props.title]  - Override header title
+ * @param {string} [props.subtitle] - Override header subtitle
+ * @param {boolean} [props.compact] - Smaller height for embedding in group detail
+ */
+export default function DebtGraph({ groups, group, userId, title, subtitle, compact = false }) {
+  // Normalise input: single group becomes a one-element array
+  const isSingleGroup = !!group;
+  const groupList = useMemo(
+    () => isSingleGroup ? [group] : (groups || []),
+    [isSingleGroup, group, groups]
+  );
+  
+  // In single-group mode there is no cross-group optimization
+  const availableModes = useMemo(
+    () => isSingleGroup ? ALL_MODES.filter(m => m.id !== 'optimized') : ALL_MODES,
+    [isSingleGroup]
+  );
+
   const [mode, setMode] = useState('simplified');
   const [hoveredLink, setHoveredLink] = useState(null);
   const [hoveredNode, setHoveredNode] = useState(null);
@@ -320,10 +363,18 @@ export default function DebtGraph({ groups, userId }) {
   const isMobile = dimensions.width < 500;
   const nodeR = isMobile ? NODE_RADIUS_SM : NODE_RADIUS;
 
+  // Reset mode if current mode isn't available (e.g. switching from all->single group)
+  useEffect(() => {
+    if (!availableModes.find(m => m.id === mode)) {
+      setMode('simplified');
+    }
+  }, [availableModes, mode]);
+
   // ── Extract graph data ──
+  // Always filter to only show debts involving the current user
   const { nodes, originalLinks, simplifiedLinks } = useMemo(
-    () => extractGraphData(groups, userId),
-    [groups, userId]
+    () => extractGraphData(groupList, userId, true),
+    [groupList, userId]
   );
 
   const optimizedLinks = useMemo(
@@ -335,28 +386,40 @@ export default function DebtGraph({ groups, userId }) {
     : mode === 'simplified' ? simplifiedLinks
     : optimizedLinks;
 
+  // Filter nodes to only include those that appear in the currently active links
+  const activeNodes = useMemo(() => {
+    const activeNodeIds = new Set();
+    activeLinks.forEach(l => {
+      activeNodeIds.add(l.source);
+      activeNodeIds.add(l.target);
+    });
+    return nodes.filter(n => activeNodeIds.has(n.id));
+  }, [nodes, activeLinks]);
+
   // ── Resize observer ──
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const ro = new ResizeObserver(entries => {
       const { width } = entries[0].contentRect;
-      const h = Math.min(Math.max(width * 0.65, 320), 520);
+      const maxH = compact ? 420 : 520;
+      const minH = compact ? 320 : 300;
+      const h = Math.min(Math.max(width * 0.7, minH), maxH);
       setDimensions({ width, height: h });
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [compact]);
 
   // ── Initialize / reheat simulation when nodes or mode change ──
   useEffect(() => {
-    if (nodes.length === 0) return;
+    if (activeNodes.length === 0) return;
     const { width, height } = dimensions;
 
-    if (simRef.current.length === nodes.length && simRef.current.every((s, i) => s.id === nodes[i].id)) {
+    if (simRef.current.length === activeNodes.length && simRef.current.every((s, i) => s.id === activeNodes[i].id)) {
       alphaRef.current = 0.4;
     } else {
-      simRef.current = initSimNodes(nodes, width, height);
+      simRef.current = initSimNodes(activeNodes, width, height);
       alphaRef.current = SIM_CONFIG.initialAlpha;
     }
 
@@ -374,7 +437,7 @@ export default function DebtGraph({ groups, userId }) {
     cancelAnimationFrame(frameRef.current);
     frameRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameRef.current);
-  }, [nodes, activeLinks, dimensions]);
+  }, [activeNodes, activeLinks, dimensions]);
 
   // ── Drag handlers ──
   const startSimLoop = useCallback(() => {
@@ -459,27 +522,45 @@ export default function DebtGraph({ groups, userId }) {
     [activeLinks]
   );
 
-  if (nodes.length === 0) return null;
+  if (activeNodes.length === 0) return null;
 
-  // Node lookup
+  // Build set of node IDs that have at least one link in the current mode
+  const activeNodeIds = useMemo(() => {
+    const ids = new Set();
+    activeLinks.forEach(l => {
+      ids.add(l.source);
+      ids.add(l.target);
+    });
+    return ids;
+  }, [activeLinks]);
+
+  // Node lookup - only include nodes that have active links
   const nodeById = {};
-  simNodes.forEach(n => { nodeById[n.id] = n; });
+  simNodes.forEach(n => { 
+    if (activeNodeIds.has(n.id)) {
+      nodeById[n.id] = n; 
+    }
+  });
 
   return (
     <div className="glass-card overflow-hidden">
       {/* Header */}
       <div className="p-4 sm:p-5 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-            <GitBranch size={16} className="text-white" />
-          </div>
-          <div>
-            <h3 className="font-display text-sm sm:text-base text-stone-200">Debt Network</h3>
-            <p className="text-[10px] sm:text-[11px] text-stone-500">Drag nodes · Toggle modes to see simplification</p>
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+        <GitBranch size={16} className="text-white" />
+        </div>
+        <div>
+        <h3 className="font-display text-sm sm:text-base text-stone-200">
+          {title || (isSingleGroup ? `${groupList[0]?.name || 'Group'} Debts` : 'Debt Network')}
+          </h3>
+            <p className="text-[10px] sm:text-[11px] text-stone-500">
+              {subtitle || (isSingleGroup ? 'Your debts in this group · Drag to explore' : 'Your debts across all groups · Drag to explore')}
+          </p>
           </div>
         </div>
         <div className="flex items-center gap-2 relative">
-          <ModeToggle mode={mode} onChange={setMode} />
+          <ModeToggle mode={mode} onChange={setMode} modes={availableModes} />
           <button
             onClick={() => setShowInfo(!showInfo)}
             className="w-8 h-8 rounded-lg bg-stone-800/60 hover:bg-stone-700/60 flex items-center justify-center border border-stone-700/40 transition-colors flex-shrink-0"
@@ -513,7 +594,7 @@ export default function DebtGraph({ groups, userId }) {
         )}
         <div className="flex items-center gap-2">
           <span className="text-stone-500">People:</span>
-          <span className="font-mono font-medium text-stone-200">{nodes.length}</span>
+          <span className="font-mono font-medium text-stone-200">{activeNodes.length}</span>
         </div>
       </div>
 
@@ -551,7 +632,7 @@ export default function DebtGraph({ groups, userId }) {
             <filter id="node-shadow" x="-30%" y="-30%" width="160%" height="160%">
               <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.5" />
             </filter>
-            {simNodes.map(n => (
+            {simNodes.filter(n => activeNodeIds.has(n.id)).map(n => (
               <clipPath key={`clip-${n.id}`} id={`clip-${n.id}`}>
                 <circle cx={0} cy={0} r={nodeR - 2} />
               </clipPath>
@@ -625,9 +706,9 @@ export default function DebtGraph({ groups, userId }) {
             })}
           </g>
 
-          {/* Nodes */}
+          {/* Nodes - only render nodes that have active links */}
           <g>
-            {simNodes.map(node => {
+            {simNodes.filter(node => activeNodeIds.has(node.id)).map(node => {
               const isMe = node.isCurrentUser;
               const isHighlighted = hoveredNode === node.id;
               const isDimmed = hoveredNode && hoveredNode !== node.id && !activeLinks.some(
@@ -758,12 +839,14 @@ export default function DebtGraph({ groups, userId }) {
               />
             </div>
 
-            <button onClick={() => setMode('optimized')} className={`flex items-center gap-1.5 transition-colors ${mode === 'optimized' ? 'text-emerald-400' : 'text-stone-500 hover:text-stone-300'}`}>
-              <span className="hidden sm:inline">Optimal</span>
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center font-mono font-bold text-[10px] ${mode === 'optimized' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-stone-800/60 text-stone-500'}`}>
-                {stats.optimized}
-              </div>
-            </button>
+            {!isSingleGroup && (
+              <button onClick={() => setMode('optimized')} className={`flex items-center gap-1.5 transition-colors ${mode === 'optimized' ? 'text-emerald-400' : 'text-stone-500 hover:text-stone-300'}`}>
+                <span className="hidden sm:inline">Optimal</span>
+                <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center font-mono font-bold text-[10px] ${mode === 'optimized' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-stone-800/60 text-stone-500'}`}>
+                  {stats.optimized}
+                </div>
+              </button>
+            )}
           </div>
 
           {mode === 'optimized' && stats.optimizedPct > 0 && (

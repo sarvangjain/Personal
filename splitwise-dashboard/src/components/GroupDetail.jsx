@@ -3,6 +3,7 @@ import { ArrowLeft, Users, MapPin, Home, Briefcase, Loader2, TrendingUp, Trendin
 import { getAllExpensesForGroup } from '../api/splitwise';
 import { formatCurrency, formatCompact, getUserId, computeMemberBalances } from '../utils/analytics';
 import GroupDashboard from './GroupDashboard';
+import DebtGraph from './DebtGraph';
 
 const groupIcons = {
   trip: MapPin,
@@ -184,6 +185,17 @@ export default function GroupDetail({ group, onBack }) {
           </div>
         </div>
       </div>
+
+      {/* Debt Network for this Group */}
+      {hasDebt && (
+        <DebtGraph 
+          group={group} 
+          userId={userId} 
+          compact={true}
+          title={`${group.name} Debt Network`}
+          subtitle="Within-group debts · Drag to explore"
+        />
+      )}
 
       {/* Group Dashboard Content */}
       {loading ? (

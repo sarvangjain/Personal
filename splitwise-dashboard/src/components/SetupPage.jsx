@@ -132,20 +132,16 @@ export default function SetupPage({ onComplete }) {
               <ol className="space-y-2 text-xs text-stone-500 leading-relaxed">
                 <li className="flex gap-2">
                   <span className="text-emerald-400/70 font-mono flex-shrink-0">1.</span>
-                  Go to <a href="https://secure.splitwise.com/oauth_clients" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline inline-flex items-center gap-1">
-                    Splitwise Developer Portal <ExternalLink size={10} />
+                  <a href="https://secure.splitwise.com/apps/new" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline inline-flex items-center gap-1">
+                    Register a new Splitwise App <ExternalLink size={10} />
                   </a>
                 </li>
                 <li className="flex gap-2">
                   <span className="text-emerald-400/70 font-mono flex-shrink-0">2.</span>
-                  Register a new application (any name, use <code className="font-mono text-stone-400 bg-stone-800/60 px-1 rounded">http://localhost:5173</code> as homepage)
+                  Copy the API Key from the app details page
                 </li>
                 <li className="flex gap-2">
                   <span className="text-emerald-400/70 font-mono flex-shrink-0">3.</span>
-                  Copy the <strong className="text-stone-400">API Key</strong> shown on the app details page
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-emerald-400/70 font-mono flex-shrink-0">4.</span>
                   Paste it above — we'll auto-detect your account
                 </li>
               </ol>

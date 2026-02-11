@@ -2,6 +2,7 @@ import { Loader2, Receipt, Crown, TrendingUp, Users } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { computeExpensesByCategory, computeMonthlySpending, computeTopPayers, computeRecentExpenses, formatCurrency, formatCompact, computeDayOfWeekSpending } from '../utils/analytics';
 import { format, parseISO, subMonths } from 'date-fns';
+import DebtGraph from './DebtGraph';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#6366f1', '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4', '#84cc16', '#e11d48'];
 
@@ -316,6 +317,9 @@ export default function GroupDashboard({ group, expenses, loading, userId }) {
           </div>
         </div>
       </div>
+
+      {/* Debt Graph for this group */}
+      <DebtGraph group={group} userId={userId} compact />
 
       {/* Row 2: Member Monthly + Share Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
