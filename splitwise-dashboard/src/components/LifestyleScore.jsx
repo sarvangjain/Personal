@@ -95,15 +95,15 @@ function MonthSelector({ months, selectedIndex, onChange }) {
   const canNext = selectedIndex < months.length - 1;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       <button
         onClick={() => canPrev && onChange(selectedIndex - 1)}
         disabled={!canPrev}
-        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-          canPrev ? 'bg-stone-800 hover:bg-stone-700 text-stone-300' : 'text-stone-700'
+        className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all touch-manipulation ${
+          canPrev ? 'bg-stone-800 hover:bg-stone-700 active:bg-stone-600 text-stone-300' : 'text-stone-700'
         }`}
       >
-        <ChevronLeft size={16} />
+        <ChevronLeft size={18} />
       </button>
       <span className="text-sm font-medium text-stone-300 min-w-[90px] text-center">
         {months[selectedIndex]?.monthLabel}
@@ -111,11 +111,11 @@ function MonthSelector({ months, selectedIndex, onChange }) {
       <button
         onClick={() => canNext && onChange(selectedIndex + 1)}
         disabled={!canNext}
-        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-          canNext ? 'bg-stone-800 hover:bg-stone-700 text-stone-300' : 'text-stone-700'
+        className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all touch-manipulation ${
+          canNext ? 'bg-stone-800 hover:bg-stone-700 active:bg-stone-600 text-stone-300' : 'text-stone-700'
         }`}
       >
-        <ChevronRight size={16} />
+        <ChevronRight size={18} />
       </button>
     </div>
   );
@@ -131,7 +131,7 @@ function TrendMiniChart({ monthlyData, dimension }) {
   return (
     <div className="h-20">
       <ResponsiveContainer>
-        <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+        <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 2, left: 0 }}>
           <defs>
             <linearGradient id={`grad-${dimension}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={meta.color} stopOpacity={0.3} />
@@ -175,26 +175,27 @@ export default function LifestyleScore({ expenses, userId }) {
     );
   }
 
-  // Build comparison radar data (current + previous month overlay)
-  const radarData = DIMENSION_KEYS.map(d => {
-    const maxAll = Math.max(
-      ...monthlyData.map(m => Math.max(...DIMENSION_KEYS.map(k => m.dimensions[k].amount))),
-      1
-    );
-    return {
-      dimension: DIMENSIONS[d].label,
-      current: Math.round((current.dimensions[d].amount / maxAll) * 100),
-      previous: previous ? Math.round((previous.dimensions[d].amount / maxAll) * 100) : 0,
-      fullMark: 100,
-    };
-  });
+  // Build comparison radar data — each month normalized to its OWN max
+  // so the radar shows spending distribution/shape, not absolute magnitude.
+  // (The ScoreRing already communicates the absolute balance.)
+  const currentMax = Math.max(...DIMENSION_KEYS.map(k => current.dimensions[k].amount), 1);
+  const previousMax = previous
+    ? Math.max(...DIMENSION_KEYS.map(k => previous.dimensions[k].amount), 1)
+    : 1;
+
+  const radarData = DIMENSION_KEYS.map(d => ({
+    dimension: DIMENSIONS[d].label,
+    current: Math.round((current.dimensions[d].amount / currentMax) * 100),
+    previous: previous ? Math.round((previous.dimensions[d].amount / previousMax) * 100) : 0,
+    fullMark: 100,
+  }));
 
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center flex-shrink-0">
             <Heart size={20} className="text-white" />
           </div>
           <div>
@@ -219,11 +220,11 @@ export default function LifestyleScore({ expenses, userId }) {
           {/* Radar Chart */}
           <div className="flex-1 w-full" style={{ minHeight: 240 }}>
             <ResponsiveContainer width="100%" height={240}>
-              <RadarChart data={radarData} outerRadius="70%">
+              <RadarChart data={radarData} outerRadius="65%">
                 <PolarGrid stroke="rgba(120,113,108,0.15)" />
                 <PolarAngleAxis
                   dataKey="dimension"
-                  tick={{ fontSize: 11, fill: '#a8a29e' }}
+                  tick={{ fontSize: 10, fill: '#a8a29e' }}
                 />
                 <PolarRadiusAxis tick={false} axisLine={false} domain={[0, 100]} />
                 {previous && (

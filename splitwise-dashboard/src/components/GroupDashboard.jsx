@@ -172,10 +172,10 @@ function MemberMonthlyComparison({ expenses }) {
       <h3 className="font-display text-base text-stone-200 mb-4">Monthly by Member</h3>
       <div className="h-56">
         <ResponsiveContainer>
-          <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+          <BarChart data={chartData} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
             <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} />
+            <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={38} />
             <Tooltip formatter={(v) => formatCurrency(v)} />
             {names.map((name, i) => (
               <Bar key={name} dataKey={name} stackId="members" fill={CHART_COLORS[i % CHART_COLORS.length]} radius={i === names.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]} maxBarSize={40} />
@@ -235,10 +235,10 @@ function DayOfWeekChart({ data }) {
       <h3 className="font-display text-base text-stone-200 mb-4">Group Day Pattern</h3>
       <div className="h-44">
         <ResponsiveContainer>
-          <BarChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+          <BarChart data={data} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
             <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} />
+            <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={36} />
             <Tooltip formatter={(v) => [formatCurrency(v), 'Spent']} />
             <Bar dataKey="amount" fill="#ec4899" radius={[4, 4, 0, 0]} maxBarSize={28} />
           </BarChart>
@@ -282,7 +282,7 @@ export default function GroupDashboard({ group, expenses, loading, userId }) {
           <h3 className="font-display text-base text-stone-200 mb-4">Monthly Trend</h3>
           <div className="h-56">
             <ResponsiveContainer>
-              <AreaChart data={monthly} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+              <AreaChart data={monthly} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
                 <defs>
                   <linearGradient id="groupGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#10b981" stopOpacity={0.25} />
@@ -291,7 +291,7 @@ export default function GroupDashboard({ group, expenses, loading, userId }) {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
                 <XAxis dataKey="shortMonth" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} />
+                <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={38} />
                 <Tooltip formatter={(value) => [formatCurrency(value), '']} />
                 <Area type="monotone" dataKey="total" name="Group Total" stroke="#6366f1" fill="transparent" strokeWidth={1.5} strokeDasharray="4 4" />
                 <Area type="monotone" dataKey="share" name="Your Share" stroke="#10b981" fill="url(#groupGrad)" strokeWidth={2} />

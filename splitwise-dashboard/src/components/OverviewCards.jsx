@@ -79,7 +79,7 @@ function MonthlyChart({ data }) {
       <h3 className="font-display text-sm sm:text-base text-stone-200 mb-3 sm:mb-4">Monthly Spending Trend</h3>
       <div className="h-44 sm:h-56">
         <ResponsiveContainer>
-          <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
+          <AreaChart data={data} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
             <defs>
               <linearGradient id="colorShare" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
@@ -87,8 +87,8 @@ function MonthlyChart({ data }) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
-            <XAxis dataKey="shortMonth" tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-            <YAxis tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={35} />
+            <XAxis dataKey="shortMonth" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+            <YAxis tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={38} />
             <Tooltip formatter={(value) => [formatCurrency(value), '']} contentStyle={{ background: 'rgba(28,25,23,0.95)', border: '1px solid rgba(120,113,108,0.3)', borderRadius: 12, fontSize: 11 }} />
             <Area type="monotone" dataKey="share" name="Your Share" stroke="#10b981" fill="url(#colorShare)" strokeWidth={2} />
             <Area type="monotone" dataKey="paid" name="You Paid" stroke="#f59e0b" fill="transparent" strokeWidth={1.5} strokeDasharray="4 4" />
@@ -111,10 +111,10 @@ function CategoryTrendChart({ data }) {
       <h3 className="font-display text-sm sm:text-base text-stone-200 mb-3 sm:mb-4">Category Trend (4 Months)</h3>
       <div className="h-44 sm:h-56">
         <ResponsiveContainer>
-          <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -15 }} stackOffset="none">
+          <AreaChart data={data} margin={{ top: 5, right: 8, bottom: 5, left: 0 }} stackOffset="none">
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={35} />
+            <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={38} />
             <Tooltip formatter={(value) => [formatCurrency(value), '']} />
             {catKeys.map((cat, i) => (
               <Area
@@ -150,10 +150,10 @@ function DayOfWeekChart({ data }) {
       <h3 className="font-display text-sm sm:text-base text-stone-200 mb-3 sm:mb-4">Spending by Day of Week</h3>
       <div className="h-36 sm:h-44">
         <ResponsiveContainer>
-          <BarChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
+          <BarChart data={data} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
-            <XAxis dataKey="day" tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={32} />
+            <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={36} />
             <Tooltip formatter={(value) => [formatCurrency(value), 'Spent']} />
             <Bar dataKey="amount" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={28} />
           </BarChart>

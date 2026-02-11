@@ -1,4 +1,5 @@
 import { format, parseISO, getDay, getMonth, startOfYear, endOfYear, differenceInDays } from 'date-fns';
+import { getCurrencySymbol } from './analytics';
 
 /**
  * Compute comprehensive Year in Review statistics
@@ -434,7 +435,7 @@ function computeFunFacts(expenses, userId, totalStats, socialStats) {
     const avgPerDay = totalStats.totalYourShare / Math.max(daySpan, 1);
     facts.push({
       icon: '📅',
-      text: `You averaged ₹${Math.round(avgPerDay)} per day over ${daySpan} days`,
+      text: `You averaged ${formatYIRCurrency(Math.round(avgPerDay))} per day over ${daySpan} days`,
     });
   }
 
@@ -459,12 +460,12 @@ function computeFunFacts(expenses, userId, totalStats, socialStats) {
   if (totalStats.netContribution > 100) {
     facts.push({
       icon: '💚',
-      text: `You contributed ₹${Math.round(totalStats.netContribution)} more than your share`,
+      text: `You contributed ${formatYIRCurrency(Math.round(totalStats.netContribution))} more than your share`,
     });
   } else if (totalStats.netContribution < -100) {
     facts.push({
       icon: '🙏',
-      text: `Friends covered ₹${Math.abs(Math.round(totalStats.netContribution))} for you`,
+      text: `Friends covered ${formatYIRCurrency(Math.abs(Math.round(totalStats.netContribution)))} for you`,
     });
   }
 
@@ -481,11 +482,20 @@ function computeFunFacts(expenses, userId, totalStats, socialStats) {
 
 /**
  * Format currency for Year in Review (more compact)
+ * Uses getCurrencySymbol for multi-currency support.
+ * Falls back to INR for backward compatibility since YIR doesn't track per-expense currency.
  */
-export function formatYIRCurrency(amount) {
-  if (Math.abs(amount) >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
-  if (Math.abs(amount) >= 1000) return `₹${(amount / 1000).toFixed(1)}K`;
-  return `₹${Math.round(amount)}`;
+export function formatYIRCurrency(amount, currency = 'INR') {
+  const symbol = getCurrencySymbol(currency);
+  const abs = Math.abs(amount);
+  if (currency === 'INR') {
+    if (abs >= 100000) return `${symbol}${(amount / 100000).toFixed(1)}L`;
+    if (abs >= 1000) return `${symbol}${(amount / 1000).toFixed(1)}K`;
+  } else {
+    if (abs >= 1000000) return `${symbol}${(amount / 1000000).toFixed(1)}M`;
+    if (abs >= 1000) return `${symbol}${(amount / 1000).toFixed(1)}K`;
+  }
+  return `${symbol}${Math.round(amount)}`;
 }
 
 /**

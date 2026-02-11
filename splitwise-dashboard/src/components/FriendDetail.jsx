@@ -109,7 +109,7 @@ export default function FriendDetail({ friend, onBack }) {
           <h3 className="font-display text-base text-stone-200 mb-4">Monthly Trend with {friend.name.split(' ')[0]}</h3>
           <div className="h-52">
             <ResponsiveContainer>
-              <AreaChart data={monthly} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+              <AreaChart data={monthly} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
                 <defs>
                   <linearGradient id="friendGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#10b981" stopOpacity={0.25} />

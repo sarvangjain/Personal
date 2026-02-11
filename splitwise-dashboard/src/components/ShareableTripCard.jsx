@@ -55,9 +55,15 @@ function Footer() {
   );
 }
 
+// Helper to shorten: fmt(amount) using trip.currency from closure
+function useFmt(trip) {
+  return (amount) => formatTripCurrency(amount, trip.currency);
+}
+
 // ─── Card 1: Trip Summary ───────────────────────────────────────────────────
 
 function TripSummaryCard({ trip }) {
+  const fmt = useFmt(trip);
   const CAT_COLORS = ['#10b981', '#f59e0b', '#6366f1', '#ec4899', '#14b8a6'];
   const topCats = trip.categories.slice(0, 4);
 
@@ -66,7 +72,6 @@ function TripSummaryCard({ trip }) {
       <GlowBlob top={-80} left={-80} color="rgba(6,182,212,0.10)" />
       <GlowBlob bottom={-100} right={-100} color="rgba(59,130,246,0.08)" size={300} />
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', padding: 20, minHeight: CARD_H }}>
-        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
           <div style={{ fontSize: 48, lineHeight: 1.1, marginBottom: 8 }}>{trip.vibe.emoji}</div>
           <div style={{ fontSize: 22, fontWeight: 700 }}>{trip.groupName}</div>
@@ -74,34 +79,31 @@ function TripSummaryCard({ trip }) {
           <div style={{ fontSize: 10, color: '#78716c', marginTop: 4 }}>{trip.durationDays} days · {trip.memberCount} people · {trip.expenseCount} expenses</div>
         </div>
 
-        {/* Main stats */}
         <Section style={{ padding: 16, marginBottom: 12 }}>
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#34d399' }}>{formatTripCurrency(trip.totalGroupSpend)}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#34d399' }}>{fmt(trip.totalGroupSpend)}</div>
               <div style={{ fontSize: 9, color: '#78716c' }}>Group Total</div>
             </div>
             <div style={{ width: 1, background: 'rgba(120,113,108,0.15)' }} />
             <div style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#fbbf24' }}>{formatTripCurrency(trip.yourShare)}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#fbbf24' }}>{fmt(trip.yourShare)}</div>
               <div style={{ fontSize: 9, color: '#78716c' }}>Your Share</div>
             </div>
           </div>
         </Section>
 
-        {/* Per day */}
         <Section style={{ padding: 12, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: 9, color: '#78716c', textTransform: 'uppercase', letterSpacing: 1 }}>Burn Rate</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#67e8f9' }}>{formatTripCurrency(trip.perDayBurnRate)}/day</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#67e8f9' }}>{fmt(trip.perDayBurnRate)}/day</div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 9, color: '#78716c', textTransform: 'uppercase', letterSpacing: 1 }}>Your Rate</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#818cf8' }}>{formatTripCurrency(trip.yourPerDayRate)}/day</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#818cf8' }}>{fmt(trip.yourPerDayRate)}/day</div>
           </div>
         </Section>
 
-        {/* Categories */}
         <Section style={{ padding: 12, marginBottom: 12 }}>
           <div style={{ fontSize: 9, color: '#78716c', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Money Went To</div>
           {topCats.map((cat, i) => (
@@ -109,12 +111,11 @@ function TripSummaryCard({ trip }) {
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: CAT_COLORS[i], flexShrink: 0 }} />
               <span style={{ fontSize: 11, color: '#d6d3d1', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
               <span style={{ fontSize: 10, color: '#78716c' }}>{cat.percentage}%</span>
-              <span style={{ fontSize: 11, color: '#a8a29e', fontFamily: 'monospace' }}>{formatTripCurrency(cat.amount)}</span>
+              <span style={{ fontSize: 11, color: '#a8a29e', fontFamily: 'monospace' }}>{fmt(cat.amount)}</span>
             </div>
           ))}
         </Section>
 
-        {/* Generous payer */}
         {trip.generousPayer && (
           <Section style={{ padding: 12, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
@@ -129,7 +130,7 @@ function TripSummaryCard({ trip }) {
               <div style={{ fontSize: 9, color: '#fbbf24' }}>MVP — Most Generous</div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{trip.generousPayer.name}</div>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#fbbf24' }}>{formatTripCurrency(trip.generousPayer.totalPaid)}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fbbf24' }}>{fmt(trip.generousPayer.totalPaid)}</div>
           </Section>
         )}
 
@@ -142,6 +143,7 @@ function TripSummaryCard({ trip }) {
 // ─── Card 2: Leaderboard Card ───────────────────────────────────────────────
 
 function LeaderboardCard({ trip }) {
+  const fmt = useFmt(trip);
   const COLORS = ['#fbbf24', '#c0c0c0', '#cd7f32', '#818cf8', '#f472b6'];
   const medals = ['🥇', '🥈', '🥉'];
 
@@ -177,7 +179,7 @@ function LeaderboardCard({ trip }) {
                       <div style={{ height: '100%', borderRadius: 4, background: COLORS[i], width: `${pct}%` }} />
                     </div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: COLORS[i], flexShrink: 0 }}>{formatTripCurrency(payer.totalPaid)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: COLORS[i], flexShrink: 0 }}>{fmt(payer.totalPaid)}</div>
                 </div>
               </Section>
             );
@@ -186,7 +188,7 @@ function LeaderboardCard({ trip }) {
 
         <Section style={{ padding: 14, textAlign: 'center', marginTop: 10 }}>
           <div style={{ fontSize: 11, color: '#78716c', marginBottom: 4 }}>Total Group Spend</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#34d399' }}>{formatTripCurrency(trip.totalGroupSpend)}</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#34d399' }}>{fmt(trip.totalGroupSpend)}</div>
         </Section>
 
         <Footer />
@@ -198,6 +200,8 @@ function LeaderboardCard({ trip }) {
 // ─── Card 3: Highlights Card ────────────────────────────────────────────────
 
 function HighlightsCard({ trip }) {
+  const fmt = useFmt(trip);
+
   return (
     <div style={cardBase}>
       <GlowBlob top="30%" left={-80} color="rgba(236,72,153,0.08)" size={300} />
@@ -209,19 +213,17 @@ function HighlightsCard({ trip }) {
         </div>
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Biggest expense */}
           {trip.biggestExpense && (
             <div style={{ display: 'flex' }}>
               <div style={{ width: 4, borderRadius: 4, background: '#f59e0b', flexShrink: 0 }} />
               <Section style={{ flex: 1, padding: 14, marginLeft: 4, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}>
                 <div style={{ fontSize: 10, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Biggest Expense</div>
                 <div style={{ fontSize: 16, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trip.biggestExpense.description}</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: '#fbbf24', marginTop: 2 }}>{formatTripCurrency(trip.biggestExpense.cost)}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: '#fbbf24', marginTop: 2 }}>{fmt(trip.biggestExpense.cost)}</div>
               </Section>
             </div>
           )}
 
-          {/* Fun stats */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Section style={{ padding: 14, textAlign: 'center' }}>
               <div style={{ fontSize: 24, fontWeight: 700, color: '#67e8f9' }}>{trip.durationDays}</div>
@@ -236,16 +238,15 @@ function HighlightsCard({ trip }) {
               <div style={{ fontSize: 10, color: '#78716c' }}>People</div>
             </Section>
             <Section style={{ padding: 14, textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: '#34d399' }}>{formatTripCurrency(trip.perDayBurnRate)}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: '#34d399' }}>{fmt(trip.perDayBurnRate)}</div>
               <div style={{ fontSize: 10, color: '#78716c' }}>Per Day</div>
             </Section>
           </div>
 
-          {/* Net contribution */}
           <Section style={{ padding: 14, textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: '#78716c', marginBottom: 4 }}>Your Net Contribution</div>
             <div style={{ fontSize: 24, fontWeight: 700, color: trip.netContribution >= 0 ? '#34d399' : '#f87171' }}>
-              {trip.netContribution >= 0 ? '+' : ''}{formatTripCurrency(trip.netContribution)}
+              {trip.netContribution >= 0 ? '+' : ''}{fmt(trip.netContribution)}
             </div>
             <div style={{ fontSize: 10, color: '#57534e', marginTop: 4 }}>
               {trip.netContribution >= 0 ? 'You covered for the group!' : 'Friends had your back'}
@@ -356,7 +357,6 @@ export default function ShareableTripCard({ trip, onClose }) {
       </button>
 
       <div className="flex flex-col items-center max-w-full">
-        {/* Card selector tabs */}
         <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 max-w-full px-2 scrollbar-hide">
           {CARDS.map((card, i) => (
             <button
@@ -373,7 +373,6 @@ export default function ShareableTripCard({ trip, onClose }) {
           ))}
         </div>
 
-        {/* Card with navigation */}
         <div className="relative flex items-center gap-2 sm:gap-4">
           <button
             onClick={goPrev}
@@ -402,7 +401,6 @@ export default function ShareableTripCard({ trip, onClose }) {
           </button>
         </div>
 
-        {/* Action buttons */}
         <div className="flex items-center gap-3 mt-5">
           <button
             onClick={handleDownload}

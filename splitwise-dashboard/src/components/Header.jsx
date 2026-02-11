@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings, Plus, WifiOff, Search, X } from 'lucide-react';
+import { Menu, Plus, WifiOff, Search, X } from 'lucide-react';
 import SearchBar from './SearchBar';
 
 // SVG Logo component matching the PWA icon
@@ -30,31 +30,39 @@ function AppLogo({ size = 36, className = '' }) {
   );
 }
 
-export default function Header({ user, onSettings, onAddExpense, groups, friends, expenses, onSelectGroup, onSelectFriend, onNavigate, isOnline = true }) {
+export default function Header({ user, onOpenSidebar, onAddExpense, groups, friends, expenses, onSelectGroup, onSelectFriend, onNavigate, isOnline = true }) {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   
   return (
     <header className="border-b border-stone-800/40 bg-stone-950/80 backdrop-blur-xl sticky top-0 z-50 safe-top">
       {/* Main header row */}
       <div className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
-        {/* Logo + Name */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          <div className="relative">
-            <AppLogo size={32} className="sm:w-9 sm:h-9 rounded-xl shadow-lg shadow-emerald-500/20" />
-            {!isOnline && (
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-stone-900 flex items-center justify-center border border-stone-700">
-                <WifiOff size={8} className="text-amber-400" />
-              </div>
-            )}
-          </div>
-          <div>
-            <h1 className="font-display text-base sm:text-lg text-stone-100 leading-tight">SplitSight</h1>
-            <p className="text-[9px] sm:text-[10px] text-stone-500 font-medium tracking-widest uppercase">Splitwise Analytics</p>
+        {/* Left: Hamburger + Logo */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
+          <button
+            onClick={onOpenSidebar}
+            className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-stone-800/60 hover:bg-stone-700/60 active:bg-stone-700/80 flex items-center justify-center transition-colors border border-stone-700/40 touch-manipulation"
+          >
+            <Menu size={16} className="text-stone-400" />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <AppLogo size={28} className="sm:w-8 sm:h-8 rounded-lg shadow-lg shadow-emerald-500/20" />
+              {!isOnline && (
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-stone-900 flex items-center justify-center border border-stone-700">
+                  <WifiOff size={8} className="text-amber-400" />
+                </div>
+              )}
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="font-display text-base sm:text-lg text-stone-100 leading-tight">SplitSight</h1>
+              <p className="text-[9px] sm:text-[10px] text-stone-500 font-medium tracking-widest uppercase">Analytics</p>
+            </div>
           </div>
         </div>
 
-        {/* Search Bar - desktop only */}
-        <div className="hidden sm:flex flex-1 justify-center">
+        {/* Center: Search Bar - desktop only */}
+        <div className="hidden sm:flex flex-1 justify-center max-w-xl">
           <SearchBar
             groups={groups || []}
             friends={friends || []}
@@ -65,7 +73,7 @@ export default function Header({ user, onSettings, onAddExpense, groups, friends
           />
         </div>
 
-        {/* Actions */}
+        {/* Right: Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {/* Mobile search toggle */}
           <button
@@ -86,17 +94,17 @@ export default function Header({ user, onSettings, onAddExpense, groups, friends
             <Plus size={15} className="sm:w-[13px] sm:h-[13px]" />
             <span className="hidden sm:inline">Add Expense</span>
           </button>
+
+          {/* User avatar - desktop only */}
           {user && (
-            <span className="text-xs text-stone-400 hidden lg:block ml-1">
-              {user.first_name}
-            </span>
+            <button
+              onClick={onOpenSidebar}
+              className="hidden sm:flex w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 items-center justify-center text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+              title={user.first_name}
+            >
+              {user.first_name?.[0] || '?'}
+            </button>
           )}
-          <button
-            onClick={onSettings}
-            className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-stone-800/60 hover:bg-stone-700/60 active:bg-stone-700/80 flex items-center justify-center transition-colors border border-stone-700/40 touch-manipulation"
-          >
-            <Settings size={15} className="text-stone-400 sm:w-[14px] sm:h-[14px]" />
-          </button>
         </div>
       </div>
       

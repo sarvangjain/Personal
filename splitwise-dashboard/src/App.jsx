@@ -22,11 +22,13 @@ import ErrorState from './components/ErrorState';
 import YearInReview from './components/YearInReview';
 import Activity, { RecentActivityPreview } from './components/Activity';
 import RefreshButton from './components/RefreshButton';
-import { WifiOff, RefreshCw, Download, X, Sparkles, FlaskConical, Share2, Wallet, Receipt } from 'lucide-react';
+import { WifiOff, RefreshCw, Download, X, Sparkles, FlaskConical, Share2, Wallet, Receipt, LayoutDashboard, Users, Scale, Handshake, Menu } from 'lucide-react';
 import Budget from './components/Budget';
 import BudgetSummaryWidget from './components/BudgetSummaryWidget';
 import LifestyleScore from './components/LifestyleScore';
 import TripTracker from './components/TripTracker';
+import Sidebar, { TAB_META } from './components/Sidebar';
+import { useRecentTabs } from './hooks/useRecentTabs';
 
 // Offline Banner Component
 function OfflineBanner() {
@@ -124,12 +126,14 @@ function Dashboard() {
   const [startWithShare, setStartWithShare] = useState(false);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [showCreateExpensePage, setShowCreateExpensePage] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
 
   const userId = getUserId();
   
   // PWA hooks
   const { isOnline, canInstall, install, updateAvailable, applyUpdate, isInstalled } = usePWA();
   const haptic = useHaptic();
+  const { recentTabs, recordTabVisit, getBottomNavRecents, getSidebarRecents } = useRecentTabs();
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -226,16 +230,18 @@ function Dashboard() {
     localStorage.setItem('install_prompt_dismissed', 'true');
   };
 
-  // Track tab changes in Firebase
+  // Track tab changes in Firebase + recent tabs
   const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId);
     if (tabId === 'friends') setSelectedFriend(null);
     if (tabId === 'groups') setSelectedGroupId(null);
+    // Track recent tabs for smart bottom nav
+    recordTabVisit(tabId);
     // Track in Firebase (non-blocking)
     if (userId) {
       trackTabView(userId, tabId).catch(() => {});
     }
-  }, [userId]);
+  }, [userId, recordTabVisit]);
 
   function handleExpenseCreated() {
     loadInitialData();
@@ -287,15 +293,15 @@ function Dashboard() {
   const insights = computeSmartInsights(allExpenses, friends, groups, userId);
   const settleUpSuggestions = computeSettleUpSuggestions(groups, userId, friends, user);
 
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'activity', label: 'Activity', icon: Receipt },
-    { id: 'groups', label: 'Groups' },
-    { id: 'friends', label: 'Balances' },
-    { id: 'settle', label: 'Settle Up' },
-    { id: 'budget', label: 'Budget', icon: Wallet },
-    { id: 'beta', label: 'Beta', icon: FlaskConical },
-  ];
+  // Bottom nav: 2 pinned + 2 dynamic + menu
+  const PINNED_BOTTOM = ['overview', 'activity'];
+  const DEFAULT_DYNAMIC = ['groups', 'friends'];
+  const dynamicSlots = getBottomNavRecents(2);
+  const bottomDynamic = dynamicSlots.length >= 2 ? dynamicSlots : [
+    ...dynamicSlots,
+    ...DEFAULT_DYNAMIC.filter(t => !dynamicSlots.includes(t)),
+  ].slice(0, 2);
+  const bottomNavItems = [...PINNED_BOTTOM, ...bottomDynamic];
 
   return (
     <div className="min-h-screen min-h-[100dvh]">
@@ -313,7 +319,7 @@ function Dashboard() {
       {!showCreateExpensePage && (
         <Header
           user={user}
-          onSettings={() => { haptic.light(); setShowSettings(true); }}
+          onOpenSidebar={() => { haptic.light(); setShowSidebar(true); }}
           onAddExpense={() => { haptic.light(); setShowCreateExpensePage(true); }}
           groups={groups} friends={friends} expenses={allExpenses}
           onSelectGroup={handleSearchSelectGroup}
@@ -323,7 +329,7 @@ function Dashboard() {
         />
       )}
 
-      <main className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 pb-20 sm:pb-16">
+      <main className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 pb-24 sm:pb-16">
         {/* Create Expense Page (full page) */}
         {showCreateExpensePage ? (
           <CreateExpensePage
@@ -337,24 +343,8 @@ function Dashboard() {
           />
         ) : (
           <>
-        {/* Tabs */}
-        <nav className="flex gap-1 sm:gap-6 mb-6 sm:mb-8 border-b border-stone-800/50 pt-2 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={`pb-2.5 sm:pb-3 text-xs sm:text-sm font-medium tracking-wide transition-all whitespace-nowrap px-2 sm:px-0 flex items-center gap-1.5 ${
-                activeTab === tab.id ? 'tab-active' : 'tab-inactive'
-              }`}
-            >
-              {tab.icon && <tab.icon size={14} className={tab.id === 'beta' ? 'text-purple-400' : tab.id === 'activity' ? 'text-purple-400' : ''} />}
-              {tab.label}
-              {tab.id === 'settle' && settleUpSuggestions.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-[9px] bg-amber-500/15 text-amber-400 rounded-full font-mono">{settleUpSuggestions.length}</span>
-              )}
-            </button>
-          ))}
-        </nav>
+        {/* Page top spacer (tab bar removed — navigation via sidebar + bottom nav) */}
+        <div className="pt-4 sm:pt-6" />
 
         {activeTab === 'overview' && (
           <div className="animate-fade-in space-y-4 sm:space-y-6">
@@ -576,23 +566,66 @@ function Dashboard() {
         )}
       </main>
 
-      {/* Mobile Bottom Nav - hidden when create expense page is shown */}
+      {/* Smart Bottom Nav - mobile only, hidden when create expense page is shown */}
       {!showCreateExpensePage && (
-        <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/50 z-40 safe-bottom">
-          <div className="flex justify-around py-2">
-            {tabs.map(tab => {
-              const isActive = activeTab === tab.id;
+        <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/50 z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="flex items-stretch">
+            {/* 4 nav slots */}
+            {bottomNavItems.map(tabId => {
+              const meta = TAB_META[tabId];
+              if (!meta) return null;
+              const Icon = meta.icon;
+              const isActive = activeTab === tabId;
+              const isPinned = PINNED_BOTTOM.includes(tabId);
               return (
-                <button key={tab.id} onClick={() => handleTabChange(tab.id)}
-                  className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${isActive ? (tab.id === 'beta' || tab.id === 'activity' ? 'text-purple-400' : 'text-emerald-400') : 'text-stone-500'}`}>
-                  <span className="text-[11px] font-medium">{tab.label}</span>
-                  {isActive && <div className={`w-4 h-0.5 rounded-full ${tab.id === 'beta' || tab.id === 'activity' ? 'bg-purple-400' : 'bg-emerald-400'}`} />}
+                <button
+                  key={tabId}
+                  onClick={() => { haptic.light(); handleTabChange(tabId); }}
+                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-3 relative transition-colors touch-manipulation ${
+                    isActive ? meta.color : 'text-stone-600'
+                  }`}
+                >
+                  {/* Active top bar */}
+                  {isActive && (
+                    <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-b-full transition-all`}
+                      style={{ background: isActive ? 'currentColor' : 'transparent' }}
+                    />
+                  )}
+                  <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
+                  <span className="text-[10px] font-medium leading-none">{meta.label}</span>
+                  {/* Settle up badge */}
+                  {tabId === 'settle' && settleUpSuggestions.length > 0 && (
+                    <span className="absolute top-1.5 right-1/4 w-4 h-4 text-[8px] bg-amber-500 text-stone-950 rounded-full flex items-center justify-center font-bold">
+                      {settleUpSuggestions.length}
+                    </span>
+                  )}
                 </button>
               );
             })}
+
+            {/* Menu slot (opens sidebar) */}
+            <button
+              onClick={() => { haptic.light(); setShowSidebar(true); }}
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-3 text-stone-600 transition-colors touch-manipulation active:text-stone-400"
+            >
+              <Menu size={20} strokeWidth={1.8} />
+              <span className="text-[10px] font-medium leading-none">Menu</span>
+            </button>
           </div>
         </nav>
       )}
+
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={showSidebar}
+        onClose={() => setShowSidebar(false)}
+        activeTab={activeTab}
+        onNavigate={handleTabChange}
+        onOpenSettings={() => { setShowSidebar(false); setShowSettings(true); }}
+        user={user}
+        recentTabs={getSidebarRecents(3)}
+        settleUpCount={settleUpSuggestions.length}
+      />
 
       {showSettings && (
         <SettingsModal

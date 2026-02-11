@@ -1,4 +1,5 @@
-import { parseISO, differenceInDays, format, differenceInHours } from 'date-fns';
+import { parseISO, differenceInDays, format } from 'date-fns';
+import { getCurrencySymbol } from './analytics';
 
 /**
  * Auto-detect trips/events from expenses.
@@ -54,10 +55,10 @@ function findClusters(sortedExpenses, maxGapDays, minSize) {
   let current = [sortedExpenses[0]];
 
   for (let i = 1; i < sortedExpenses.length; i++) {
-    const gap = differenceInDays(
+    const gap = Math.abs(differenceInDays(
       parseISO(sortedExpenses[i].date),
       parseISO(sortedExpenses[i - 1].date)
-    );
+    ));
 
     if (gap <= maxGapDays) {
       current.push(sortedExpenses[i]);
@@ -207,9 +208,17 @@ function buildTrip(expenses, groupId, groupName, userId) {
 
 /**
  * Format currency for trip display (more compact).
+ * Uses getCurrencySymbol for proper multi-currency support.
  */
 export function formatTripCurrency(amount, currency = 'INR') {
-  if (Math.abs(amount) >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
-  if (Math.abs(amount) >= 1000) return `₹${(amount / 1000).toFixed(1)}K`;
-  return `₹${Math.round(amount)}`;
+  const symbol = getCurrencySymbol(currency);
+  const abs = Math.abs(amount);
+  if (currency === 'INR') {
+    if (abs >= 100000) return `${symbol}${(amount / 100000).toFixed(1)}L`;
+    if (abs >= 1000) return `${symbol}${(amount / 1000).toFixed(1)}K`;
+  } else {
+    if (abs >= 1000000) return `${symbol}${(amount / 1000000).toFixed(1)}M`;
+    if (abs >= 1000) return `${symbol}${(amount / 1000).toFixed(1)}K`;
+  }
+  return `${symbol}${Math.round(amount)}`;
 }

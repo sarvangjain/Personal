@@ -41,22 +41,20 @@ function TripCard({ trip, onClick }) {
             {trip.durationDays}d
           </p>
 
-          <div className="flex items-center gap-3 mt-2.5">
+          <div className="flex items-center flex-wrap gap-x-3 gap-y-1.5 mt-2.5">
             <div>
               <p className="text-sm font-display text-emerald-400">{formatCompact(trip.totalGroupSpend, trip.currency)}</p>
               <p className="text-[9px] text-stone-600">Group total</p>
             </div>
-            <div className="w-px h-6 bg-stone-800" />
+            <div className="w-px h-6 bg-stone-800 hidden sm:block" />
             <div>
               <p className="text-sm font-display text-amber-400">{formatCompact(trip.yourShare, trip.currency)}</p>
               <p className="text-[9px] text-stone-600">Your share</p>
             </div>
-            <div className="w-px h-6 bg-stone-800" />
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 ml-auto sm:ml-0">
               <Users size={11} className="text-stone-500" />
               <span className="text-xs text-stone-400">{trip.memberCount}</span>
-            </div>
-            <div className="flex items-center gap-1">
+              <span className="text-stone-700 mx-0.5">·</span>
               <Receipt size={11} className="text-stone-500" />
               <span className="text-xs text-stone-400">{trip.expenseCount}</span>
             </div>

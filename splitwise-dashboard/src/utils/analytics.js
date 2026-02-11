@@ -625,8 +625,15 @@ export function formatCurrency(amount, currency = 'INR') {
 
 export function formatCompact(amount, currency = 'INR') {
   const symbol = getCurrencySymbol(currency);
-  if (Math.abs(amount) >= 100000) return `${symbol}${(amount / 100000).toFixed(1)}L`;
-  if (Math.abs(amount) >= 1000) return `${symbol}${(amount / 1000).toFixed(1)}K`;
+  const abs = Math.abs(amount);
+  // Use Lakh notation only for INR; K/M for everything else
+  if (currency === 'INR') {
+    if (abs >= 100000) return `${symbol}${(amount / 100000).toFixed(1)}L`;
+    if (abs >= 1000) return `${symbol}${(amount / 1000).toFixed(1)}K`;
+  } else {
+    if (abs >= 1000000) return `${symbol}${(amount / 1000000).toFixed(1)}M`;
+    if (abs >= 1000) return `${symbol}${(amount / 1000).toFixed(1)}K`;
+  }
   return `${symbol}${Math.round(amount)}`;
 }
 

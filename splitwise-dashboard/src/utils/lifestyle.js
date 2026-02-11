@@ -81,10 +81,12 @@ export function mapCategoryToDimension(categoryName) {
   if (!categoryName) return 'Personal';
   // Try exact match first
   if (DIMENSION_MAP[categoryName]) return DIMENSION_MAP[categoryName];
-  // Try case-insensitive substring match
+  // Try case-insensitive match: category name contains a known key
+  // Only one direction: input contains map key (e.g. "Food and drink" contains "food")
+  // NOT the reverse, which causes false positives ("Car" matching "Childcare")
   const lower = categoryName.toLowerCase();
   for (const [cat, dim] of Object.entries(DIMENSION_MAP)) {
-    if (lower.includes(cat.toLowerCase()) || cat.toLowerCase().includes(lower)) {
+    if (lower.includes(cat.toLowerCase())) {
       return dim;
     }
   }
@@ -126,23 +128,38 @@ function computeDimensionsForExpenses(expenses, userId) {
  */
 export function computeMonthlyLifestyle(expenses, userId, months = 6) {
   const now = new Date();
-  const result = [];
 
+  // Build the set of target month keys
+  const monthMeta = [];
   for (let i = months - 1; i >= 0; i--) {
     const d = subMonths(now, i);
-    const monthKey = format(d, 'yyyy-MM');
-    const monthLabel = format(d, 'MMM yyyy');
-    const shortLabel = format(d, 'MMM');
-
-    // Filter expenses for this month
-    const monthExpenses = expenses.filter(exp => {
-      if (exp.payment || exp.deleted_at) return false;
-      return format(parseISO(exp.date), 'yyyy-MM') === monthKey;
+    monthMeta.push({
+      monthKey: format(d, 'yyyy-MM'),
+      monthLabel: format(d, 'MMM yyyy'),
+      shortLabel: format(d, 'MMM'),
     });
+  }
+  const monthKeySet = new Set(monthMeta.map(m => m.monthKey));
 
+  // Pre-compute month key for each expense ONCE (avoids O(N×M) re-parsing)
+  const expensesByMonth = {};
+  monthMeta.forEach(m => { expensesByMonth[m.monthKey] = []; });
+
+  expenses.forEach(exp => {
+    if (exp.payment || exp.deleted_at) return;
+    try {
+      const key = format(parseISO(exp.date), 'yyyy-MM');
+      if (monthKeySet.has(key)) {
+        expensesByMonth[key].push(exp);
+      }
+    } catch { /* skip malformed dates */ }
+  });
+
+  // Build result for each month
+  return monthMeta.map(({ monthKey, monthLabel, shortLabel }) => {
+    const monthExpenses = expensesByMonth[monthKey];
     const { dimensions, total } = computeDimensionsForExpenses(monthExpenses, userId);
 
-    // Build radar chart data (0–100 scale per dimension, normalized to max across dimensions)
     const maxAmount = Math.max(...DIMENSION_KEYS.map(d => dimensions[d].amount), 1);
     const radarData = DIMENSION_KEYS.map(d => ({
       dimension: DIMENSIONS[d].label,
@@ -152,17 +169,8 @@ export function computeMonthlyLifestyle(expenses, userId, months = 6) {
       fullMark: 100,
     }));
 
-    result.push({
-      month: monthKey,
-      monthLabel,
-      shortLabel,
-      dimensions,
-      total,
-      radarData,
-    });
-  }
-
-  return result;
+    return { month: monthKey, monthLabel, shortLabel, dimensions, total, radarData };
+  });
 }
 
 /**
