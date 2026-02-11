@@ -243,10 +243,8 @@
     font-size: 0.9375rem !important; /* 15px instead of 14px */
   }
   
-  /* Glass card slightly larger padding on mobile */
-  .glass-card {
-    padding: 1rem;
-  }
+  /* Note: Glass card padding is handled by Tailwind utility classes on each component.
+     Avoid overriding globally as it breaks component-specific padding (p-3, p-4, p-5, p-6). */
 }
 
 /* Recharts overrides */

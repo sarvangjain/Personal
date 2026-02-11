@@ -1,7 +1,8 @@
 import { Loader2, Receipt, Crown, TrendingUp, Users } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { computeExpensesByCategory, computeMonthlySpending, computeTopPayers, computeRecentExpenses, formatCurrency, formatCompact, computeDayOfWeekSpending } from '../utils/analytics';
 import { format, parseISO, subMonths } from 'date-fns';
+import DebtGraph from './DebtGraph';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#6366f1', '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4', '#84cc16', '#e11d48'];
 
@@ -213,11 +214,11 @@ function ExpenseTimeline({ expenses, userId }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm sm:text-sm text-stone-300 truncate">{exp.description}</p>
                 <p className="text-xs sm:text-[10px] text-stone-600">
-                  {format(parseISO(exp.date), 'MMM d, yyyy')} · {payer?.user?.first_name || 'Unknown'} paid {formatCurrency(parseFloat(exp.cost))}
+                  {format(parseISO(exp.date), 'MMM d, yyyy')} · {payer?.user?.first_name || 'Unknown'} paid {formatCurrency(parseFloat(exp.cost), exp.currency_code || 'INR')}
                 </p>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="text-sm sm:text-xs font-mono text-stone-400">{formatCurrency(myShare)}</p>
+                <p className="text-sm sm:text-xs font-mono text-stone-400">{formatCurrency(myShare, exp.currency_code || 'INR')}</p>
                 <p className="text-xs sm:text-[10px] text-stone-600">{exp.category?.name || ''}</p>
               </div>
             </div>
@@ -316,6 +317,9 @@ export default function GroupDashboard({ group, expenses, loading, userId }) {
           </div>
         </div>
       </div>
+
+      {/* Debt Graph for this group */}
+      <DebtGraph group={group} userId={userId} compact />
 
       {/* Row 2: Member Monthly + Share Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

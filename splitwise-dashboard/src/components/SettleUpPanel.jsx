@@ -1,13 +1,26 @@
 import { ArrowRight, ArrowUpRight, ArrowDownRight, Banknote } from 'lucide-react';
 import { formatCurrency } from '../utils/analytics';
 
+/** Aggregate a list of settle-up suggestions into per-currency totals */
+function aggregateByCurrency(items) {
+  const map = {};
+  items.forEach(s => {
+    const c = s.currency || 'INR';
+    map[c] = (map[c] || 0) + s.amount;
+  });
+  // Sort by amount desc
+  return Object.entries(map)
+    .map(([code, amount]) => ({ code, amount }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
 export default function SettleUpPanel({ suggestions }) {
   if (!suggestions || suggestions.length === 0) return null;
 
   const youPay = suggestions.filter(s => s.youPay);
   const youReceive = suggestions.filter(s => !s.youPay);
-  const totalPay = youPay.reduce((s, x) => s + x.amount, 0);
-  const totalReceive = youReceive.reduce((s, x) => s + x.amount, 0);
+  const payByCurrency = aggregateByCurrency(youPay);
+  const receiveByCurrency = aggregateByCurrency(youReceive);
 
   return (
     <div className="glass-card p-6">
@@ -20,13 +33,29 @@ export default function SettleUpPanel({ suggestions }) {
       <div className="flex gap-3 mb-5">
         <div className="flex-1 p-3 bg-red-500/5 border border-red-500/10 rounded-xl">
           <p className="text-[10px] text-red-400/70 uppercase font-medium tracking-wide">You Pay</p>
-          <p className="text-lg font-display text-red-400 mt-0.5">{formatCurrency(totalPay)}</p>
-          <p className="text-[10px] text-stone-600">{youPay.length} transactions</p>
+          <div className="mt-0.5">
+            {payByCurrency.length > 0 ? payByCurrency.map((t, i) => (
+              <p key={t.code} className={`font-display text-red-400 ${i === 0 ? 'text-lg' : 'text-sm opacity-70'}`}>
+                {formatCurrency(t.amount, t.code)}
+              </p>
+            )) : (
+              <p className="text-lg font-display text-red-400">{formatCurrency(0)}</p>
+            )}
+          </div>
+          <p className="text-[10px] text-stone-600">{youPay.length} transaction{youPay.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex-1 p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
           <p className="text-[10px] text-emerald-400/70 uppercase font-medium tracking-wide">You Receive</p>
-          <p className="text-lg font-display text-emerald-400 mt-0.5">{formatCurrency(totalReceive)}</p>
-          <p className="text-[10px] text-stone-600">{youReceive.length} transactions</p>
+          <div className="mt-0.5">
+            {receiveByCurrency.length > 0 ? receiveByCurrency.map((t, i) => (
+              <p key={t.code} className={`font-display text-emerald-400 ${i === 0 ? 'text-lg' : 'text-sm opacity-70'}`}>
+                {formatCurrency(t.amount, t.code)}
+              </p>
+            )) : (
+              <p className="text-lg font-display text-emerald-400">{formatCurrency(0)}</p>
+            )}
+          </div>
+          <p className="text-[10px] text-stone-600">{youReceive.length} transaction{youReceive.length !== 1 ? 's' : ''}</p>
         </div>
       </div>
 

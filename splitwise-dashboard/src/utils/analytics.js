@@ -6,34 +6,60 @@ export function getUserId() {
 }
 
 export function computeOverallBalances(groups, userId) {
-  let totalOwed = 0;
-  let totalOwe = 0;
+  const byCurrency = {};
 
   groups.forEach(group => {
     if (!group.members) return;
     const me = group.members.find(m => m.id === userId);
     if (!me || !me.balance) return;
     me.balance.forEach(b => {
+      const currency = b.currency_code || 'INR';
       const amt = parseFloat(b.amount);
-      if (amt > 0) totalOwed += amt;
-      else totalOwe += Math.abs(amt);
+      if (!byCurrency[currency]) byCurrency[currency] = { owed: 0, owe: 0 };
+      if (amt > 0) byCurrency[currency].owed += amt;
+      else byCurrency[currency].owe += Math.abs(amt);
     });
   });
 
-  return { totalOwed, totalOwe, netBalance: totalOwed - totalOwe };
+  // Build per-currency array sorted by total activity
+  const currencies = Object.entries(byCurrency)
+    .map(([code, { owed, owe }]) => ({ code, owed, owe, net: owed - owe }))
+    .sort((a, b) => (b.owed + b.owe) - (a.owed + a.owe));
+
+  const primary = currencies[0] || { code: 'INR', owed: 0, owe: 0, net: 0 };
+
+  return {
+    currencies,
+    primaryCurrency: primary.code,
+    // Legacy shortcuts for the primary currency (used by settle-up, insights, etc.)
+    totalOwed: primary.owed,
+    totalOwe: primary.owe,
+    netBalance: primary.net,
+  };
 }
 
 export function computeFriendBalances(friends, userId) {
   return friends
     .filter(f => f.balance && f.balance.length > 0)
     .map(f => {
-      const bal = f.balance.reduce((sum, b) => sum + parseFloat(b.amount), 0);
+      // Build per-currency balance array
+      const allBalances = f.balance
+        .map(b => ({ amount: parseFloat(b.amount), currency: b.currency_code || 'INR' }))
+        .filter(b => Math.abs(b.amount) > 0.01);
+
+      // Primary = largest absolute amount (for sorting and backward-compat)
+      const primary = allBalances.reduce(
+        (best, b) => Math.abs(b.amount) > Math.abs(best.amount) ? b : best,
+        { amount: 0, currency: allBalances[0]?.currency || 'INR' }
+      );
+
       return {
         id: f.id,
         name: `${f.first_name} ${f.last_name || ''}`.trim(),
         picture: f.picture?.medium,
-        balance: bal,
-        currency: f.balance[0]?.currency_code || 'INR',
+        balance: primary.amount,       // primary currency amount (for sorting)
+        currency: primary.currency,    // primary currency code
+        allBalances,                   // all per-currency balances
       };
     })
     .filter(f => Math.abs(f.balance) > 0.5)
@@ -298,7 +324,7 @@ export function computeSmartInsights(expenses, friends, groups, userId) {
       type: 'friend',
       icon: '🤝',
       title: `${topOwer.name} owes you the most`,
-      desc: `Outstanding: ${formatCurrency(topOwer.balance)}`,
+      desc: `Outstanding: ${formatCurrency(topOwer.balance, topOwer.currency)}`,
     });
   }
 
@@ -340,28 +366,52 @@ export function computeSmartInsights(expenses, friends, groups, userId) {
   return insights;
 }
 
-export function computeSettleUpSuggestions(groups, userId) {
+export function computeSettleUpSuggestions(groups, userId, friends = [], currentUser = null) {
   const suggestions = [];
+
+  // Build a lookup map for resolving user names
+  // Priority: group members -> friends -> current user
+  const buildNameLookup = (group) => {
+    const lookup = {};
+    
+    // Add group members
+    group.members?.forEach(m => {
+      lookup[m.id] = `${m.first_name} ${m.last_name || ''}`.trim();
+    });
+    
+    // Add friends (for non-group expenses where members might be empty)
+    friends.forEach(f => {
+      if (!lookup[f.id]) {
+        lookup[f.id] = `${f.first_name} ${f.last_name || ''}`.trim();
+      }
+    });
+    
+    // Add current user
+    if (currentUser && !lookup[userId]) {
+      lookup[userId] = `${currentUser.first_name} ${currentUser.last_name || ''}`.trim();
+    }
+    
+    return lookup;
+  };
 
   groups.forEach(group => {
     const debts = group.simplified_debts || group.original_debts || [];
+    const nameLookup = buildNameLookup(group);
+    
     debts.forEach(debt => {
       const fromId = debt.from;
       const toId = debt.to;
       const amount = parseFloat(debt.amount);
       if (amount < 1) return;
 
-      const fromMember = group.members?.find(m => m.id === fromId);
-      const toMember = group.members?.find(m => m.id === toId);
-
       if (fromId === userId || toId === userId) {
         suggestions.push({
           groupId: group.id,
-          groupName: group.name,
+          groupName: group.id === 0 ? 'Non-group expenses' : group.name,
           from: fromId,
-          fromName: fromMember ? `${fromMember.first_name} ${fromMember.last_name || ''}`.trim() : 'Unknown',
+          fromName: nameLookup[fromId] || 'Unknown',
           to: toId,
-          toName: toMember ? `${toMember.first_name} ${toMember.last_name || ''}`.trim() : 'Unknown',
+          toName: nameLookup[toId] || 'Unknown',
           amount,
           currency: debt.currency_code || 'INR',
           youPay: fromId === userId,
@@ -406,13 +456,41 @@ export function searchEverything(query, { groups, friends, expenses, userId }) {
 // ── Formatters ──
 
 export function formatCurrency(amount, currency = 'INR') {
-  return new Intl.NumberFormat('en-IN', {
+  // Use locale appropriate to the currency
+  const localeMap = { INR: 'en-IN', USD: 'en-US', EUR: 'de-DE', GBP: 'en-GB', AUD: 'en-AU', CAD: 'en-CA', SGD: 'en-SG', AED: 'en-AE', JPY: 'ja-JP' };
+  const locale = localeMap[currency] || 'en-US';
+  return new Intl.NumberFormat(locale, {
     style: 'currency', currency, maximumFractionDigits: 0,
   }).format(amount);
 }
 
-export function formatCompact(amount) {
-  if (Math.abs(amount) >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
-  if (Math.abs(amount) >= 1000) return `₹${(amount / 1000).toFixed(1)}K`;
-  return `₹${Math.round(amount)}`;
+export function formatCompact(amount, currency = 'INR') {
+  const symbol = getCurrencySymbol(currency);
+  if (Math.abs(amount) >= 100000) return `${symbol}${(amount / 100000).toFixed(1)}L`;
+  if (Math.abs(amount) >= 1000) return `${symbol}${(amount / 1000).toFixed(1)}K`;
+  return `${symbol}${Math.round(amount)}`;
+}
+
+/** Get the symbol for a currency code */
+export function getCurrencySymbol(currency = 'INR') {
+  try {
+    // Use Intl to reliably extract just the symbol
+    const parts = new Intl.NumberFormat('en', { style: 'currency', currency, currencyDisplay: 'narrowSymbol' }).formatToParts(0);
+    return parts.find(p => p.type === 'currency')?.value || currency;
+  } catch {
+    return currency;
+  }
+}
+
+/**
+ * Compute per-currency balances for a group member array.
+ * Returns an array of { amount, currency } sorted by |amount| desc.
+ */
+export function computeMemberBalances(members, userId) {
+  const me = members?.find(m => m.id === userId);
+  if (!me?.balance || me.balance.length === 0) return [];
+  return me.balance
+    .map(b => ({ amount: parseFloat(b.amount), currency: b.currency_code || 'INR' }))
+    .filter(b => Math.abs(b.amount) > 0.01)
+    .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 }

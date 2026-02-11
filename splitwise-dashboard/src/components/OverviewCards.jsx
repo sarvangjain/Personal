@@ -5,7 +5,11 @@ import { format, parseISO } from 'date-fns';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#6366f1', '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4', '#84cc16', '#e11d48'];
 
-function StatCard({ icon: Icon, label, value, subtext, type = 'neutral' }) {
+/**
+ * StatCard with multi-currency support.
+ * `value` = primary display string, `extraValues` = optional array of secondary currency strings
+ */
+function StatCard({ icon: Icon, label, value, extraValues, subtext, type = 'neutral' }) {
   const glowClass = type === 'positive' ? 'stat-glow-green' : type === 'negative' ? 'stat-glow-red' : 'stat-glow-amber';
   const textColor = type === 'positive' ? 'text-emerald-400' : type === 'negative' ? 'text-red-400' : 'text-amber-400';
   const iconBg = type === 'positive' ? 'bg-emerald-500/10' : type === 'negative' ? 'bg-red-500/10' : 'bg-amber-500/10';
@@ -18,6 +22,13 @@ function StatCard({ icon: Icon, label, value, subtext, type = 'neutral' }) {
         </div>
       </div>
       <p className={`font-display text-lg sm:text-2xl ${textColor}`}>{value}</p>
+      {extraValues && extraValues.length > 0 && (
+        <div className="mt-0.5 space-y-0">
+          {extraValues.map((v, i) => (
+            <p key={i} className={`font-display text-sm sm:text-base ${textColor} opacity-70`}>{v}</p>
+          ))}
+        </div>
+      )}
       <p className="text-[10px] sm:text-xs text-stone-500 mt-0.5 sm:mt-1 font-medium">{label}</p>
       {subtext && <p className="text-[9px] sm:text-[10px] text-stone-600 mt-0.5">{subtext}</p>}
     </div>
@@ -175,12 +186,12 @@ function RecentTransactions({ expenses, userId }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm sm:text-sm text-stone-300 truncate">{exp.description}</p>
                   <p className="text-xs sm:text-[10px] text-stone-600">
-                    {format(parseISO(exp.date), 'MMM d')} · {payerName} paid {formatCurrency(parseFloat(exp.cost))}
+                    {format(parseISO(exp.date), 'MMM d')} · {payerName} paid {formatCurrency(parseFloat(exp.cost), exp.currency_code || 'INR')}
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className={`text-sm sm:text-sm font-mono ${iPaid > 0 && iPaid > myShare ? 'text-emerald-400' : 'text-stone-400'}`}>
-                    {formatCurrency(myShare)}
+                    {formatCurrency(myShare, exp.currency_code || 'INR')}
                   </p>
                 </div>
               </div>
@@ -210,9 +221,22 @@ export default function OverviewCards({ balances, expenses, userId }) {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard icon={TrendingUp} label="Others Owe You" value={formatCurrency(balances.totalOwed)} type="positive" />
-        <StatCard icon={TrendingDown} label="You Owe Others" value={formatCurrency(balances.totalOwe)} type="negative" />
-        <StatCard icon={Scale} label="Net Balance" value={formatCurrency(balances.netBalance)} type={balances.netBalance >= 0 ? 'positive' : 'negative'} />
+        <StatCard
+          icon={TrendingUp} label="Others Owe You" type="positive"
+          value={formatCurrency(balances.totalOwed, balances.primaryCurrency)}
+          extraValues={balances.currencies?.slice(1).filter(c => c.owed > 0).map(c => `+ ${formatCurrency(c.owed, c.code)}`)}
+        />
+        <StatCard
+          icon={TrendingDown} label="You Owe Others" type="negative"
+          value={formatCurrency(balances.totalOwe, balances.primaryCurrency)}
+          extraValues={balances.currencies?.slice(1).filter(c => c.owe > 0).map(c => `+ ${formatCurrency(c.owe, c.code)}`)}
+        />
+        <StatCard
+          icon={Scale} label="Net Balance"
+          type={balances.netBalance >= 0 ? 'positive' : 'negative'}
+          value={formatCurrency(balances.netBalance, balances.primaryCurrency)}
+          extraValues={balances.currencies?.slice(1).filter(c => Math.abs(c.net) > 0.5).map(c => formatCurrency(c.net, c.code))}
+        />
         <StatCard icon={Receipt} label="Your Total Share" value={formatCurrency(totalYourExpenses)} subtext={`from ${expenses.length} expenses`} type="neutral" />
       </div>
 

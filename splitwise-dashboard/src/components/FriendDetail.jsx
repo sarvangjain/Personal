@@ -40,7 +40,8 @@ export default function FriendDetail({ friend, onBack }) {
 
   const categories = computeExpensesByCategory(expenses, userId);
   const monthly = computeMonthlySpending(expenses, userId, 8);
-  const recent = computeRecentExpenses(expenses, 25);
+  // Show all expenses (sorted by date), not limited to 25
+  const recent = computeRecentExpenses(expenses, expenses.length);
   const totalShared = expenses.reduce((s, e) => s + parseFloat(e.cost), 0);
   const myShare = expenses.reduce((s, e) => {
     const u = e.users?.find(x => x.user_id === userId);
@@ -70,9 +71,18 @@ export default function FriendDetail({ friend, onBack }) {
           )}
           <div>
             <h2 className="font-display text-xl text-stone-100">{friend.name}</h2>
-            <p className={`text-xs font-mono ${friend.balance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {friend.balance >= 0 ? 'Owes you' : 'You owe'} {formatCurrency(Math.abs(friend.balance))}
-            </p>
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+              {(friend.allBalances && friend.allBalances.length > 0
+                ? friend.allBalances
+                : [{ amount: friend.balance, currency: friend.currency }]
+              ).map((b, i) => (
+                <p key={b.currency} className={`text-xs font-mono ${
+                  b.amount >= 0 ? 'text-emerald-400' : 'text-red-400'
+                } ${i > 0 ? 'opacity-70' : ''}`}>
+                  {b.amount >= 0 ? 'Owes you' : 'You owe'} {formatCurrency(Math.abs(b.amount), b.currency)}
+                </p>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -164,11 +174,11 @@ export default function FriendDetail({ friend, onBack }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-stone-300 truncate">{exp.description}</p>
                   <p className="text-[10px] text-stone-600">
-                    {format(parseISO(exp.date), 'MMM d, yyyy')} · {exp.category?.name || 'General'} · Total {formatCurrency(parseFloat(exp.cost))}
+                    {format(parseISO(exp.date), 'MMM d, yyyy')} · {exp.category?.name || 'General'} · Total {formatCurrency(parseFloat(exp.cost), exp.currency_code || 'INR')}
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className={`text-sm font-mono ${iPaid ? 'text-emerald-400' : 'text-stone-400'}`}>{formatCurrency(myExpShare)}</p>
+                  <p className={`text-sm font-mono ${iPaid ? 'text-emerald-400' : 'text-stone-400'}`}>{formatCurrency(myExpShare, exp.currency_code || 'INR')}</p>
                   <p className="text-[10px] text-stone-600">{iPaid ? 'you paid' : 'they paid'}</p>
                 </div>
               </div>

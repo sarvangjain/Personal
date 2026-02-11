@@ -100,7 +100,12 @@ export default function SearchBar({ groups, friends, expenses, onSelectGroup, on
                 <div className="mb-2">
                   <p className="px-3 py-1.5 text-[10px] font-medium text-stone-500 uppercase tracking-wider">Friends</p>
                   {results.friends.map(f => {
-                    const bal = f.balance?.reduce((s, b) => s + parseFloat(b.amount), 0) || 0;
+                    // Show per-currency balances
+                    const perCurrency = (f.balance || []).map(b => ({
+                      amount: parseFloat(b.amount),
+                      currency: b.currency_code || 'INR',
+                    })).filter(b => Math.abs(b.amount) > 0.01);
+
                     return (
                       <button
                         key={f.id}
@@ -121,11 +126,11 @@ export default function SearchBar({ groups, friends, expenses, onSelectGroup, on
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-stone-300 truncate">{f.first_name} {f.last_name || ''}</p>
-                          {bal !== 0 && (
-                            <p className={`text-[10px] ${bal > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                              {bal > 0 ? 'owes you' : 'you owe'} {formatCurrency(Math.abs(bal))}
+                          {perCurrency.map((b, i) => (
+                            <p key={b.currency} className={`text-[10px] ${b.amount > 0 ? 'text-emerald-400' : 'text-red-400'} ${i > 0 ? 'opacity-70' : ''}`}>
+                              {b.amount > 0 ? 'owes you' : 'you owe'} {formatCurrency(Math.abs(b.amount), b.currency)}
                             </p>
-                          )}
+                          ))}
                         </div>
                         <ArrowRight size={12} className="text-stone-600" />
                       </button>
@@ -142,9 +147,17 @@ export default function SearchBar({ groups, friends, expenses, onSelectGroup, on
                     const userEntry = e.users?.find(u => u.user_id === userId);
                     const share = userEntry ? parseFloat(userEntry.owed_share) : 0;
                     return (
-                      <div
+                      <button
                         key={e.id}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-stone-800/50 transition-colors"
+                        onClick={() => {
+                          if (e.group_id) {
+                            onSelectGroup?.(e.group_id);
+                            onNavigate?.('groups');
+                          }
+                          setOpen(false);
+                          setQuery('');
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-stone-800/50 transition-colors text-left"
                       >
                         <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
                           <Receipt size={12} className="text-amber-400" />
@@ -155,8 +168,8 @@ export default function SearchBar({ groups, friends, expenses, onSelectGroup, on
                             {format(parseISO(e.date), 'MMM d, yyyy')} · {e.category?.name || 'General'}
                           </p>
                         </div>
-                        <span className="text-xs font-mono text-stone-400">{formatCurrency(share)}</span>
-                      </div>
+                        <span className="text-xs font-mono text-stone-400">{formatCurrency(share, e.currency_code || 'INR')}</span>
+                      </button>
                     );
                   })}
                 </div>

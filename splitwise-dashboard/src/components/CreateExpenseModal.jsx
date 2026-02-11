@@ -161,6 +161,15 @@ export default function CreateExpenseModal({ groups, friends, onClose, onCreated
     if (!description.trim()) { setError('Description is required'); return; }
     if (!cost || parseFloat(cost) <= 0) { setError('Enter a valid amount'); return; }
 
+    // Validate custom split totals add up
+    if (mode === 'friend' && splitType === 'custom') {
+      const total = parseFloat(yourShare || 0) + parseFloat(friendShare || 0);
+      if (Math.abs(total - parseFloat(cost)) > 0.01) {
+        setError(`Shares must add up to the total (${cost}). Currently: ${total.toFixed(2)}`);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       if (mode === 'group') {

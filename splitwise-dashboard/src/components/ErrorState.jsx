@@ -1,15 +1,21 @@
 import { AlertCircle, RefreshCw, Settings } from 'lucide-react';
 
-export default function ErrorState({ message, onRetry, onSettings }) {
+export default function ErrorState({ message, onRetry, onSettings, isOnline = true }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4">
       <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center">
         <AlertCircle size={28} className="text-red-400" />
       </div>
       <div className="text-center max-w-md">
-        <h2 className="text-lg font-display text-stone-200 mb-2">Connection Failed</h2>
+        <h2 className="text-lg font-display text-stone-200 mb-2">
+          {isOnline ? 'Connection Failed' : 'You\'re Offline'}
+        </h2>
         <p className="text-sm text-stone-400 leading-relaxed">{message}</p>
-        <p className="text-xs text-stone-500 mt-2">Check your API key in Settings or ensure Splitwise is reachable.</p>
+        <p className="text-xs text-stone-500 mt-2">
+          {isOnline
+            ? 'Check your API key in Settings or ensure Splitwise is reachable.'
+            : 'Please check your internet connection and try again.'}
+        </p>
       </div>
       <div className="flex gap-3">
         <button

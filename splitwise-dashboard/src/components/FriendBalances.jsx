@@ -11,9 +11,29 @@ export default function FriendBalances({ friends, onSelectFriend }) {
     .map(f => ({
       name: f.name.split(' ')[0],
       balance: Math.round(f.balance),
+      currency: f.currency,
     }));
 
+  // Compute per-currency totals for section headers
+  function aggregateByCurrency(list) {
+    const map = {};
+    list.forEach(f => {
+      (f.allBalances || [{ amount: f.balance, currency: f.currency }]).forEach(b => {
+        const c = b.currency || 'INR';
+        const amt = Math.abs(b.amount);
+        if (amt > 0.01) {
+          map[c] = (map[c] || 0) + amt;
+        }
+      });
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  }
+
   function FriendRow({ f, colorClass }) {
+    const balances = f.allBalances && f.allBalances.length > 0
+      ? f.allBalances
+      : [{ amount: f.balance, currency: f.currency }];
+
     return (
       <button
         key={f.id}
@@ -28,9 +48,15 @@ export default function FriendBalances({ friends, onSelectFriend }) {
           </div>
         )}
         <span className="flex-1 text-base sm:text-sm text-stone-300">{f.name}</span>
-        <span className={`text-base sm:text-sm font-mono ${colorClass}`}>
-          {formatCurrency(Math.abs(f.balance))}
-        </span>
+        <div className="text-right">
+          {balances.map((b, i) => (
+            <p key={b.currency} className={`font-mono ${colorClass} ${
+              i === 0 ? 'text-base sm:text-sm' : 'text-xs sm:text-[11px] opacity-70'
+            }`}>
+              {formatCurrency(Math.abs(b.amount), b.currency)}
+            </p>
+          ))}
+        </div>
         <ChevronRight size={14} className="text-stone-600 opacity-0 group-hover:opacity-100 transition-opacity sm:w-3 sm:h-3" />
       </button>
     );
@@ -48,7 +74,7 @@ export default function FriendBalances({ friends, onSelectFriend }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#78716c' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} />
-                <Tooltip formatter={(value) => [formatCurrency(value), 'Balance']} />
+                <Tooltip formatter={(value, _name, props) => [formatCurrency(value, props.payload?.currency || 'INR'), 'Balance']} />
                 <Bar dataKey="balance" radius={[4, 4, 0, 0]} maxBarSize={36}>
                   {chartData.map((entry, i) => (
                     <Cell key={i} fill={entry.balance >= 0 ? '#10b981' : '#ef4444'} fillOpacity={0.8} />
@@ -70,7 +96,7 @@ export default function FriendBalances({ friends, onSelectFriend }) {
             They Owe You
           </h3>
           <p className="text-sm sm:text-xs text-stone-500 mb-4">
-            Total: {formatCurrency(owedToYou.reduce((s, f) => s + f.balance, 0))}
+            Total: {aggregateByCurrency(owedToYou).map(([c, a]) => formatCurrency(a, c)).join(' + ') || formatCurrency(0)}
           </p>
           {owedToYou.length === 0 ? (
             <p className="text-base sm:text-sm text-stone-500 py-4 text-center">Nobody owes you</p>
@@ -88,7 +114,7 @@ export default function FriendBalances({ friends, onSelectFriend }) {
             You Owe Them
           </h3>
           <p className="text-sm sm:text-xs text-stone-500 mb-4">
-            Total: {formatCurrency(Math.abs(youOwe.reduce((s, f) => s + f.balance, 0)))}
+            Total: {aggregateByCurrency(youOwe).map(([c, a]) => formatCurrency(a, c)).join(' + ') || formatCurrency(0)}
           </p>
           {youOwe.length === 0 ? (
             <p className="text-base sm:text-sm text-stone-500 py-4 text-center">You don't owe anyone</p>

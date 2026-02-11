@@ -28,7 +28,7 @@ async function fetchApi(endpoint, params = {}) {
 async function postApi(endpoint, body = {}) {
   const formBody = new URLSearchParams();
   Object.entries(body).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
+    if (value !== undefined && value !== null && value !== false) {
       formBody.append(key, value);
     }
   });
@@ -95,6 +95,8 @@ export async function getAllExpensesForGroup(groupId) {
     allExpenses = [...allExpenses, ...expenses];
     hasMore = expenses.length >= limit;
     offset += limit;
+    // Safety limit to prevent infinite loops
+    if (offset > 5000) break;
   }
   return allExpenses.filter(e => !e.deleted_at && !e.payment);
 }
@@ -110,6 +112,8 @@ export async function getExpensesForFriend(friendId) {
     allExpenses = [...allExpenses, ...expenses];
     hasMore = expenses.length >= limit;
     offset += limit;
+    // Safety limit to prevent infinite loops
+    if (offset > 5000) break;
   }
   return allExpenses.filter(e => !e.deleted_at && !e.payment);
 }

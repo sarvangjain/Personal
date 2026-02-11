@@ -12,7 +12,8 @@ self.addEventListener('install', (event) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
-  self.skipWaiting();
+  // Don't call self.skipWaiting() here — let the app control
+  // when to activate via the update banner and 'skipWaiting' message
 });
 
 // Activate event - clean up old caches

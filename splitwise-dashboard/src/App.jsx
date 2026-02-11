@@ -11,6 +11,7 @@ import OverviewCards from './components/OverviewCards';
 import SmartInsights from './components/SmartInsights';
 import RecurringExpenses from './components/RecurringExpenses';
 import SettleUpPanel from './components/SettleUpPanel';
+import DebtGraph from './components/DebtGraph';
 import GroupSelector from './components/GroupSelector';
 import GroupDetail from './components/GroupDetail';
 import FriendBalances from './components/FriendBalances';
@@ -214,7 +215,14 @@ function Dashboard() {
     if (found) { setSelectedFriend(found); setActiveTab('friends'); return; }
     const raw = friends.find(f => f.id === friendId);
     if (raw) {
-      setSelectedFriend({ id: raw.id, name: `${raw.first_name} ${raw.last_name || ''}`.trim(), picture: raw.picture?.medium, balance: 0, currency: 'INR' });
+      const allBalances = (raw.balance || []).map(b => ({
+        amount: parseFloat(b.amount), currency: b.currency_code || 'INR'
+      })).filter(b => Math.abs(b.amount) > 0.01);
+      const primary = allBalances[0] || { amount: 0, currency: 'INR' };
+      setSelectedFriend({
+        id: raw.id, name: `${raw.first_name} ${raw.last_name || ''}`.trim(),
+        picture: raw.picture?.medium, balance: primary.amount, currency: primary.currency, allBalances,
+      });
       setActiveTab('friends');
     }
   }
@@ -227,7 +235,7 @@ function Dashboard() {
   const activeGroups = groups.filter(g => g.id !== 0 && g.members?.length > 1);
   const selectedGroup = groups.find(g => g.id === selectedGroupId);
   const insights = computeSmartInsights(allExpenses, friends, groups, userId);
-  const settleUpSuggestions = computeSettleUpSuggestions(groups, userId);
+  const settleUpSuggestions = computeSettleUpSuggestions(groups, userId, friends, user);
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -439,6 +447,9 @@ function Dashboard() {
                 <p className="text-xs text-stone-500">Set and track spending limits for categories</p>
               </div>
             </div>
+
+            {/* Debt Network Graph */}
+            <DebtGraph groups={groups} userId={userId} />
 
             <div className="text-center pt-4">
               <p className="text-xs text-stone-600">Have feature ideas? We'd love to hear from you!</p>
