@@ -25,6 +25,8 @@ import RefreshButton from './components/RefreshButton';
 import { WifiOff, RefreshCw, Download, X, Sparkles, FlaskConical, Share2, Wallet, Receipt } from 'lucide-react';
 import Budget from './components/Budget';
 import BudgetSummaryWidget from './components/BudgetSummaryWidget';
+import LifestyleScore from './components/LifestyleScore';
+import TripTracker from './components/TripTracker';
 
 // Offline Banner Component
 function OfflineBanner() {
@@ -307,16 +309,19 @@ function Dashboard() {
         <InstallPrompt onInstall={handleInstall} onDismiss={dismissInstallPrompt} />
       )}
       
-      <Header
-        user={user}
-        onSettings={() => { haptic.light(); setShowSettings(true); }}
-        onAddExpense={() => { haptic.light(); setShowCreateExpensePage(true); }}
-        groups={groups} friends={friends} expenses={allExpenses}
-        onSelectGroup={handleSearchSelectGroup}
-        onSelectFriend={handleSearchSelectFriend}
-        onNavigate={handleTabChange}
-        isOnline={isOnline}
-      />
+      {/* Hide Header when Create Expense Page is shown */}
+      {!showCreateExpensePage && (
+        <Header
+          user={user}
+          onSettings={() => { haptic.light(); setShowSettings(true); }}
+          onAddExpense={() => { haptic.light(); setShowCreateExpensePage(true); }}
+          groups={groups} friends={friends} expenses={allExpenses}
+          onSelectGroup={handleSearchSelectGroup}
+          onSelectFriend={handleSearchSelectFriend}
+          onNavigate={handleTabChange}
+          isOnline={isOnline}
+        />
+      )}
 
       <main className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 pb-20 sm:pb-16">
         {/* Create Expense Page (full page) */}
@@ -508,6 +513,12 @@ function Dashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Lifestyle Score */}
+            <LifestyleScore expenses={allExpenses} userId={userId} />
+
+            {/* Trip Tracker */}
+            <TripTracker expenses={allExpenses} groups={groups} userId={userId} />
 
             {/* Coming Soon Cards */}
             <div className="grid sm:grid-cols-2 gap-4">

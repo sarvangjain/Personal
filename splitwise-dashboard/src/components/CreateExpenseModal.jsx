@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Plus, Users, User, Loader2, Check, AlertCircle, Search, ChevronDown } from 'lucide-react';
 import { createExpenseEqualSplit, createExpenseCustomSplit } from '../api/splitwise';
 import { getUserId, formatCurrency } from '../utils/analytics';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 // Searchable Dropdown Component
 function SearchableDropdown({ 
@@ -129,6 +130,9 @@ export default function CreateExpenseModal({ groups, friends, onClose, onCreated
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  
+  // Prevent background scrolling when modal is open
+  useBodyScrollLock(true);
 
   // For custom splits in friend mode
   const [yourShare, setYourShare] = useState('');

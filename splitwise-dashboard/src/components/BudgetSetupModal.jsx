@@ -3,6 +3,7 @@ import { X, Plus, Trash2, Copy, Wallet, Loader2 } from 'lucide-react';
 import { formatCurrency, getUniqueCategories } from '../utils/analytics';
 import { copyBudgetFromPreviousMonth } from '../firebase/budgetService';
 import { format } from 'date-fns';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function BudgetSetupModal({ 
   onClose, 
@@ -21,6 +22,9 @@ export default function BudgetSetupModal({
   const [copying, setCopying] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Prevent background scrolling when modal is open
+  useBodyScrollLock(true);
 
   // Get suggested categories from user's expenses
   const suggestedCategories = getUniqueCategories(expenses);

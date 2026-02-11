@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   ArrowLeft, Plus, Users, User, Loader2, Check, AlertCircle, 
   Search, ChevronDown, Tag, Sparkles, X
@@ -27,6 +27,21 @@ function SearchableDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const wrapperRef = useRef(null);
+
+  // Close on click outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+        setSearch('');
+      }
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [open]);
 
   const filteredOptions = options.filter(opt => {
     if (!search) return true;
@@ -40,7 +55,7 @@ function SearchableDropdown({
   const selectedOption = options.find(o => o.id?.toString() === value?.toString());
 
   return (
-    <div className="relative">
+    <div ref={wrapperRef} className="relative" style={{ zIndex: open ? 100 : 1 }}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -56,7 +71,7 @@ function SearchableDropdown({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-stone-900 border border-stone-700/50 rounded-xl shadow-2xl z-50 overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-stone-900/95 backdrop-blur-xl border border-stone-700/50 rounded-xl shadow-2xl overflow-hidden" style={{ zIndex: 101 }}>
           <div className="p-2 border-b border-stone-800/50">
             <div className="flex items-center gap-2 px-2.5 py-2 bg-stone-800/60 rounded-lg">
               <Search size={13} className="text-stone-500 flex-shrink-0" />
@@ -280,12 +295,12 @@ export default function CreateExpensePage({ groups, friends, onBack, onCreated }
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pt-4 safe-top">
       {/* Header */}
       <div className="flex items-center gap-4">
         <button
           onClick={onBack}
-          className="p-2 rounded-lg bg-stone-800/50 hover:bg-stone-800 border border-stone-700/50 text-stone-400 hover:text-stone-200 transition-all"
+          className="p-2.5 rounded-xl bg-stone-800/60 hover:bg-stone-800 border border-stone-700/50 text-stone-400 hover:text-stone-200 transition-all"
         >
           <ArrowLeft size={20} />
         </button>

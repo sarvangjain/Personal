@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { X, Download, Share2, Check, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { formatYIRCurrency } from '../utils/yearInReview';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 // ─── Shared Constants & Helpers ─────────────────────────────────────────────
 
@@ -444,6 +445,9 @@ export default function ShareableReview({ data, year, userName, onClose }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const cardRef = useRef(null);
+  
+  // Prevent background scrolling when share modal is open
+  useBodyScrollLock(true);
 
   const { Component } = CARDS[currentCard];
   const cardId = CARDS[currentCard].id;

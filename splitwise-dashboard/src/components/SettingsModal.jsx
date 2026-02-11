@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { X, Key, Hash, LogOut, Shield } from 'lucide-react';
 import { getConfig, saveConfig, clearConfig } from '../utils/config';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function SettingsModal({ onClose, onSave, onLogout }) {
   const config = getConfig() || {};
   const [apiKey, setApiKey] = useState(config.apiKey || '');
   const [userId, setUserId] = useState(String(config.userId || ''));
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
+  
+  // Prevent background scrolling when modal is open
+  useBodyScrollLock(true);
 
   function handleSave() {
     saveConfig({ apiKey, userId: parseInt(userId) || 0, userName: config.userName });

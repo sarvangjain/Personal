@@ -3,12 +3,20 @@ import { Search, X, Users, User, Receipt, ArrowRight } from 'lucide-react';
 import { searchEverything, formatCurrency, getUserId } from '../utils/analytics';
 import { format, parseISO } from 'date-fns';
 
-export default function SearchBar({ groups, friends, expenses, onSelectGroup, onSelectFriend, onNavigate }) {
+export default function SearchBar({ groups, friends, expenses, onSelectGroup, onSelectFriend, onNavigate, autoFocus = false }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const inputRef = useRef(null);
   const wrapperRef = useRef(null);
   const userId = getUserId();
+  
+  // Auto focus on mount if requested
+  useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      inputRef.current.focus();
+      setOpen(true);
+    }
+  }, [autoFocus]);
 
   const results = query.length >= 2 ? searchEverything(query, { groups, friends, expenses, userId }) : { groups: [], friends: [], expenses: [] };
   const hasResults = results.groups.length > 0 || results.friends.length > 0 || results.expenses.length > 0;

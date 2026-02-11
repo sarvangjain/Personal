@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { X, Receipt, Calendar, Tag, FileText, AlertCircle } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { getUniqueCategories } from '../utils/analytics';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function ManualEntryModal({ 
   onClose, 
@@ -14,6 +15,9 @@ export default function ManualEntryModal({
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  
+  // Prevent background scrolling when modal is open
+  useBodyScrollLock(true);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
   // Get suggested categories from user's expenses

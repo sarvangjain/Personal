@@ -7,6 +7,7 @@ import { getUserId } from '../utils/analytics';
 import { computeYearInReview, formatYIRCurrency, getCategoryGradient } from '../utils/yearInReview';
 import ShareableReview from './ShareableReview';
 import { trackWrappedView, trackWrappedShare } from '../firebase/userService';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 const CHART_COLORS = ['#10b981', '#f59e0b', '#6366f1', '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4'];
 
@@ -448,6 +449,9 @@ export default function YearInReview({ groups, friends, expenses: initialExpense
   const [showShareModal, setShowShareModal] = useState(false);
   const year = yearProp || new Date().getFullYear();
   const userId = getUserId();
+  
+  // Prevent background scrolling when YearInReview is open
+  useBodyScrollLock(true);
 
   // Track wrapped view in Firebase (once on mount)
   const hasTrackedView = useRef(false);

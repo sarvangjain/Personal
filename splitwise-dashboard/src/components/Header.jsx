@@ -1,28 +1,60 @@
-import { Settings, Wallet, Plus, WifiOff } from 'lucide-react';
+import { useState } from 'react';
+import { Settings, Plus, WifiOff, Search, X } from 'lucide-react';
 import SearchBar from './SearchBar';
 
+// SVG Logo component matching the PWA icon
+function AppLogo({ size = 36, className = '' }) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 512 512" 
+      width={size} 
+      height={size}
+      className={className}
+    >
+      <defs>
+        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style={{ stopColor: '#10b981' }} />
+          <stop offset="100%" style={{ stopColor: '#0d9488' }} />
+        </linearGradient>
+        <linearGradient id="splitGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style={{ stopColor: '#ffffff', stopOpacity: 0.95 }} />
+          <stop offset="100%" style={{ stopColor: '#ffffff', stopOpacity: 0.85 }} />
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="108" fill="url(#bgGrad)" />
+      <circle cx="200" cy="256" r="100" fill="none" stroke="url(#splitGrad)" strokeWidth="36" />
+      <circle cx="312" cy="256" r="100" fill="none" stroke="url(#splitGrad)" strokeWidth="36" />
+      <ellipse cx="256" cy="256" rx="24" ry="80" fill="white" opacity="0.9" />
+    </svg>
+  );
+}
+
 export default function Header({ user, onSettings, onAddExpense, groups, friends, expenses, onSelectGroup, onSelectFriend, onNavigate, isOnline = true }) {
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  
   return (
     <header className="border-b border-stone-800/40 bg-stone-950/80 backdrop-blur-xl sticky top-0 z-50 safe-top">
+      {/* Main header row */}
       <div className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
-        {/* Logo */}
+        {/* Logo + Name */}
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 relative">
-            <Wallet size={16} className="text-white sm:w-[18px] sm:h-[18px]" />
+          <div className="relative">
+            <AppLogo size={32} className="sm:w-9 sm:h-9 rounded-xl shadow-lg shadow-emerald-500/20" />
             {!isOnline && (
               <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-stone-900 flex items-center justify-center border border-stone-700">
                 <WifiOff size={8} className="text-amber-400" />
               </div>
             )}
           </div>
-          <div className="hidden sm:block">
-            <h1 className="font-display text-lg text-stone-100 leading-tight">SplitSight</h1>
-            <p className="text-[10px] text-stone-500 font-medium tracking-widest uppercase">Splitwise Analytics</p>
+          <div>
+            <h1 className="font-display text-base sm:text-lg text-stone-100 leading-tight">SplitSight</h1>
+            <p className="text-[9px] sm:text-[10px] text-stone-500 font-medium tracking-widest uppercase">Splitwise Analytics</p>
           </div>
         </div>
 
-        {/* Search Bar - centered (hidden on very small screens) */}
-        <div className="flex-1 flex justify-center max-w-[280px] sm:max-w-none">
+        {/* Search Bar - desktop only */}
+        <div className="hidden sm:flex flex-1 justify-center">
           <SearchBar
             groups={groups || []}
             friends={friends || []}
@@ -35,6 +67,18 @@ export default function Header({ user, onSettings, onAddExpense, groups, friends
 
         {/* Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          {/* Mobile search toggle */}
+          <button
+            onClick={() => setShowMobileSearch(!showMobileSearch)}
+            className="sm:hidden w-9 h-9 rounded-lg bg-stone-800/60 hover:bg-stone-700/60 active:bg-stone-700/80 flex items-center justify-center transition-colors border border-stone-700/40 touch-manipulation"
+          >
+            {showMobileSearch ? (
+              <X size={15} className="text-stone-400" />
+            ) : (
+              <Search size={15} className="text-stone-400" />
+            )}
+          </button>
+          
           <button
             onClick={onAddExpense}
             className="flex items-center justify-center gap-1.5 w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-medium rounded-lg sm:rounded-lg transition-colors shadow-lg shadow-emerald-500/15 touch-manipulation"
@@ -55,6 +99,21 @@ export default function Header({ user, onSettings, onAddExpense, groups, friends
           </button>
         </div>
       </div>
+      
+      {/* Mobile search bar - expandable */}
+      {showMobileSearch && (
+        <div className="sm:hidden px-3 pb-3 animate-fade-in">
+          <SearchBar
+            groups={groups || []}
+            friends={friends || []}
+            expenses={expenses || []}
+            onSelectGroup={(id) => { onSelectGroup(id); setShowMobileSearch(false); }}
+            onSelectFriend={(id) => { onSelectFriend(id); setShowMobileSearch(false); }}
+            onNavigate={(tab) => { onNavigate(tab); setShowMobileSearch(false); }}
+            autoFocus
+          />
+        </div>
+      )}
     </header>
   );
 }
