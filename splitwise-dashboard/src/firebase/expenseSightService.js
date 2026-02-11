@@ -24,12 +24,19 @@ const COLLECTION_NAME = 'expenseSight';
 
 // ─── Helper Functions ────────────────────────────────────────────────────────
 
+/**
+ * Ensure userId is a string for Firestore paths
+ */
+function normalizeUserId(userId) {
+  return String(userId);
+}
+
 function getUserCollection(userId) {
-  return collection(db, COLLECTION_NAME, userId, 'expenses');
+  return collection(db, COLLECTION_NAME, normalizeUserId(userId), 'expenses');
 }
 
 function getExpenseDoc(userId, expenseId) {
-  return doc(db, COLLECTION_NAME, userId, 'expenses', expenseId);
+  return doc(db, COLLECTION_NAME, normalizeUserId(userId), 'expenses', expenseId);
 }
 
 // ─── CRUD Operations ─────────────────────────────────────────────────────────
@@ -59,7 +66,7 @@ export async function addExpenses(userId, expenses) {
     await batch.commit();
     
     // Invalidate cache
-    expenseSightCache.delete(userId);
+    clearCache(userId);
     
     return { success: true, count: expenses.length };
   } catch (error) {
@@ -85,7 +92,8 @@ export async function getExpenses(userId, options = {}) {
   } = options;
 
   // Check cache
-  const cacheKey = `${userId}_${startDate || ''}_${endDate || ''}_${category || ''}_${limitCount}`;
+  const normalizedId = normalizeUserId(userId);
+  const cacheKey = `${normalizedId}_${startDate || ''}_${endDate || ''}_${category || ''}_${limitCount}`;
   if (useCache && expenseSightCache.has(cacheKey)) {
     return expenseSightCache.get(cacheKey);
   }
@@ -163,7 +171,7 @@ export async function updateExpense(userId, expenseId, data) {
     }, { merge: true });
     
     // Invalidate cache
-    expenseSightCache.delete(userId);
+    clearCache(userId);
     
     return { success: true };
   } catch (error) {
@@ -184,7 +192,7 @@ export async function deleteExpense(userId, expenseId) {
     await deleteDoc(getExpenseDoc(userId, expenseId));
     
     // Invalidate cache
-    expenseSightCache.delete(userId);
+    clearCache(userId);
     
     return { success: true };
   } catch (error) {
@@ -211,7 +219,7 @@ export async function deleteExpenses(userId, expenseIds) {
     await batch.commit();
     
     // Invalidate cache
-    expenseSightCache.delete(userId);
+    clearCache(userId);
     
     return { success: true, count: expenseIds.length };
   } catch (error) {
@@ -309,8 +317,9 @@ const expenseSightCache = new Map();
 export function clearCache(userId) {
   if (userId) {
     // Clear all cache entries for this user
+    const normalizedId = normalizeUserId(userId);
     for (const key of expenseSightCache.keys()) {
-      if (key.startsWith(userId)) {
+      if (key.startsWith(normalizedId)) {
         expenseSightCache.delete(key);
       }
     }
