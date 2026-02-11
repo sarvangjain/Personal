@@ -54,9 +54,9 @@ export default function Header({ user, onOpenSidebar, onAddExpense, groups, frie
                 </div>
               )}
             </div>
-            <div className="hidden sm:block">
-              <h1 className="font-display text-base sm:text-lg text-stone-100 leading-tight">SplitSight</h1>
-              <p className="text-[9px] sm:text-[10px] text-stone-500 font-medium tracking-widest uppercase">Analytics</p>
+            <div>
+              <h1 className="font-display text-sm sm:text-lg text-stone-100 leading-tight">SplitSight</h1>
+              <p className="text-[8px] sm:text-[10px] text-stone-500 font-medium tracking-widest uppercase">Analytics</p>
             </div>
           </div>
         </div>
