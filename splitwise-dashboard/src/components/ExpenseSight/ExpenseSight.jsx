@@ -9,6 +9,8 @@ import QuickInput from './QuickInput';
 import ExpensePreview from './ExpensePreview';
 import ExpenseHistory from './ExpenseHistory';
 import ExpenseSightAnalytics from './ExpenseSightAnalytics';
+import QuickAddFAB from './QuickAddFAB';
+import QuickAddModal from './QuickAddModal';
 import { addExpenses, getExpenses, clearCache } from '../../firebase/expenseSightService';
 import { isFirebaseConfigured } from '../../firebase/config';
 
@@ -25,6 +27,7 @@ export default function ExpenseSight({ userId }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   const firebaseEnabled = isFirebaseConfigured();
 
@@ -85,6 +88,11 @@ export default function ExpenseSight({ userId }) {
   // Handle refresh
   const handleRefresh = () => {
     clearCache(userId);
+    loadExpenses(true);
+  };
+
+  // Handle quick add modal saved
+  const handleQuickAddSaved = () => {
     loadExpenses(true);
   };
 
@@ -184,6 +192,17 @@ export default function ExpenseSight({ userId }) {
       {activeTab === 'analytics' && (
         <ExpenseSightAnalytics expenses={expenses} />
       )}
+
+      {/* Quick Add FAB */}
+      <QuickAddFAB onClick={() => setQuickAddOpen(true)} />
+
+      {/* Quick Add Modal */}
+      <QuickAddModal
+        isOpen={quickAddOpen}
+        onClose={() => setQuickAddOpen(false)}
+        userId={userId}
+        onSaved={handleQuickAddSaved}
+      />
     </div>
   );
 }
