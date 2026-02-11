@@ -228,12 +228,21 @@ function Dashboard() {
     }
   }
 
-  function handleSearchSelectGroup(groupId) { setSelectedGroupId(groupId); handleTabChange('groups'); }
+  function handleSearchSelectGroup(groupId) { 
+    setSelectedGroupId(groupId); 
+    setActiveTab('groups');
+    if (userId) trackTabView(userId, 'groups').catch(() => {});
+  }
 
   function handleSearchSelectFriend(friendId) {
     const fb = computeFriendBalances(friends, userId);
     const found = fb.find(f => f.id === friendId);
-    if (found) { setSelectedFriend(found); handleTabChange('friends'); return; }
+    if (found) { 
+      setSelectedFriend(found); 
+      setActiveTab('friends');
+      if (userId) trackTabView(userId, 'friends').catch(() => {});
+      return; 
+    }
     const raw = friends.find(f => f.id === friendId);
     if (raw) {
       const allBalances = (raw.balance || []).map(b => ({
@@ -244,7 +253,8 @@ function Dashboard() {
         id: raw.id, name: `${raw.first_name} ${raw.last_name || ''}`.trim(),
         picture: raw.picture?.medium, balance: primary.amount, currency: primary.currency, allBalances,
       });
-      handleTabChange('friends');
+      setActiveTab('friends');
+      if (userId) trackTabView(userId, 'friends').catch(() => {});
     }
   }
 
