@@ -28,6 +28,7 @@ import BudgetSummaryWidget from './components/BudgetSummaryWidget';
 import LifestyleScore from './components/LifestyleScore';
 import TripTracker from './components/TripTracker';
 import Sidebar, { TAB_META } from './components/Sidebar';
+import ExpenseSight from './components/ExpenseSight';
 import { useRecentTabs } from './hooks/useRecentTabs';
 
 // Offline Banner Component
@@ -410,6 +411,12 @@ function Dashboard() {
         {activeTab === 'budget' && (
           <div className="animate-fade-in">
             <Budget expenses={allExpenses} userId={userId} />
+          </div>
+        )}
+
+        {activeTab === 'expensesight' && (
+          <div className="animate-fade-in">
+            <ExpenseSight userId={userId} />
           </div>
         )}
 

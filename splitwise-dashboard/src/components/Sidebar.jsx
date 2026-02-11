@@ -1,19 +1,20 @@
 import { useEffect, useRef } from 'react';
 import {
   X, LayoutDashboard, Receipt, Users, Scale, Handshake,
-  Wallet, FlaskConical, Settings, Clock, ChevronRight, Heart
+  Wallet, FlaskConical, Settings, Clock, ChevronRight, Heart, Eye
 } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 // Tab metadata with icons, labels, and groups
 const TAB_META = {
-  overview:  { icon: LayoutDashboard, label: 'Overview',   color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  activity:  { icon: Receipt,         label: 'Activity',   color: 'text-purple-400',  bg: 'bg-purple-500/10' },
-  groups:    { icon: Users,           label: 'Groups',     color: 'text-indigo-400',  bg: 'bg-indigo-500/10' },
-  friends:   { icon: Scale,           label: 'Balances',   color: 'text-teal-400',    bg: 'bg-teal-500/10' },
-  settle:    { icon: Handshake,       label: 'Settle Up',  color: 'text-amber-400',   bg: 'bg-amber-500/10' },
-  budget:    { icon: Wallet,          label: 'Budget',     color: 'text-rose-400',    bg: 'bg-rose-500/10' },
-  beta:      { icon: FlaskConical,    label: 'Beta',       color: 'text-violet-400',  bg: 'bg-violet-500/10' },
+  overview:      { icon: LayoutDashboard, label: 'Overview',      color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  activity:      { icon: Receipt,         label: 'Activity',      color: 'text-purple-400',  bg: 'bg-purple-500/10' },
+  groups:        { icon: Users,           label: 'Groups',        color: 'text-indigo-400',  bg: 'bg-indigo-500/10' },
+  friends:       { icon: Scale,           label: 'Balances',      color: 'text-teal-400',    bg: 'bg-teal-500/10' },
+  settle:        { icon: Handshake,       label: 'Settle Up',     color: 'text-amber-400',   bg: 'bg-amber-500/10' },
+  budget:        { icon: Wallet,          label: 'Budget',        color: 'text-rose-400',    bg: 'bg-rose-500/10' },
+  expensesight:  { icon: Eye,             label: 'ExpenseSight',  color: 'text-violet-400',  bg: 'bg-violet-500/10' },
+  beta:          { icon: FlaskConical,    label: 'Beta',          color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10' },
 };
 
 export { TAB_META };
@@ -26,6 +27,10 @@ const NAV_SECTIONS = [
   {
     title: 'Finance',
     items: ['groups', 'friends', 'settle', 'budget'],
+  },
+  {
+    title: 'Personal',
+    items: ['expensesight'],
   },
   {
     title: 'Labs',
