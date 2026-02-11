@@ -2,8 +2,9 @@ import { TrendingUp, TrendingDown, Scale, Receipt } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { formatCurrency, formatCompact, computeExpensesByCategory, computeMonthlySpending, computeRecentExpenses, computeDayOfWeekSpending, computeCategoryTrend } from '../utils/analytics';
 import { format, parseISO } from 'date-fns';
+import { CHART_COLORS as COLORS, TOOLTIP_STYLE, TOUCH_ACTIVE_DOT } from '../utils/chartConfig';
 
-const CHART_COLORS = ['#10b981', '#f59e0b', '#6366f1', '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4', '#84cc16', '#e11d48'];
+const CHART_COLORS = COLORS;
 
 /**
  * StatCard with multi-currency support.
@@ -39,6 +40,20 @@ function CategoryChart({ data }) {
   const top6 = data.slice(0, 6);
   const total = top6.reduce((s, d) => s + d.amount, 0);
 
+  // Custom tooltip for pie chart
+  const CustomPieTooltip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null;
+    const data = payload[0];
+    const pct = total > 0 ? Math.round((data.value / total) * 100) : 0;
+    return (
+      <div style={TOOLTIP_STYLE.contentStyle}>
+        <p className="text-xs font-medium text-stone-200">{data.name}</p>
+        <p className="text-xs text-emerald-400">{formatCurrency(data.value)}</p>
+        <p className="text-[10px] text-stone-500">{pct}% of total</p>
+      </div>
+    );
+  };
+
   return (
     <div className="glass-card p-4 sm:p-6">
       <h3 className="font-display text-sm sm:text-base text-stone-200 mb-3 sm:mb-4">Spending by Category</h3>
@@ -49,15 +64,26 @@ function CategoryChart({ data }) {
           <div className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0">
             <ResponsiveContainer>
               <PieChart>
-                <Pie data={top6} cx="50%" cy="50%" innerRadius={32} outerRadius={55} dataKey="amount" strokeWidth={2} stroke="rgba(12,10,9,0.8)">
+                <Pie 
+                  data={top6} 
+                  cx="50%" 
+                  cy="50%" 
+                  innerRadius={32} 
+                  outerRadius={55} 
+                  dataKey="amount" 
+                  strokeWidth={2} 
+                  stroke="rgba(12,10,9,0.8)"
+                  animationDuration={500}
+                >
                   {top6.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                 </Pie>
+                <Tooltip content={<CustomPieTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
           <div className="flex-1 w-full space-y-2 sm:space-y-2.5 overflow-hidden">
             {top6.map((cat, i) => (
-              <div key={cat.name} className="flex items-center gap-2">
+              <div key={cat.name} className="flex items-center gap-2 touch-manipulation">
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: CHART_COLORS[i] }} />
                 <span className="text-[11px] sm:text-xs text-stone-400 truncate flex-1">{cat.name}</span>
                 <span className="text-[11px] sm:text-xs font-mono text-stone-300">{formatCompact(cat.amount)}</span>
@@ -74,6 +100,21 @@ function CategoryChart({ data }) {
 }
 
 function MonthlyChart({ data }) {
+  // Custom tooltip for monthly chart
+  const CustomMonthlyTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div style={TOOLTIP_STYLE.contentStyle}>
+        <p className="text-xs font-medium text-stone-300 mb-1">{label}</p>
+        {payload.map((entry, i) => (
+          <p key={i} className="text-xs" style={{ color: entry.color }}>
+            {entry.name}: {formatCurrency(entry.value)}
+          </p>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="glass-card p-4 sm:p-6">
       <h3 className="font-display text-sm sm:text-base text-stone-200 mb-3 sm:mb-4">Monthly Spending Trend</h3>
@@ -89,9 +130,28 @@ function MonthlyChart({ data }) {
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,113,108,0.1)" vertical={false} />
             <XAxis dataKey="shortMonth" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
             <YAxis tick={{ fontSize: 9, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => formatCompact(v)} width={38} />
-            <Tooltip formatter={(value) => [formatCurrency(value), '']} contentStyle={{ background: 'rgba(28,25,23,0.95)', border: '1px solid rgba(120,113,108,0.3)', borderRadius: 12, fontSize: 11 }} />
-            <Area type="monotone" dataKey="share" name="Your Share" stroke="#10b981" fill="url(#colorShare)" strokeWidth={2} />
-            <Area type="monotone" dataKey="paid" name="You Paid" stroke="#f59e0b" fill="transparent" strokeWidth={1.5} strokeDasharray="4 4" />
+            <Tooltip content={<CustomMonthlyTooltip />} />
+            <Area 
+              type="monotone" 
+              dataKey="share" 
+              name="Your Share" 
+              stroke="#10b981" 
+              fill="url(#colorShare)" 
+              strokeWidth={2}
+              activeDot={TOUCH_ACTIVE_DOT}
+              animationDuration={500}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="paid" 
+              name="You Paid" 
+              stroke="#f59e0b" 
+              fill="transparent" 
+              strokeWidth={1.5} 
+              strokeDasharray="4 4"
+              activeDot={{ ...TOUCH_ACTIVE_DOT, fill: '#f59e0b' }}
+              animationDuration={500}
+            />
           </AreaChart>
         </ResponsiveContainer>
       </div>

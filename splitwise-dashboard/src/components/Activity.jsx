@@ -3,6 +3,7 @@ import { format, isToday, isYesterday, isThisWeek, isThisMonth, parseISO } from 
 import { Receipt, Calendar, Search, Filter, ChevronDown, Users, User } from 'lucide-react';
 import { formatCurrency } from '../utils/analytics';
 import RefreshButton from './RefreshButton';
+import SpendingHeatmap from './SpendingHeatmap';
 
 function ExpenseItem({ expense, userId }) {
   const userShare = expense.users?.find(u => u.user_id === userId);
@@ -156,6 +157,12 @@ export default function Activity({ expenses, userId, onRefresh, isRefreshing }) 
         </div>
         <RefreshButton onRefresh={onRefresh} isRefreshing={isRefreshing} />
       </div>
+      
+      {/* Spending Heatmap */}
+      <SpendingHeatmap 
+        expenses={expenses} 
+        userId={userId} 
+      />
       
       {/* Search and Filters */}
       <div className="glass-card p-4">

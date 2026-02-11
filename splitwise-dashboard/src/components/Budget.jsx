@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { format, subMonths, getDaysInMonth, differenceInDays } from 'date-fns';
+import { format, subMonths, getDaysInMonth, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
 import { 
   Wallet, 
   Plus, 
@@ -13,8 +13,21 @@ import {
   AlertCircle,
   Calendar,
   Zap,
-  RefreshCw
+  RefreshCw,
+  Target
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ReferenceLine,
+  Cell,
+} from 'recharts';
 import { 
   getBudget, 
   createOrUpdateBudget, 
@@ -28,12 +41,336 @@ import {
   computeMonthlyExpensesByCategory, 
   computeMonthlyTotal,
   computeBudgetStatus,
-  formatCurrency 
+  formatCurrency,
+  getUserId
 } from '../utils/analytics';
 import { isFirebaseConfigured } from '../firebase/config';
+import { getStatusColor, formatChartValue, TOOLTIP_STYLE } from '../utils/chartConfig';
 import BudgetProgressCard, { CategoryProgressList } from './BudgetProgressCard';
 import BudgetSetupModal from './BudgetSetupModal';
 import ManualEntryModal from './ManualEntryModal';
+
+// ─── Budget Health Gauge ─────────────────────────────────────────────────────
+function BudgetHealthGauge({ percentage, status, remaining, currency }) {
+  const radius = 70;
+  const stroke = 12;
+  const normalizedRadius = radius - stroke / 2;
+  const circumference = normalizedRadius * 2 * Math.PI;
+  
+  // Cap at 150% for visual purposes
+  const displayPct = Math.min(percentage, 150);
+  const strokeDashoffset = circumference - (displayPct / 150) * circumference;
+  
+  const color = getStatusColor(percentage);
+  const statusLabel = status === 'over_budget' ? 'Over Budget' : 
+                      status === 'warning' ? 'Near Limit' : 'On Track';
+  
+  return (
+    <div className="glass-card p-4">
+      <div className="flex items-center gap-4">
+        {/* Gauge */}
+        <div className="relative flex-shrink-0">
+          <svg width={radius * 2} height={radius * 2} className="transform -rotate-90">
+            {/* Background circle */}
+            <circle
+              stroke="#292524"
+              fill="transparent"
+              strokeWidth={stroke}
+              r={normalizedRadius}
+              cx={radius}
+              cy={radius}
+            />
+            {/* Progress circle */}
+            <circle
+              stroke={color}
+              fill="transparent"
+              strokeWidth={stroke}
+              strokeLinecap="round"
+              strokeDasharray={circumference + ' ' + circumference}
+              style={{ strokeDashoffset, transition: 'stroke-dashoffset 0.5s ease' }}
+              r={normalizedRadius}
+              cx={radius}
+              cy={radius}
+            />
+          </svg>
+          {/* Center text */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-2xl font-bold text-stone-100">{Math.round(percentage)}%</span>
+            <span className="text-[10px] text-stone-500 uppercase tracking-wider">used</span>
+          </div>
+        </div>
+        
+        {/* Status info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <div 
+              className="w-2 h-2 rounded-full" 
+              style={{ backgroundColor: color }}
+            />
+            <span className="text-sm font-medium" style={{ color }}>
+              {statusLabel}
+            </span>
+          </div>
+          <p className="text-lg font-display text-stone-100">
+            {formatCurrency(Math.abs(remaining), currency)}
+          </p>
+          <p className="text-xs text-stone-500">
+            {remaining >= 0 ? 'remaining' : 'over budget'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Daily Spending Pace Chart ───────────────────────────────────────────────
+function DailySpendingPaceChart({ expenses, budget, userId, month, currency }) {
+  const chartData = useMemo(() => {
+    const monthDate = new Date(month + '-01');
+    const start = startOfMonth(monthDate);
+    const end = endOfMonth(monthDate);
+    const today = new Date();
+    const isCurrentMonth = format(today, 'yyyy-MM') === month;
+    const lastDay = isCurrentMonth ? today : end;
+    
+    const days = eachDayOfInterval({ start, end: lastDay });
+    const totalDays = getDaysInMonth(monthDate);
+    const dailyBudget = budget.overallLimit / totalDays;
+    
+    let cumulative = 0;
+    
+    return days.map((day, index) => {
+      // Calculate actual spending for this day
+      const dayExpenses = expenses.filter(exp => {
+        if (exp.deleted_at) return false;
+        const expDate = parseISO(exp.date || exp.created_at);
+        return isSameDay(expDate, day);
+      });
+      
+      const daySpending = dayExpenses.reduce((sum, exp) => {
+        const userShare = exp.users?.find(u => u.user_id === userId);
+        return sum + (userShare ? parseFloat(userShare.owed_share || 0) : 0);
+      }, 0);
+      
+      // Add manual entries for this day
+      const manualForDay = (budget.manualEntries || []).filter(entry => 
+        isSameDay(parseISO(entry.date), day)
+      );
+      const manualSpending = manualForDay.reduce((sum, e) => sum + e.amount, 0);
+      
+      cumulative += daySpending + manualSpending;
+      
+      return {
+        day: format(day, 'd'),
+        date: format(day, 'MMM d'),
+        actual: Math.round(cumulative),
+        ideal: Math.round(dailyBudget * (index + 1)),
+        dailySpend: Math.round(daySpending + manualSpending),
+      };
+    });
+  }, [expenses, budget, userId, month]);
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    const data = payload[0]?.payload;
+    return (
+      <div style={TOOLTIP_STYLE.contentStyle}>
+        <p className="text-xs font-medium text-stone-300 mb-1">{data?.date}</p>
+        <p className="text-xs text-emerald-400">
+          Actual: {formatCurrency(data?.actual, currency)}
+        </p>
+        <p className="text-xs text-stone-500">
+          Target: {formatCurrency(data?.ideal, currency)}
+        </p>
+        {data?.dailySpend > 0 && (
+          <p className="text-xs text-purple-400 mt-1">
+            Today: +{formatCurrency(data?.dailySpend, currency)}
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="glass-card p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-medium text-stone-300 flex items-center gap-2">
+          <Target size={14} className="text-emerald-400" />
+          Spending Pace
+        </h3>
+        <div className="flex items-center gap-3 text-[10px]">
+          <span className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            Actual
+          </span>
+          <span className="flex items-center gap-1 text-stone-500">
+            <div className="w-2 h-2 rounded-full bg-stone-600 border border-dashed border-stone-500" />
+            Target
+          </span>
+        </div>
+      </div>
+      
+      <div className="h-40 -mx-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <defs>
+              <linearGradient id="actualGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
+              </linearGradient>
+            </defs>
+            <XAxis 
+              dataKey="day" 
+              axisLine={false} 
+              tickLine={false}
+              tick={{ fill: '#78716c', fontSize: 10 }}
+              interval="preserveStartEnd"
+            />
+            <YAxis 
+              hide 
+              domain={[0, 'dataMax + 1000']}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <ReferenceLine 
+              y={budget.overallLimit} 
+              stroke="#ef4444" 
+              strokeDasharray="3 3" 
+              strokeOpacity={0.5}
+            />
+            <Area
+              type="monotone"
+              dataKey="ideal"
+              stroke="#57534e"
+              strokeWidth={1.5}
+              strokeDasharray="4 4"
+              fill="none"
+              dot={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="actual"
+              stroke="#10b981"
+              strokeWidth={2}
+              fill="url(#actualGradient)"
+              dot={false}
+              activeDot={{ r: 4, fill: '#10b981', stroke: '#0c0a09', strokeWidth: 2 }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+      
+      {/* Budget limit indicator */}
+      <div className="flex items-center justify-end gap-1 mt-2 text-[10px] text-stone-500">
+        <div className="w-4 h-px bg-red-500/50" style={{ borderTop: '1px dashed' }} />
+        <span>Budget: {formatCurrency(budget.overallLimit, currency)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Category Budget vs Actual Chart ─────────────────────────────────────────
+function CategoryBudgetVsActual({ budgetStatus, currency }) {
+  const chartData = useMemo(() => {
+    const categories = Object.entries(budgetStatus.categories)
+      .map(([name, data]) => ({
+        name: name.length > 12 ? name.slice(0, 12) + '...' : name,
+        fullName: name,
+        spent: data.spent,
+        limit: data.limit,
+        percentage: data.percentage,
+        status: data.status,
+      }))
+      .sort((a, b) => b.percentage - a.percentage)
+      .slice(0, 6); // Top 6 categories
+    
+    return categories;
+  }, [budgetStatus]);
+
+  if (chartData.length === 0) return null;
+
+  const CustomTooltip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null;
+    const data = payload[0]?.payload;
+    return (
+      <div style={TOOLTIP_STYLE.contentStyle}>
+        <p className="text-xs font-medium text-stone-300 mb-1">{data?.fullName}</p>
+        <p className="text-xs text-emerald-400">
+          Spent: {formatCurrency(data?.spent, currency)}
+        </p>
+        <p className="text-xs text-stone-500">
+          Budget: {formatCurrency(data?.limit, currency)}
+        </p>
+        <p className="text-xs mt-1" style={{ color: getStatusColor(data?.percentage) }}>
+          {data?.percentage}% used
+        </p>
+      </div>
+    );
+  };
+
+  return (
+    <div className="glass-card p-4">
+      <h3 className="text-sm font-medium text-stone-300 flex items-center gap-2 mb-3">
+        <TrendingUp size={14} className="text-purple-400" />
+        Category Budget vs Actual
+      </h3>
+      
+      <div className="h-44 -mx-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart 
+            data={chartData} 
+            layout="vertical"
+            margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+          >
+            <XAxis 
+              type="number" 
+              hide 
+              domain={[0, (dataMax) => Math.max(dataMax * 1.1, 100)]}
+            />
+            <YAxis 
+              type="category" 
+              dataKey="name"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#a8a29e', fontSize: 11 }}
+              width={80}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+            <Bar 
+              dataKey="limit" 
+              fill="#292524"
+              radius={[0, 4, 4, 0]}
+              barSize={20}
+            />
+            <Bar 
+              dataKey="spent" 
+              radius={[0, 4, 4, 0]}
+              barSize={20}
+            >
+              {chartData.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={getStatusColor(entry.percentage)}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-4 mt-2 text-[10px]">
+        <span className="flex items-center gap-1 text-stone-500">
+          <div className="w-3 h-2 rounded-sm bg-stone-800" />
+          Budget
+        </span>
+        <span className="flex items-center gap-1">
+          <div className="w-3 h-2 rounded-sm bg-emerald-500" />
+          Spent
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function Budget({ expenses, userId }) {
   const [currentMonth, setCurrentMonth] = useState(format(new Date(), 'yyyy-MM'));
@@ -373,6 +710,27 @@ export default function Budget({ expenses, userId }) {
         </button>
       </div>
 
+      {/* Budget Health Gauge + Quick Stats */}
+      {budgetStatus && (
+        <BudgetHealthGauge
+          percentage={budgetStatus.overall.percentage}
+          status={budgetStatus.overall.status}
+          remaining={budgetStatus.overall.remaining}
+          currency={budgetStatus.currency}
+        />
+      )}
+
+      {/* Daily Spending Pace Chart (current month only) */}
+      {budgetStatus && isCurrentMonth && budget && (
+        <DailySpendingPaceChart
+          expenses={expenses}
+          budget={budget}
+          userId={userId}
+          month={currentMonth}
+          currency={currency}
+        />
+      )}
+
       {/* Overall Budget Card */}
       {budgetStatus && (
         <BudgetProgressCard
@@ -388,7 +746,15 @@ export default function Budget({ expenses, userId }) {
         />
       )}
 
-      {/* Spending Pace Indicator (only for current month with a budget) */}
+      {/* Category Budget vs Actual Chart */}
+      {budgetStatus && Object.keys(budgetStatus.categories).length > 0 && (
+        <CategoryBudgetVsActual
+          budgetStatus={budgetStatus}
+          currency={currency}
+        />
+      )}
+
+      {/* Spending Pace Quick Stats (only for current month with a budget) */}
       {budgetStatus && budgetPace && budgetStatus.overall.limit > 0 && (
         <div className="glass-card p-4">
           <div className="flex items-center justify-between">
@@ -397,7 +763,7 @@ export default function Budget({ expenses, userId }) {
                 <Zap size={16} className="text-purple-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-stone-200">Spending Pace</p>
+                <p className="text-sm font-medium text-stone-200">Daily Allowance</p>
                 <p className="text-xs text-stone-500">
                   {budgetPace.daysRemaining} days left this month
                 </p>
@@ -449,12 +815,12 @@ export default function Budget({ expenses, userId }) {
         </div>
       )}
 
-      {/* Category Progress */}
+      {/* Category Progress (detailed list) */}
       {budgetStatus && Object.keys(budgetStatus.categories).length > 0 && (
         <div className="glass-card p-4">
           <h3 className="text-sm font-medium text-stone-300 mb-3 flex items-center gap-2">
-            <TrendingUp size={14} className="text-stone-500" />
-            Category Spending
+            <Receipt size={14} className="text-stone-500" />
+            Category Details
           </h3>
           <CategoryProgressList 
             categories={budgetStatus.categories} 
