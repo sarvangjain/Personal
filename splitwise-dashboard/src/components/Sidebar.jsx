@@ -1,9 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, forwardRef } from 'react';
 import {
   X, LayoutDashboard, Receipt, Users, Scale, Handshake,
   Wallet, FlaskConical, Settings, Clock, ChevronRight, Heart, Eye
 } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+
+// ExpenseSight is a special item that launches the standalone app
+const STANDALONE_APPS = ['expensesight'];
 
 // Tab metadata with icons, labels, and groups
 const TAB_META = {
@@ -38,13 +41,36 @@ const NAV_SECTIONS = [
   },
 ];
 
-function NavItem({ tabId, isActive, badge, onClick }) {
+const NavItem = forwardRef(function NavItem({ tabId, isActive, badge, onClick, isStandaloneApp }, ref) {
   const meta = TAB_META[tabId];
   if (!meta) return null;
   const Icon = meta.icon;
 
+  // Standalone apps get a special gradient treatment
+  if (isStandaloneApp) {
+    return (
+      <button
+        ref={ref}
+        onClick={onClick}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group touch-manipulation bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20 hover:from-violet-500/20 hover:to-purple-500/20"
+      >
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+          <Icon size={16} className="text-white" />
+        </div>
+        <span className="text-sm font-medium flex-1 text-left text-violet-300 group-hover:text-violet-200">
+          {meta.label}
+        </span>
+        <span className="px-1.5 py-0.5 text-[9px] bg-violet-500/20 text-violet-400 rounded-full font-medium">
+          App
+        </span>
+        <ChevronRight size={14} className="text-violet-500 group-hover:text-violet-400 transition-colors" />
+      </button>
+    );
+  }
+
   return (
     <button
+      ref={ref}
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group touch-manipulation ${
         isActive
@@ -66,7 +92,7 @@ function NavItem({ tabId, isActive, badge, onClick }) {
       <ChevronRight size={14} className={`${isActive ? 'text-stone-500' : 'text-stone-700 group-hover:text-stone-600'} transition-colors`} />
     </button>
   );
-}
+});
 
 function RecentItem({ tabId, onClick }) {
   const meta = TAB_META[tabId];
@@ -113,12 +139,14 @@ export default function Sidebar({
   activeTab,
   onNavigate,
   onOpenSettings,
+  onOpenExpenseSight,
   user,
   recentTabs = [],
   settleUpCount = 0,
 }) {
   useBodyScrollLock(isOpen);
   const sidebarRef = useRef(null);
+  const expenseSightButtonRef = useRef(null);
 
   // Close on Escape
   useEffect(() => {
@@ -151,6 +179,16 @@ export default function Sidebar({
   }, [isOpen, onClose]);
 
   function handleNav(tabId) {
+    // Check if this is a standalone app
+    if (STANDALONE_APPS.includes(tabId)) {
+      if (tabId === 'expensesight' && onOpenExpenseSight) {
+        // Capture button position before closing sidebar
+        const rect = expenseSightButtonRef.current?.getBoundingClientRect();
+        onOpenExpenseSight(rect);
+        onClose();
+      }
+      return;
+    }
     onNavigate(tabId);
     onClose();
   }
@@ -243,9 +281,11 @@ export default function Sidebar({
                   {section.items.map(tabId => (
                     <NavItem
                       key={tabId}
+                      ref={tabId === 'expensesight' ? expenseSightButtonRef : undefined}
                       tabId={tabId}
-                      isActive={activeTab === tabId}
+                      isActive={activeTab === tabId && !STANDALONE_APPS.includes(tabId)}
                       badge={tabId === 'settle' ? settleUpCount : 0}
+                      isStandaloneApp={STANDALONE_APPS.includes(tabId)}
                       onClick={() => handleNav(tabId)}
                     />
                   ))}

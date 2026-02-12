@@ -29,6 +29,7 @@ import LifestyleScore from './components/LifestyleScore';
 import TripTracker from './components/TripTracker';
 import Sidebar, { TAB_META } from './components/Sidebar';
 import ExpenseSight from './components/ExpenseSight';
+import { ExpenseSightLauncher } from './components/ExpenseSight';
 import { useRecentTabs } from './hooks/useRecentTabs';
 
 // Offline Banner Component
@@ -128,6 +129,8 @@ function Dashboard() {
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [showCreateExpensePage, setShowCreateExpensePage] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [showExpenseSightApp, setShowExpenseSightApp] = useState(false);
+  const [expenseSightOriginRect, setExpenseSightOriginRect] = useState(null);
 
   const userId = getUserId();
   
@@ -629,9 +632,21 @@ function Dashboard() {
         activeTab={activeTab}
         onNavigate={handleTabChange}
         onOpenSettings={() => { setShowSidebar(false); setShowSettings(true); }}
+        onOpenExpenseSight={(rect) => { 
+          setExpenseSightOriginRect(rect);
+          setShowExpenseSightApp(true); 
+        }}
         user={user}
         recentTabs={getSidebarRecents(3)}
         settleUpCount={settleUpSuggestions.length}
+      />
+
+      {/* ExpenseSight Standalone App */}
+      <ExpenseSightLauncher
+        isOpen={showExpenseSightApp}
+        onClose={() => { setShowExpenseSightApp(false); setExpenseSightOriginRect(null); }}
+        userId={userId}
+        originRect={expenseSightOriginRect}
       />
 
       {showSettings && (
