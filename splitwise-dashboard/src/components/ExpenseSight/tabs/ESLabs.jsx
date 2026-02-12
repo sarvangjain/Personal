@@ -86,16 +86,16 @@ function YearInReviewCard({ expenses, year }) {
   return (
     <div className="glass-card p-4 space-y-4">
       <div className="flex items-center gap-2">
-        <Sparkles size={18} className="text-violet-400" />
+        <Sparkles size={18} className="text-teal-400" />
         <h3 className="text-sm font-medium text-stone-200">{year} Year in Review</h3>
       </div>
       
       {stats.count > 0 ? (
         <>
           {/* Total */}
-          <div className="text-center py-4 bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-xl">
+          <div className="text-center py-4 bg-gradient-to-r from-teal-500/10 to-cyan-500/10 rounded-xl">
             <p className="text-xs text-stone-500 mb-1">Total Spent</p>
-            <p className="text-3xl font-display text-violet-400">
+            <p className="text-3xl font-display text-teal-400">
               {formatCurrency(stats.total, 'INR')}
             </p>
             <p className="text-xs text-stone-500 mt-1">
@@ -371,7 +371,7 @@ function SpendingPersonalityCard({ expenses }) {
       
       <div className="text-center py-4">
         <span className="text-4xl">{personality.emoji}</span>
-        <p className="text-lg font-display text-violet-400 mt-2">{personality.name}</p>
+        <p className="text-lg font-display text-teal-400 mt-2">{personality.name}</p>
         <p className="text-xs text-stone-500 mt-1">{personality.desc}</p>
       </div>
     </div>

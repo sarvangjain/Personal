@@ -5,9 +5,9 @@
 import { useMemo } from 'react';
 import { 
   BarChart3, TrendingUp, PieChart as PieIcon, Calendar,
-  ArrowUpRight
+  ArrowUpRight, Repeat, AlertCircle
 } from 'lucide-react';
-import { format, parseISO, subMonths, startOfMonth, endOfMonth, isWithinInterval, getDay } from 'date-fns';
+import { format, parseISO, subMonths, startOfMonth, endOfMonth, isWithinInterval, getDay, differenceInDays } from 'date-fns';
 import { 
   PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer
@@ -24,7 +24,7 @@ function MonthlyTrendChart({ data }) {
     return (
       <div style={TOOLTIP_STYLE.contentStyle}>
         <p className="text-xs text-stone-400 mb-1">{payload[0]?.payload?.month}</p>
-        <p className="text-sm text-violet-400 font-medium">
+        <p className="text-sm text-teal-400 font-medium">
           {formatCurrency(payload[0]?.value, 'INR')}
         </p>
       </div>
@@ -34,7 +34,7 @@ function MonthlyTrendChart({ data }) {
   return (
     <div className="glass-card p-4">
       <h3 className="text-sm font-medium text-stone-300 mb-4 flex items-center gap-2">
-        <TrendingUp size={16} className="text-violet-400" />
+        <TrendingUp size={16} className="text-teal-400" />
         6-Month Trend
       </h3>
       <div className="h-48">
@@ -42,8 +42,8 @@ function MonthlyTrendChart({ data }) {
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="esInsightsMonthlyGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
               </linearGradient>
             </defs>
             <XAxis 
@@ -57,7 +57,7 @@ function MonthlyTrendChart({ data }) {
             <Area
               type="monotone"
               dataKey="amount"
-              stroke="#8b5cf6"
+              stroke="#14b8a6"
               fill="url(#esInsightsMonthlyGradient)"
               strokeWidth={2}
               activeDot={TOUCH_ACTIVE_DOT}
@@ -89,7 +89,7 @@ function CategoryBreakdownChart({ data }) {
   return (
     <div className="glass-card p-4">
       <h3 className="text-sm font-medium text-stone-300 mb-4 flex items-center gap-2">
-        <PieIcon size={16} className="text-violet-400" />
+        <PieIcon size={16} className="text-teal-400" />
         Category Breakdown
       </h3>
       <div className="h-48">
@@ -153,7 +153,7 @@ function DayOfWeekChart({ data }) {
   return (
     <div className="glass-card p-4">
       <h3 className="text-sm font-medium text-stone-300 mb-4 flex items-center gap-2">
-        <Calendar size={16} className="text-violet-400" />
+        <Calendar size={16} className="text-teal-400" />
         Spending by Day
       </h3>
       <div className="h-40">
@@ -190,7 +190,7 @@ function TopExpensesList({ expenses }) {
   return (
     <div className="glass-card p-4">
       <h3 className="text-sm font-medium text-stone-300 mb-4 flex items-center gap-2">
-        <ArrowUpRight size={16} className="text-violet-400" />
+        <ArrowUpRight size={16} className="text-teal-400" />
         Top Expenses
       </h3>
       <div className="space-y-3">
@@ -227,7 +227,7 @@ function StatsSummary({ stats }) {
       </div>
       <div className="glass-card p-3">
         <p className="text-xs text-stone-500">Total Expenses</p>
-        <p className="text-lg font-display text-violet-400">
+        <p className="text-lg font-display text-teal-400">
           {stats.count}
         </p>
       </div>
@@ -241,6 +241,76 @@ function StatsSummary({ stats }) {
         <p className="text-xs text-stone-500">Top Category</p>
         <p className="text-lg font-display text-emerald-400 truncate">
           {stats.topCategory}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Detect and display recurring expenses (subscriptions)
+function RecurringExpensesCard({ recurringExpenses }) {
+  if (recurringExpenses.length === 0) return null;
+
+  const totalMonthly = recurringExpenses.reduce((sum, item) => sum + item.avgAmount, 0);
+  const totalAnnual = totalMonthly * 12;
+
+  return (
+    <div className="glass-card p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium text-stone-300 flex items-center gap-2">
+          <Repeat size={16} className="text-teal-400" />
+          Recurring Expenses
+        </h3>
+        <span className="text-xs text-stone-500">
+          ~{formatCurrency(totalMonthly, 'INR')}/mo
+        </span>
+      </div>
+      
+      <div className="space-y-3">
+        {recurringExpenses.map((item, i) => (
+          <div key={i} className="flex items-center gap-3 p-2 bg-stone-800/30 rounded-lg">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+              item.frequency === 'monthly' ? 'bg-teal-500/20' :
+              item.frequency === 'weekly' ? 'bg-emerald-500/20' :
+              'bg-amber-500/20'
+            }`}>
+              <Repeat size={14} className={
+                item.frequency === 'monthly' ? 'text-teal-400' :
+                item.frequency === 'weekly' ? 'text-emerald-400' :
+                'text-amber-400'
+              } />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-stone-200 truncate">{item.description}</p>
+              <div className="flex items-center gap-2 text-[10px] text-stone-500">
+                <span className="capitalize">{item.frequency}</span>
+                <span>•</span>
+                <span>{item.occurrences}x in last {item.monthsAnalyzed} months</span>
+              </div>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p className="text-sm font-mono text-stone-200">
+                {formatCurrency(item.avgAmount, 'INR')}
+              </p>
+              <p className="text-[10px] text-stone-500">avg</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Annual projection */}
+      <div className="mt-4 p-3 bg-gradient-to-r from-teal-500/10 to-cyan-500/10 rounded-lg border border-teal-500/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={14} className="text-teal-400" />
+            <span className="text-xs text-stone-400">Annual projection</span>
+          </div>
+          <span className="text-sm font-display text-teal-400">
+            {formatCurrency(totalAnnual, 'INR')}/year
+          </span>
+        </div>
+        <p className="text-[10px] text-stone-500 mt-1">
+          Based on {recurringExpenses.length} detected subscriptions
         </p>
       </div>
     </div>
@@ -308,6 +378,105 @@ export default function ESInsights({ expenses }) {
       .slice(0, 5);
   }, [expenses]);
 
+  // Detect recurring expenses (subscriptions)
+  const recurringExpenses = useMemo(() => {
+    const validExpenses = expenses.filter(e => !e.cancelled && !e.isRefund);
+    if (validExpenses.length < 5) return [];
+    
+    // Group expenses by normalized description
+    const descriptionGroups = {};
+    for (const exp of validExpenses) {
+      // Normalize description for grouping
+      const normalizedDesc = exp.description.toLowerCase()
+        .replace(/[0-9]+/g, '') // Remove numbers
+        .replace(/\s+/g, ' ')   // Normalize whitespace
+        .trim();
+      
+      if (!normalizedDesc || normalizedDesc.length < 3) continue;
+      
+      if (!descriptionGroups[normalizedDesc]) {
+        descriptionGroups[normalizedDesc] = {
+          description: exp.description, // Use original description
+          category: exp.category,
+          expenses: [],
+        };
+      }
+      descriptionGroups[normalizedDesc].expenses.push(exp);
+    }
+    
+    const recurring = [];
+    const now = new Date();
+    const sixMonthsAgo = subMonths(now, 6);
+    
+    for (const [key, group] of Object.entries(descriptionGroups)) {
+      // Need at least 3 occurrences to be considered recurring
+      if (group.expenses.length < 3) continue;
+      
+      // Filter to last 6 months
+      const recentExpenses = group.expenses.filter(e => 
+        parseISO(e.date) >= sixMonthsAgo
+      );
+      
+      if (recentExpenses.length < 2) continue;
+      
+      // Sort by date
+      recentExpenses.sort((a, b) => a.date.localeCompare(b.date));
+      
+      // Calculate intervals between expenses
+      const intervals = [];
+      for (let i = 1; i < recentExpenses.length; i++) {
+        const days = differenceInDays(
+          parseISO(recentExpenses[i].date),
+          parseISO(recentExpenses[i - 1].date)
+        );
+        intervals.push(days);
+      }
+      
+      if (intervals.length === 0) continue;
+      
+      // Calculate average interval
+      const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+      
+      // Determine frequency based on average interval
+      let frequency = null;
+      if (avgInterval >= 25 && avgInterval <= 35) {
+        frequency = 'monthly';
+      } else if (avgInterval >= 6 && avgInterval <= 8) {
+        frequency = 'weekly';
+      } else if (avgInterval >= 13 && avgInterval <= 16) {
+        frequency = 'bi-weekly';
+      }
+      
+      if (!frequency) continue;
+      
+      // Calculate average amount
+      const avgAmount = recentExpenses.reduce((sum, e) => sum + e.amount, 0) / recentExpenses.length;
+      
+      // Check consistency (standard deviation shouldn't be too high)
+      const amountVariance = recentExpenses.reduce((sum, e) => 
+        sum + Math.pow(e.amount - avgAmount, 2), 0
+      ) / recentExpenses.length;
+      const amountStdDev = Math.sqrt(amountVariance);
+      const coefficientOfVariation = avgAmount > 0 ? (amountStdDev / avgAmount) : 1;
+      
+      // Only include if amounts are relatively consistent (CV < 0.3)
+      if (coefficientOfVariation > 0.3) continue;
+      
+      recurring.push({
+        description: group.description,
+        category: group.category,
+        frequency,
+        occurrences: recentExpenses.length,
+        avgAmount: Math.round(avgAmount),
+        monthsAnalyzed: 6,
+        lastDate: recentExpenses[recentExpenses.length - 1].date,
+      });
+    }
+    
+    // Sort by average amount (highest first)
+    return recurring.sort((a, b) => b.avgAmount - a.avgAmount).slice(0, 8);
+  }, [expenses]);
+
   // Summary stats
   const stats = useMemo(() => {
     const validExpenses = expenses.filter(e => !e.cancelled && !e.isRefund);
@@ -341,6 +510,9 @@ export default function ESInsights({ expenses }) {
       {monthlyTrend.some(m => m.amount > 0) && (
         <MonthlyTrendChart data={monthlyTrend} />
       )}
+
+      {/* Recurring Expenses */}
+      <RecurringExpensesCard recurringExpenses={recurringExpenses} />
 
       {/* Category Breakdown */}
       {categoryData.length > 0 && (

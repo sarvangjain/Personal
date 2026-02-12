@@ -47,7 +47,7 @@ function ExpenseRow({ expense, userId, onUpdate, onDelete }) {
 
   if (editing) {
     return (
-      <div className="p-3 bg-stone-800/50 border border-violet-500/30 rounded-xl space-y-3">
+      <div className="p-3 bg-stone-800/50 border border-teal-500/30 rounded-xl space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <input
             type="date"
@@ -263,13 +263,13 @@ export default function ExpenseHistory({ expenses, userId, onRefresh, isRefreshi
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search..."
-              className="w-full pl-9 pr-3 py-2 bg-stone-800/60 border border-stone-700/40 rounded-lg text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-violet-500/50"
+              className="w-full pl-9 pr-3 py-2 bg-stone-800/60 border border-stone-700/40 rounded-lg text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-teal-500/50"
             />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`px-3 py-2 border rounded-lg text-sm flex items-center gap-1 ${
-              showFilters ? 'bg-violet-500/10 border-violet-500/30 text-violet-400' : 'bg-stone-800/60 border-stone-700/40 text-stone-400'
+              showFilters ? 'bg-teal-500/10 border-teal-500/30 text-teal-400' : 'bg-stone-800/60 border-stone-700/40 text-stone-400'
             }`}
           >
             <Filter size={14} />
@@ -288,7 +288,7 @@ export default function ExpenseHistory({ expenses, userId, onRefresh, isRefreshi
                     onClick={() => setDateFilter(f.id)}
                     className={`px-2.5 py-1 rounded text-xs ${
                       dateFilter === f.id 
-                        ? 'bg-violet-500/15 text-violet-400 border border-violet-500/30'
+                        ? 'bg-teal-500/15 text-teal-400 border border-teal-500/30'
                         : 'bg-stone-800/50 text-stone-400 border border-stone-700/30'
                     }`}
                   >
@@ -306,7 +306,7 @@ export default function ExpenseHistory({ expenses, userId, onRefresh, isRefreshi
                     onClick={() => setCategoryFilter(cat)}
                     className={`px-2.5 py-1 rounded text-xs ${
                       categoryFilter === cat
-                        ? 'bg-violet-500/15 text-violet-400 border border-violet-500/30'
+                        ? 'bg-teal-500/15 text-teal-400 border border-teal-500/30'
                         : 'bg-stone-800/50 text-stone-400 border border-stone-700/30'
                     }`}
                   >
@@ -330,7 +330,7 @@ export default function ExpenseHistory({ expenses, userId, onRefresh, isRefreshi
           <p className="text-[10px] text-stone-500">Refunds</p>
         </div>
         <div className="glass-card p-3 text-center">
-          <p className="text-base font-display text-violet-400">{formatCurrency(totals.net, 'INR')}</p>
+          <p className="text-base font-display text-teal-400">{formatCurrency(totals.net, 'INR')}</p>
           <p className="text-[10px] text-stone-500">Net</p>
         </div>
       </div>

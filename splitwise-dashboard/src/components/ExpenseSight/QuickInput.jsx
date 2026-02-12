@@ -64,7 +64,7 @@ export default function QuickInput({ onParsed }) {
   return (
     <div className="glass-card p-4">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
           <FileText size={20} className="text-white" />
         </div>
         <div>
@@ -79,7 +79,7 @@ export default function QuickInput({ onParsed }) {
           value={text}
           onChange={(e) => { setText(e.target.value); setError(null); }}
           placeholder={PLACEHOLDER_TEXT}
-          className="w-full h-64 p-4 bg-stone-800/50 border border-stone-700/50 rounded-xl text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 resize-none font-mono"
+          className="w-full h-64 p-4 bg-stone-800/50 border border-stone-700/50 rounded-xl text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/20 resize-none font-mono"
           spellCheck={false}
         />
         
@@ -104,7 +104,7 @@ export default function QuickInput({ onParsed }) {
         <button
           onClick={handleParse}
           disabled={!hasContent || parsing}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 hover:bg-violet-500 disabled:bg-stone-700 disabled:text-stone-500 text-white text-sm font-medium rounded-xl transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-teal-600 hover:bg-teal-500 disabled:bg-stone-700 disabled:text-stone-500 text-white text-sm font-medium rounded-xl transition-colors"
         >
           {parsing ? (
             <>

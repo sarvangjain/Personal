@@ -115,7 +115,7 @@ export default function ExpenseSight({ userId }) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <Loader2 size={32} className="animate-spin text-violet-400 mx-auto mb-4" />
+          <Loader2 size={32} className="animate-spin text-teal-400 mx-auto mb-4" />
           <p className="text-sm text-stone-400">Loading ExpenseSight...</p>
         </div>
       </div>
@@ -137,7 +137,7 @@ export default function ExpenseSight({ userId }) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
           <Eye size={20} className="text-white" />
         </div>
         <div>
@@ -157,7 +157,7 @@ export default function ExpenseSight({ userId }) {
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
-                  ? 'bg-violet-500/20 text-violet-400'
+                  ? 'bg-teal-500/20 text-teal-400'
                   : 'text-stone-500 hover:text-stone-300'
               }`}
             >

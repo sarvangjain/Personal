@@ -19,10 +19,10 @@ export default function ExpenseSightLauncher({
     if (isOpen && animationState === 'closed') {
       setAnimationState('entering');
       
-      // After animation completes, set to open
+      // After animation completes, set to open (matching the CSS animation duration)
       const timer = setTimeout(() => {
         setAnimationState('open');
-      }, 400);
+      }, 750); // Match the morph-expand animation duration (0.7s) + buffer
       
       return () => clearTimeout(timer);
     }
@@ -32,11 +32,11 @@ export default function ExpenseSightLauncher({
   const handleClose = () => {
     setAnimationState('exiting');
     
-    // After exit animation, actually close
+    // After exit animation, actually close (matching the CSS animation duration)
     setTimeout(() => {
       setAnimationState('closed');
       onClose();
-    }, 300);
+    }, 550); // Match the morph-collapse animation duration (0.5s) + buffer
   };
 
   // Reset when closed externally
@@ -50,9 +50,9 @@ export default function ExpenseSightLauncher({
 
   const content = (
     <div className="fixed inset-0 z-[100] overflow-hidden">
-      {/* Animated background */}
+      {/* Animated background - Changed to teal/cyan gradient */}
       <div 
-        className={`absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 ${
+        className={`absolute inset-0 bg-gradient-to-br from-teal-600 via-cyan-600 to-emerald-600 ${
           animationState === 'entering' ? 'animate-morph-expand' : 
           animationState === 'exiting' ? 'animate-morph-collapse' : ''
         }`}

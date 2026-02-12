@@ -10,6 +10,7 @@ import {
 import { format, parseISO, isToday, isYesterday, isThisWeek, isThisMonth, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { formatCurrency } from '../../../utils/analytics';
 import SpendingHeatmap from '../../SpendingHeatmap';
+import CategoryQuickCards from '../components/CategoryQuickCards';
 
 // Date range filter options
 const DATE_FILTERS = [
@@ -65,56 +66,16 @@ function ExpenseItem({ expense }) {
   );
 }
 
-// Category filter chip
-function CategoryChip({ category, isActive, onClick, count }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-        isActive
-          ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
-          : 'bg-stone-800/50 text-stone-400 border border-stone-700/50 hover:bg-stone-800'
-      }`}
-    >
-      {category}
-      <span className={`text-[10px] ${isActive ? 'text-violet-400' : 'text-stone-600'}`}>
-        {count}
-      </span>
-    </button>
-  );
-}
-
-export default function ESActivity({ expenses, userId, onRefresh }) {
+export default function ESActivity({ expenses, userId, onRefresh, onShowCategoryDetail }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState(null);
-  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showCategoryCards, setShowCategoryCards] = useState(true);
 
-  // Get unique categories with counts
-  const categories = useMemo(() => {
-    const counts = {};
-    for (const exp of expenses) {
-      if (!exp.cancelled) {
-        counts[exp.category] = (counts[exp.category] || 0) + 1;
-      }
-    }
-    return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8);
-  }, [expenses]);
-
-  // Filter expenses
-  const filteredExpenses = useMemo(() => {
+  // Apply date filter (used for category cards)
+  const dateFilteredExpenses = useMemo(() => {
     let filtered = expenses.filter(e => !e.cancelled);
-    
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(e => 
-        e.description.toLowerCase().includes(query) ||
-        e.category.toLowerCase().includes(query)
-      );
-    }
     
     // Date filter
     const now = new Date();
@@ -133,13 +94,29 @@ export default function ESActivity({ expenses, userId, onRefresh }) {
       });
     }
     
+    return filtered;
+  }, [expenses, dateFilter]);
+
+  // Filter expenses (with search and category)
+  const filteredExpenses = useMemo(() => {
+    let filtered = dateFilteredExpenses;
+    
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(e => 
+        e.description.toLowerCase().includes(query) ||
+        e.category.toLowerCase().includes(query)
+      );
+    }
+    
     // Category filter
     if (categoryFilter) {
       filtered = filtered.filter(e => e.category === categoryFilter);
     }
     
     return filtered.sort((a, b) => b.date.localeCompare(a.date));
-  }, [expenses, searchQuery, dateFilter, categoryFilter]);
+  }, [dateFilteredExpenses, searchQuery, categoryFilter]);
 
   // Group expenses by date
   const groupedExpenses = useMemo(() => {
@@ -203,7 +180,7 @@ export default function ESActivity({ expenses, userId, onRefresh }) {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search expenses..."
-          className="w-full pl-10 pr-4 py-2.5 bg-stone-800/50 border border-stone-700/50 rounded-xl text-sm text-stone-200 placeholder-stone-500 focus:outline-none focus:border-violet-500/50"
+          className="w-full pl-10 pr-4 py-2.5 bg-stone-800/50 border border-stone-700/50 rounded-xl text-sm text-stone-200 placeholder-stone-500 focus:outline-none focus:border-teal-500/50"
         />
         {searchQuery && (
           <button
@@ -223,7 +200,7 @@ export default function ESActivity({ expenses, userId, onRefresh }) {
             onClick={() => setDateFilter(filter.id)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
               dateFilter === filter.id
-                ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
+                ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30'
                 : 'bg-stone-800/50 text-stone-400 border border-stone-700/50 hover:bg-stone-800'
             }`}
           >
@@ -232,25 +209,31 @@ export default function ESActivity({ expenses, userId, onRefresh }) {
         ))}
       </div>
 
-      {/* Category Chips */}
-      {categories.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
-          <CategoryChip
-            category="All"
-            isActive={!categoryFilter}
-            onClick={() => setCategoryFilter(null)}
-            count={expenses.filter(e => !e.cancelled).length}
-          />
-          {categories.map(([cat, count]) => (
-            <CategoryChip
-              key={cat}
-              category={cat}
-              isActive={categoryFilter === cat}
-              onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
-              count={count}
-            />
-          ))}
-        </div>
+      {/* Category Quick Cards */}
+      <button
+        onClick={() => setShowCategoryCards(!showCategoryCards)}
+        className="w-full flex items-center justify-between p-3 bg-stone-800/30 rounded-xl text-sm text-stone-400 hover:bg-stone-800/50 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <DollarSign size={16} />
+          Categories
+          {categoryFilter && (
+            <span className="text-xs text-teal-400 bg-teal-500/20 px-2 py-0.5 rounded-full">
+              {categoryFilter}
+            </span>
+          )}
+        </span>
+        <ChevronDown size={16} className={`transition-transform ${showCategoryCards ? 'rotate-180' : ''}`} />
+      </button>
+
+      {showCategoryCards && (
+        <CategoryQuickCards
+          expenses={dateFilteredExpenses}
+          activeCategory={categoryFilter}
+          onCategoryClick={setCategoryFilter}
+          onViewAllClick={onShowCategoryDetail}
+          maxCards={4}
+        />
       )}
 
       {/* Spending Heatmap Toggle */}
@@ -273,7 +256,7 @@ export default function ESActivity({ expenses, userId, onRefresh }) {
       {/* Summary */}
       <div className="flex items-center justify-between p-3 bg-stone-800/30 rounded-xl">
         <span className="text-sm text-stone-400">Total</span>
-        <span className="text-lg font-display text-violet-400">
+        <span className="text-lg font-display text-teal-400">
           {formatCurrency(filteredTotal, 'INR')}
         </span>
       </div>

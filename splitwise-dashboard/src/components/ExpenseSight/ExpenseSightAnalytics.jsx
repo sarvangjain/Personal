@@ -55,7 +55,7 @@ function CategoryBreakdown({ expenses }) {
   return (
     <div className="glass-card p-4">
       <h3 className="text-sm font-medium text-stone-300 flex items-center gap-2 mb-4">
-        <Tag size={14} className="text-violet-400" />
+        <Tag size={14} className="text-teal-400" />
         By Category
       </h3>
       
@@ -125,7 +125,7 @@ function MonthlyTrend({ expenses }) {
     return (
       <div style={TOOLTIP_STYLE.contentStyle}>
         <p className="text-xs font-medium text-stone-300">{label}</p>
-        <p className="text-xs text-violet-400">{formatCurrency(payload[0].value, 'INR')}</p>
+        <p className="text-xs text-teal-400">{formatCurrency(payload[0].value, 'INR')}</p>
       </div>
     );
   };
@@ -289,7 +289,7 @@ function StatsCards({ expenses }) {
       
       <div className="glass-card p-3">
         <p className="text-[10px] text-stone-500 uppercase tracking-wider mb-1">Daily Average</p>
-        <p className="text-lg font-display text-violet-400">
+        <p className="text-lg font-display text-teal-400">
           {formatCurrency(stats.avgDaily, 'INR')}
         </p>
         <p className="text-[10px] text-stone-500">this month</p>

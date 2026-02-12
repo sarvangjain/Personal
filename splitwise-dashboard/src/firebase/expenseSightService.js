@@ -308,6 +308,77 @@ export async function getMonthlyTrend(userId, months = 6) {
   }));
 }
 
+// ─── Duplicate Detection Support ─────────────────────────────────────────────
+
+/**
+ * Get recent expenses for duplicate checking
+ * Fetches expenses from the last N days for comparison
+ */
+export async function getRecentExpensesForDuplicateCheck(userId, days = 7) {
+  if (!isFirebaseConfigured() || !userId) {
+    return [];
+  }
+
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
+  const startDateStr = startDate.toISOString().split('T')[0];
+  const endDateStr = endDate.toISOString().split('T')[0];
+  
+  return getExpenses(userId, {
+    startDate: startDateStr,
+    endDate: endDateStr,
+    limitCount: 200,
+    useCache: false, // Always fetch fresh for duplicate checking
+  });
+}
+
+/**
+ * Get frequent expense descriptions for templates
+ * Returns top N most common expense descriptions with their average amounts
+ */
+export async function getFrequentExpenses(userId, topN = 5) {
+  if (!isFirebaseConfigured() || !userId) {
+    return [];
+  }
+
+  const expenses = await getExpenses(userId, { limitCount: 500, useCache: true });
+  
+  // Count occurrences and sum amounts per description
+  const descriptionStats = {};
+  
+  for (const expense of expenses) {
+    if (expense.isRefund || expense.cancelled || expense.isPending) continue;
+    
+    const desc = expense.description.toLowerCase().trim();
+    if (!descriptionStats[desc]) {
+      descriptionStats[desc] = {
+        description: expense.description, // Keep original casing from first occurrence
+        category: expense.category,
+        count: 0,
+        totalAmount: 0,
+      };
+    }
+    descriptionStats[desc].count++;
+    descriptionStats[desc].totalAmount += expense.amount;
+  }
+  
+  // Convert to array, calculate averages, and sort by count
+  const sorted = Object.values(descriptionStats)
+    .map(stat => ({
+      description: stat.description,
+      category: stat.category,
+      count: stat.count,
+      avgAmount: Math.round(stat.totalAmount / stat.count),
+    }))
+    .filter(stat => stat.count >= 2) // Only show if used at least twice
+    .sort((a, b) => b.count - a.count)
+    .slice(0, topN);
+  
+  return sorted;
+}
+
 // ─── Cache Management ────────────────────────────────────────────────────────
 
 const expenseSightCache = new Map();

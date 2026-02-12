@@ -2,7 +2,7 @@
  * ExpenseSightApp - Main app shell for the standalone ExpenseSight experience
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import ESHeader from './components/ESHeader';
 import ESBottomNav from './components/ESBottomNav';
@@ -11,6 +11,7 @@ import ESActivity from './tabs/ESActivity';
 import ESBudget from './tabs/ESBudget';
 import ESInsights from './tabs/ESInsights';
 import ESLabs from './tabs/ESLabs';
+import ESCategoryDetail from './tabs/ESCategoryDetail';
 import QuickAddModal from './QuickAddModal';
 import { getExpenses, clearCache } from '../../firebase/expenseSightService';
 import { isFirebaseConfigured } from '../../firebase/config';
@@ -20,6 +21,9 @@ export default function ExpenseSightApp({ userId, onClose }) {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [showCategoryDetail, setShowCategoryDetail] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const mainRef = useRef(null);
 
   const firebaseEnabled = isFirebaseConfigured();
 
@@ -39,6 +43,7 @@ export default function ExpenseSightApp({ userId, onClose }) {
       console.error('Error loading expenses:', err);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, [userId, firebaseEnabled]);
 
@@ -46,11 +51,51 @@ export default function ExpenseSightApp({ userId, onClose }) {
     loadExpenses();
   }, [loadExpenses]);
 
+  // Reset category detail when switching tabs
+  useEffect(() => {
+    setShowCategoryDetail(false);
+  }, [activeTab]);
+
+  // Prevent native pull-to-refresh on the main container
+  useEffect(() => {
+    const mainEl = mainRef.current;
+    if (!mainEl) return;
+
+    let startY = 0;
+    let startScrollTop = 0;
+
+    const handleTouchStart = (e) => {
+      startY = e.touches[0].pageY;
+      startScrollTop = mainEl.scrollTop;
+    };
+
+    const handleTouchMove = (e) => {
+      const currentY = e.touches[0].pageY;
+      const diff = currentY - startY;
+
+      // If at the top and trying to pull down, prevent default
+      // But allow it after a significant threshold (50px) for manual refresh
+      if (startScrollTop <= 0 && diff > 0 && diff < 80) {
+        e.preventDefault();
+      }
+    };
+
+    mainEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+    mainEl.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      mainEl.removeEventListener('touchstart', handleTouchStart);
+      mainEl.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
+
   // Handle refresh
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
     clearCache(userId);
     loadExpenses(true);
-  };
+  }, [userId, loadExpenses, isRefreshing]);
 
   // Handle quick add saved
   const handleQuickAddSaved = () => {
@@ -63,7 +108,7 @@ export default function ExpenseSightApp({ userId, onClose }) {
       return (
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
-            <Loader2 size={32} className="animate-spin text-violet-400 mx-auto mb-4" />
+            <Loader2 size={32} className="animate-spin text-teal-400 mx-auto mb-4" />
             <p className="text-sm text-stone-400">Loading...</p>
           </div>
         </div>
@@ -81,11 +126,17 @@ export default function ExpenseSightApp({ userId, onClose }) {
           />
         );
       case 'activity':
-        return (
+        return showCategoryDetail ? (
+          <ESCategoryDetail
+            expenses={expenses}
+            onClose={() => setShowCategoryDetail(false)}
+          />
+        ) : (
           <ESActivity 
             expenses={expenses} 
             userId={userId}
             onRefresh={handleRefresh}
+            onShowCategoryDetail={() => setShowCategoryDetail(true)}
           />
         );
       case 'budget':
@@ -122,7 +173,19 @@ export default function ExpenseSightApp({ userId, onClose }) {
       />
 
       {/* Main content - scrollable area */}
-      <main className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-4">
+      <main 
+        ref={mainRef}
+        className="flex-1 overflow-y-auto overscroll-none px-4 pt-4 pb-4"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {/* Refresh indicator */}
+        {isRefreshing && (
+          <div className="flex items-center justify-center py-2 -mt-2 mb-2">
+            <Loader2 size={20} className="animate-spin text-teal-400" />
+            <span className="text-xs text-stone-500 ml-2">Refreshing...</span>
+          </div>
+        )}
+        
         {renderTabContent()}
       </main>
 

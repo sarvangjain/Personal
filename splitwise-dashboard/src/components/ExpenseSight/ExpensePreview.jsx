@@ -29,7 +29,7 @@ function ExpenseRow({ expense, onUpdate, onDelete }) {
 
   if (editing) {
     return (
-      <div className="p-3 bg-stone-800/50 border border-violet-500/30 rounded-xl space-y-3">
+      <div className="p-3 bg-stone-800/50 border border-teal-500/30 rounded-xl space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-[10px] text-stone-500 uppercase tracking-wider mb-1 block">Date</label>
@@ -37,7 +37,7 @@ function ExpenseRow({ expense, onUpdate, onDelete }) {
               type="date"
               value={editData.date}
               onChange={(e) => setEditData({ ...editData, date: e.target.value })}
-              className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-violet-500"
+              className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500"
             />
           </div>
           <div>
@@ -46,7 +46,7 @@ function ExpenseRow({ expense, onUpdate, onDelete }) {
               type="number"
               value={editData.amount}
               onChange={(e) => setEditData({ ...editData, amount: parseFloat(e.target.value) || 0 })}
-              className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-violet-500"
+              className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500"
             />
           </div>
         </div>
@@ -57,7 +57,7 @@ function ExpenseRow({ expense, onUpdate, onDelete }) {
             type="text"
             value={editData.description}
             onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-            className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-violet-500"
+            className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500"
           />
         </div>
         
@@ -66,7 +66,7 @@ function ExpenseRow({ expense, onUpdate, onDelete }) {
           <select
             value={editData.category}
             onChange={(e) => setEditData({ ...editData, category: e.target.value })}
-            className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-violet-500"
+            className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500"
           >
             {CATEGORIES.map(cat => (
               <option key={cat} value={cat}>{cat}</option>
@@ -283,7 +283,7 @@ export default function ExpensePreview({ parseResult, onBack, onSave }) {
             <p className="text-[10px] text-stone-500 uppercase tracking-wider">Refunds</p>
           </div>
           <div>
-            <p className="text-lg font-display text-violet-400">
+            <p className="text-lg font-display text-teal-400">
               {formatCurrency(totals.net, 'INR')}
             </p>
             <p className="text-[10px] text-stone-500 uppercase tracking-wider">Net Spend</p>

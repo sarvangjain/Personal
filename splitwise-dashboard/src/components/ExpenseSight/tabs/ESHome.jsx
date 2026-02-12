@@ -9,11 +9,12 @@ import {
 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval } from 'date-fns';
 import { formatCurrency } from '../../../utils/analytics';
+import { getCategoryIcon, getCategoryColors } from '../../../utils/categoryConfig';
 
 // Stat Card Component
-function StatCard({ title, value, subtitle, icon: Icon, trend, trendValue, color = 'violet' }) {
+function StatCard({ title, value, subtitle, icon: Icon, trend, trendValue, color = 'teal' }) {
   const colorClasses = {
-    violet: 'from-violet-500/20 to-purple-500/20 text-violet-400',
+    teal: 'from-teal-500/20 to-cyan-500/20 text-teal-400',
     emerald: 'from-emerald-500/20 to-teal-500/20 text-emerald-400',
     amber: 'from-amber-500/20 to-orange-500/20 text-amber-400',
     rose: 'from-rose-500/20 to-pink-500/20 text-rose-400',
@@ -43,10 +44,13 @@ function StatCard({ title, value, subtitle, icon: Icon, trend, trendValue, color
 
 // Recent Expense Item
 function RecentExpenseItem({ expense }) {
+  const CatIcon = getCategoryIcon(expense.category);
+  const colors = getCategoryColors(expense.category);
+  
   return (
     <div className="flex items-center gap-3 py-3 border-b border-stone-800/50 last:border-0">
-      <div className="w-10 h-10 rounded-xl bg-stone-800/50 flex items-center justify-center text-stone-400">
-        <DollarSign size={18} />
+      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${colors.gradient} flex items-center justify-center`}>
+        <CatIcon size={18} className={colors.text} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-stone-200 truncate">{expense.description}</p>
@@ -66,9 +70,9 @@ function RecentExpenseItem({ expense }) {
 // Smart Insight Card
 function InsightCard({ insight }) {
   return (
-    <div className="p-3 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20 rounded-xl">
+    <div className="p-3 bg-gradient-to-r from-teal-500/10 to-cyan-500/10 border border-teal-500/20 rounded-xl">
       <div className="flex items-start gap-2">
-        <Sparkles size={14} className="text-violet-400 mt-0.5 flex-shrink-0" />
+        <Sparkles size={14} className="text-teal-400 mt-0.5 flex-shrink-0" />
         <p className="text-xs text-stone-300">{insight}</p>
       </div>
     </div>
@@ -181,7 +185,7 @@ export default function ESHome({ expenses, userId, onRefresh, onAddExpense }) {
           title="This Month"
           value={formatCurrency(stats.thisMonthSpent, 'INR')}
           icon={Calendar}
-          color="violet"
+          color="teal"
           trend={stats.monthChange > 0 ? 'up' : stats.monthChange < 0 ? 'down' : undefined}
           trendValue={stats.monthChange !== 0 ? `${Math.abs(stats.monthChange)}%` : undefined}
         />
@@ -212,7 +216,7 @@ export default function ESHome({ expenses, userId, onRefresh, onAddExpense }) {
       {insights.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-stone-400 flex items-center gap-2">
-            <Sparkles size={14} className="text-violet-400" />
+            <Sparkles size={14} className="text-teal-400" />
             Smart Insights
           </h3>
           {insights.map((insight, i) => (
@@ -224,7 +228,7 @@ export default function ESHome({ expenses, userId, onRefresh, onAddExpense }) {
       {/* Quick Add Button */}
       <button
         onClick={onAddExpense}
-        className="w-full py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-sm font-medium rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-500/20"
+        className="w-full py-3 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white text-sm font-medium rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-teal-500/20"
       >
         <Plus size={18} />
         Add Expense

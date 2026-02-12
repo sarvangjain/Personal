@@ -370,16 +370,20 @@
   animation: slide-up 0.3s ease-out;
 }
 
-/* ExpenseSight morph animations */
+/* ExpenseSight morph animations - Slower for smoother transition */
 @keyframes morph-expand {
   0% {
     transform: scale(0);
     border-radius: 50%;
     opacity: 0;
   }
-  50% {
-    border-radius: 25%;
-    opacity: 0.8;
+  40% {
+    border-radius: 30%;
+    opacity: 0.6;
+  }
+  70% {
+    border-radius: 15%;
+    opacity: 0.9;
   }
   100% {
     transform: scale(1);
@@ -394,9 +398,13 @@
     border-radius: 0;
     opacity: 1;
   }
-  50% {
-    border-radius: 25%;
-    opacity: 0.8;
+  30% {
+    border-radius: 15%;
+    opacity: 0.9;
+  }
+  60% {
+    border-radius: 30%;
+    opacity: 0.6;
   }
   100% {
     transform: scale(0);
@@ -408,40 +416,55 @@
 @keyframes content-fade-in {
   0% {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.92) translateY(10px);
   }
   100% {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) translateY(0);
   }
 }
 
 @keyframes content-fade-out {
   0% {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) translateY(0);
   }
   100% {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.92) translateY(10px);
   }
 }
 
+/* Slower animations for smoother app switching */
 .animate-morph-expand {
-  animation: morph-expand 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: morph-expand 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .animate-morph-collapse {
-  animation: morph-collapse 0.3s ease-in forwards;
+  animation: morph-collapse 0.5s cubic-bezier(0.55, 0, 0.67, 0.19) forwards;
 }
 
 .animate-content-fade-in {
-  animation: content-fade-in 0.3s ease-out 0.15s forwards;
+  animation: content-fade-in 0.5s ease-out 0.25s forwards;
   opacity: 0;
 }
 
 .animate-content-fade-out {
-  animation: content-fade-out 0.2s ease-in forwards;
+  animation: content-fade-out 0.3s ease-in forwards;
+}
+
+/* Slide in from left animation for menu */
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s ease-out;
 }
 
 /* Standalone mode adjustments */
