@@ -14,16 +14,12 @@ import ESLabs from './tabs/ESLabs';
 import QuickAddModal from './QuickAddModal';
 import { getExpenses, clearCache } from '../../firebase/expenseSightService';
 import { isFirebaseConfigured } from '../../firebase/config';
-import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 export default function ExpenseSightApp({ userId, onClose }) {
   const [activeTab, setActiveTab] = useState('home');
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
-
-  // Lock body scroll when app is open
-  useBodyScrollLock(true);
 
   const firebaseEnabled = isFirebaseConfigured();
 
@@ -118,15 +114,15 @@ export default function ExpenseSightApp({ userId, onClose }) {
   };
 
   return (
-    <div className="min-h-screen bg-stone-950 flex flex-col">
+    <div className="h-screen h-[100dvh] bg-stone-950 flex flex-col overflow-hidden">
       {/* Header */}
       <ESHeader 
         onClose={onClose}
         onAddExpense={() => setQuickAddOpen(true)}
       />
 
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto pb-24 px-4 pt-4">
+      {/* Main content - scrollable area */}
+      <main className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-4">
         {renderTabContent()}
       </main>
 

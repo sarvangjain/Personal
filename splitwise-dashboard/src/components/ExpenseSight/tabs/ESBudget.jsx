@@ -156,7 +156,7 @@ function SpendingPaceChart({ expenses, budget, month }) {
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
-              <linearGradient id="actualGradient" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="esBudgetActualGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
                 <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
               </linearGradient>
@@ -183,7 +183,7 @@ function SpendingPaceChart({ expenses, budget, month }) {
               type="monotone"
               dataKey="actual"
               stroke="#8b5cf6"
-              fill="url(#actualGradient)"
+              fill="url(#esBudgetActualGradient)"
               strokeWidth={2}
             />
           </AreaChart>

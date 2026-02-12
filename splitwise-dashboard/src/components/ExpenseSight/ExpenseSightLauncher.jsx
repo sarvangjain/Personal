@@ -49,7 +49,7 @@ export default function ExpenseSightLauncher({
   if (animationState === 'closed') return null;
 
   const content = (
-    <div className="fixed inset-0 z-[100]">
+    <div className="fixed inset-0 z-[100] overflow-hidden">
       {/* Animated background */}
       <div 
         className={`absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 ${
@@ -61,9 +61,9 @@ export default function ExpenseSightLauncher({
         } : undefined}
       />
       
-      {/* Content container */}
+      {/* Content container - uses fixed to escape stacking context issues */}
       <div 
-        className={`absolute inset-0 ${
+        className={`fixed inset-0 ${
           animationState === 'entering' ? 'animate-content-fade-in' :
           animationState === 'exiting' ? 'animate-content-fade-out' :
           'opacity-100'

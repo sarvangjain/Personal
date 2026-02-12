@@ -14,7 +14,7 @@ const TABS = [
 
 export default function ESBottomNav({ activeTab, onTabChange }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/50 safe-bottom">
+    <nav className="flex-shrink-0 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/50 safe-bottom">
       <div className="flex items-center justify-around px-2 py-2">
         {TABS.map(tab => {
           const Icon = tab.icon;

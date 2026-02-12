@@ -50,7 +50,7 @@ function ExpenseItem({ expense }) {
             {expense.category}
           </span>
           <span className="text-[10px] text-stone-600">
-            {format(parseISO(expense.date), 'h:mm a')}
+            {format(parseISO(expense.date), 'MMM d')}
           </span>
         </div>
       </div>

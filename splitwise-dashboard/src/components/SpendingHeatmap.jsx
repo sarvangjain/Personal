@@ -60,24 +60,33 @@ export default function SpendingHeatmap({ expenses, userId, currency = 'INR' }) 
       dailyMap[key] = { date: day, amount: 0, expenses: [] };
     });
     
-    // Aggregate expenses
+    // Aggregate expenses (handles both Splitwise and ExpenseSight formats)
     expenses.forEach(exp => {
-      if (exp.deleted_at) return;
+      if (exp.deleted_at || exp.cancelled) return;
       const expDate = parseISO(exp.date || exp.created_at);
       if (!isSameMonth(expDate, currentMonth)) return;
       
       const key = format(expDate, 'yyyy-MM-dd');
       if (!dailyMap[key]) return;
       
-      const userShare = exp.users?.find(u => u.user_id === userId);
-      const amount = userShare ? parseFloat(userShare.owed_share || 0) : 0;
+      // Handle both Splitwise format (users array) and ExpenseSight format (direct amount)
+      let amount = 0;
+      if (exp.users && userId) {
+        // Splitwise format
+        const userShare = exp.users.find(u => u.user_id === userId);
+        amount = userShare ? parseFloat(userShare.owed_share || 0) : 0;
+      } else if (typeof exp.amount === 'number') {
+        // ExpenseSight format - skip refunds for heatmap
+        if (exp.isRefund) return;
+        amount = exp.amount;
+      }
       
       if (amount > 0) {
         dailyMap[key].amount += amount;
         dailyMap[key].expenses.push({
           description: exp.description,
           amount,
-          category: exp.category?.name || 'Other',
+          category: exp.category?.name || exp.category || 'Other',
         });
         total += amount;
       }

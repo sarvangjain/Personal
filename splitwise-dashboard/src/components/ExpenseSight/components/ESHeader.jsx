@@ -6,7 +6,7 @@ import { ArrowLeft, Plus } from 'lucide-react';
 
 export default function ESHeader({ onClose, onAddExpense, title = 'ExpenseSight' }) {
   return (
-    <header className="sticky top-0 z-50 bg-stone-950/95 backdrop-blur-xl border-b border-stone-800/50 safe-top">
+    <header className="flex-shrink-0 bg-stone-950/95 backdrop-blur-xl border-b border-stone-800/50 safe-top">
       <div className="flex items-center justify-between px-4 py-3">
         {/* Back button */}
         <button
