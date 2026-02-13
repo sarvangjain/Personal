@@ -683,43 +683,87 @@ function SavingsGoal({ spent, budget }) {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
+// Helper to get default category budgets
+function getDefaultCategoryBudgets() {
+  const defaults = {};
+  for (const cat of getAllCategories()) {
+    defaults[cat] = getDefaultCategoryBudget(cat);
+  }
+  return defaults;
+}
+
+// Helper to load budget from localStorage
+function loadBudgetFromStorage(userId) {
+  if (!userId) return { budget: 30000, categoryBudgets: getDefaultCategoryBudgets() };
+  
+  try {
+    const savedBudget = localStorage.getItem(`expenseSight_budget_${userId}`);
+    const savedCategoryBudgets = localStorage.getItem(`expenseSight_categoryBudgets_${userId}`);
+    
+    return {
+      budget: savedBudget ? parseInt(savedBudget, 10) : 30000,
+      categoryBudgets: savedCategoryBudgets ? JSON.parse(savedCategoryBudgets) : getDefaultCategoryBudgets(),
+    };
+  } catch (err) {
+    console.error('Error loading budget from storage:', err);
+    return { budget: 30000, categoryBudgets: getDefaultCategoryBudgets() };
+  }
+}
+
+// Helper to save budget to localStorage
+function saveBudgetToStorage(userId, budget, categoryBudgets) {
+  if (!userId) return;
+  
+  try {
+    localStorage.setItem(`expenseSight_budget_${userId}`, budget.toString());
+    localStorage.setItem(`expenseSight_categoryBudgets_${userId}`, JSON.stringify(categoryBudgets));
+  } catch (err) {
+    console.error('Error saving budget to storage:', err);
+  }
+}
+
 export default function ESBudget({ expenses, userId }) {
   const [month, setMonth] = useState(new Date());
   const [showSetup, setShowSetup] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   
-  // Load saved budgets
-  const [budget, setBudget] = useState(() => {
-    const saved = localStorage.getItem(`expenseSight_budget_${userId}`);
-    return saved ? parseInt(saved) : 30000;
-  });
-  
-  const [categoryBudgets, setCategoryBudgets] = useState(() => {
-    const saved = localStorage.getItem(`expenseSight_categoryBudgets_${userId}`);
-    if (saved) {
-      return JSON.parse(saved);
+  // Budget state
+  const [budget, setBudget] = useState(30000);
+  const [categoryBudgets, setCategoryBudgets] = useState(getDefaultCategoryBudgets);
+
+  // Load budget data when userId changes or component mounts
+  useEffect(() => {
+    if (userId) {
+      const { budget: loadedBudget, categoryBudgets: loadedCategoryBudgets } = loadBudgetFromStorage(userId);
+      setBudget(loadedBudget);
+      setCategoryBudgets(loadedCategoryBudgets);
+      setIsInitialized(true);
     }
-    // Initialize with defaults
-    const defaults = {};
-    for (const cat of getAllCategories()) {
-      defaults[cat] = getDefaultCategoryBudget(cat);
-    }
-    return defaults;
-  });
+  }, [userId]);
+
+  // Auto-save budget changes to localStorage (debounced)
+  useEffect(() => {
+    if (!userId || !isInitialized) return;
+    
+    const timeoutId = setTimeout(() => {
+      saveBudgetToStorage(userId, budget, categoryBudgets);
+    }, 500); // Debounce saves by 500ms
+    
+    return () => clearTimeout(timeoutId);
+  }, [userId, budget, categoryBudgets, isInitialized]);
 
   // Handle budget setup completion
   const handleSetupComplete = (newBudget, newCategoryBudgets) => {
     setBudget(newBudget);
     setCategoryBudgets(newCategoryBudgets);
-    localStorage.setItem(`expenseSight_budget_${userId}`, newBudget.toString());
-    localStorage.setItem(`expenseSight_categoryBudgets_${userId}`, JSON.stringify(newCategoryBudgets));
+    // Auto-save effect will handle persisting to localStorage
     setShowSetup(false);
   };
 
   // Update single category budget
   const handleUpdateCategoryBudget = (category, newBudget) => {
-    const updated = { ...categoryBudgets, [category]: newBudget };
-    setCategoryBudgets(updated);
-    localStorage.setItem(`expenseSight_categoryBudgets_${userId}`, JSON.stringify(updated));
+    setCategoryBudgets(prev => ({ ...prev, [category]: newBudget }));
+    // Auto-save effect will handle persisting to localStorage
   };
 
   // Filter expenses for current month

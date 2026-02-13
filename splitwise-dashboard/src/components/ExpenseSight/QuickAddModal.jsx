@@ -84,43 +84,53 @@ function ExpenseCard({ expense, onUpdate, onDelete, onKeepAnyway }) {
 
   if (editing) {
     return (
-      <div className="p-3 bg-stone-800/60 border border-teal-500/30 rounded-xl space-y-2">
+      <div className="p-3 bg-stone-800/60 border border-teal-500/30 rounded-xl space-y-3 relative z-20">
         <input
           type="text"
           value={editData.description}
           onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-          className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500"
+          className="w-full px-3 py-2.5 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500"
           placeholder="Description"
         />
-        <div className="flex gap-2">
-          <input
-            type="number"
-            value={editData.amount}
-            onChange={(e) => setEditData({ ...editData, amount: parseFloat(e.target.value) || 0 })}
-            className="flex-1 px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500"
-            placeholder="Amount"
-          />
+        <input
+          type="number"
+          value={editData.amount}
+          onChange={(e) => setEditData({ ...editData, amount: parseFloat(e.target.value) || 0 })}
+          className="w-full px-3 py-2.5 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500"
+          placeholder="Amount"
+        />
+        {/* Category selector with proper z-index */}
+        <div className="relative z-30">
+          <label className="text-[10px] text-stone-500 uppercase tracking-wider mb-1 block">
+            Category
+          </label>
           <select
             value={editData.category}
             onChange={(e) => setEditData({ ...editData, category: e.target.value })}
-            className="flex-1 px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500"
+            className="w-full px-3 py-2.5 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500 appearance-none cursor-pointer"
+            style={{ 
+              backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+              backgroundPosition: 'right 0.5rem center',
+              backgroundRepeat: 'no-repeat',
+              backgroundSize: '1.5em 1.5em',
+              paddingRight: '2.5rem'
+            }}
           >
             {CATEGORIES.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
+              <option key={cat} value={cat} className="bg-stone-800 text-stone-200">{cat}</option>
             ))}
-            <option value="Other">Other</option>
           </select>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 pt-1">
           <button
             onClick={handleSave}
-            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-lg flex items-center justify-center gap-1"
+            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-lg flex items-center justify-center gap-1"
           >
             <Check size={14} /> Save
           </button>
           <button
             onClick={() => { setEditData(expense); setEditing(false); }}
-            className="flex-1 py-2 bg-stone-700 hover:bg-stone-600 text-stone-300 text-xs rounded-lg"
+            className="flex-1 py-2.5 bg-stone-700 hover:bg-stone-600 text-stone-300 text-xs rounded-lg"
           >
             Cancel
           </button>
@@ -775,7 +785,7 @@ export default function QuickAddModal({ isOpen, onClose, userId, onSaved }) {
                     <label className="text-xs text-stone-500 uppercase tracking-wider mb-2 block">
                       Review Expenses ({parsedExpenses.length})
                     </label>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                    <div className="space-y-2 max-h-[50vh] overflow-y-auto overflow-x-visible">
                       {parsedExpenses.map(expense => (
                         <ExpenseCard
                           key={expense.id}

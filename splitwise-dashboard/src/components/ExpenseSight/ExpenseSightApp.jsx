@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import ESHeader from './components/ESHeader';
 import ESBottomNav from './components/ESBottomNav';
 import ESHome from './tabs/ESHome';
@@ -23,7 +23,16 @@ export default function ExpenseSightApp({ userId, onClose }) {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [showCategoryDetail, setShowCategoryDetail] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Pull-to-refresh state
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
   const mainRef = useRef(null);
+  const touchStartY = useRef(0);
+  const touchStartScrollTop = useRef(0);
+  const isScrolling = useRef(false);
+  
+  const PULL_THRESHOLD = 80; // pixels to pull before triggering refresh
 
   const firebaseEnabled = isFirebaseConfigured();
 
@@ -56,43 +65,74 @@ export default function ExpenseSightApp({ userId, onClose }) {
     setShowCategoryDetail(false);
   }, [activeTab]);
 
-  // Prevent native pull-to-refresh on the main container
+  // Custom pull-to-refresh implementation
   useEffect(() => {
     const mainEl = mainRef.current;
     if (!mainEl) return;
 
-    let startY = 0;
-    let startScrollTop = 0;
-
     const handleTouchStart = (e) => {
-      startY = e.touches[0].pageY;
-      startScrollTop = mainEl.scrollTop;
-    };
-
-    const handleTouchMove = (e) => {
-      const currentY = e.touches[0].pageY;
-      const diff = currentY - startY;
-
-      // If at the top and trying to pull down, prevent default
-      // But allow it after a significant threshold (50px) for manual refresh
-      if (startScrollTop <= 0 && diff > 0 && diff < 80) {
-        e.preventDefault();
+      // Only track if at the top of the scroll container
+      if (mainEl.scrollTop <= 0) {
+        touchStartY.current = e.touches[0].clientY;
+        touchStartScrollTop.current = mainEl.scrollTop;
+        isScrolling.current = false;
       }
     };
 
+    const handleTouchMove = (e) => {
+      // If we're not at the top, allow normal scrolling
+      if (mainEl.scrollTop > 5) {
+        setPullDistance(0);
+        setIsPulling(false);
+        return;
+      }
+
+      const currentY = e.touches[0].clientY;
+      const diff = currentY - touchStartY.current;
+
+      // Only consider it a pull if starting from top and pulling down
+      if (touchStartScrollTop.current <= 0 && diff > 0 && !isRefreshing) {
+        // Prevent native scroll/refresh behavior
+        e.preventDefault();
+        
+        // Apply resistance to pull distance
+        const resistance = 0.4;
+        const pulledDistance = Math.min(diff * resistance, PULL_THRESHOLD * 1.5);
+        
+        setPullDistance(pulledDistance);
+        setIsPulling(true);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (isPulling && pullDistance >= PULL_THRESHOLD && !isRefreshing) {
+        // Trigger refresh
+        handleRefresh();
+      }
+      
+      // Reset pull state
+      setPullDistance(0);
+      setIsPulling(false);
+    };
+
+    // Use passive: false for touchmove to allow preventDefault
     mainEl.addEventListener('touchstart', handleTouchStart, { passive: true });
     mainEl.addEventListener('touchmove', handleTouchMove, { passive: false });
+    mainEl.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
       mainEl.removeEventListener('touchstart', handleTouchStart);
       mainEl.removeEventListener('touchmove', handleTouchMove);
+      mainEl.removeEventListener('touchend', handleTouchEnd);
     };
-  }, []);
+  }, [isPulling, pullDistance, isRefreshing]);
 
   // Handle refresh
   const handleRefresh = useCallback(() => {
     if (isRefreshing) return;
     setIsRefreshing(true);
+    setPullDistance(0);
+    setIsPulling(false);
     clearCache(userId);
     loadExpenses(true);
   }, [userId, loadExpenses, isRefreshing]);
@@ -164,6 +204,10 @@ export default function ExpenseSightApp({ userId, onClose }) {
     }
   };
 
+  // Calculate pull indicator styles
+  const pullProgress = Math.min(pullDistance / PULL_THRESHOLD, 1);
+  const showPullIndicator = isPulling || isRefreshing;
+
   return (
     <div className="h-screen h-[100dvh] bg-stone-950 flex flex-col overflow-hidden">
       {/* Header */}
@@ -172,20 +216,41 @@ export default function ExpenseSightApp({ userId, onClose }) {
         onAddExpense={() => setQuickAddOpen(true)}
       />
 
+      {/* Pull-to-refresh indicator */}
+      {showPullIndicator && (
+        <div 
+          className="flex items-center justify-center py-2 bg-stone-900/80 border-b border-stone-800/50"
+          style={{ 
+            transform: `translateY(${isRefreshing ? 0 : pullDistance - 40}px)`,
+            opacity: isRefreshing ? 1 : pullProgress,
+            transition: isRefreshing ? 'none' : 'transform 0.1s ease-out'
+          }}
+        >
+          <div className={`flex items-center gap-2 ${isRefreshing ? 'animate-pulse' : ''}`}>
+            <RefreshCw 
+              size={16} 
+              className={`text-teal-400 ${isRefreshing ? 'animate-spin' : ''}`}
+              style={{ 
+                transform: isRefreshing ? 'none' : `rotate(${pullProgress * 180}deg)` 
+              }}
+            />
+            <span className="text-xs text-stone-400">
+              {isRefreshing ? 'Refreshing...' : pullProgress >= 1 ? 'Release to refresh' : 'Pull to refresh'}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Main content - scrollable area */}
       <main 
         ref={mainRef}
-        className="flex-1 overflow-y-auto overscroll-none px-4 pt-4 pb-4"
-        style={{ WebkitOverflowScrolling: 'touch' }}
+        className="flex-1 overflow-y-auto px-4 pt-4 pb-4"
+        style={{ 
+          overscrollBehavior: 'none',
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y',
+        }}
       >
-        {/* Refresh indicator */}
-        {isRefreshing && (
-          <div className="flex items-center justify-center py-2 -mt-2 mb-2">
-            <Loader2 size={20} className="animate-spin text-teal-400" />
-            <span className="text-xs text-stone-500 ml-2">Refreshing...</span>
-          </div>
-        )}
-        
         {renderTabContent()}
       </main>
 
