@@ -12,7 +12,8 @@
   }
 
   html {
-    /* Prevent pull-to-refresh in standalone mode */
+    /* Prevent pull-to-refresh and overscroll everywhere */
+    overscroll-behavior: none;
     overscroll-behavior-y: none;
     overscroll-behavior-x: none;
   }
@@ -23,12 +24,14 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
+    overscroll-behavior: none;
   }
   
   #root {
     width: 100%;
     height: 100%;
     overflow: auto;
+    overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -162,27 +165,27 @@
 
   /* Safe area utilities */
   .safe-top {
-    padding-top: env(safe-area-inset-top);
+    padding-top: env(safe-area-inset-top, 0px);
   }
   .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
   }
   .safe-left {
-    padding-left: env(safe-area-inset-left);
+    padding-left: env(safe-area-inset-left, 0px);
   }
   .safe-right {
-    padding-right: env(safe-area-inset-right);
+    padding-right: env(safe-area-inset-right, 0px);
   }
   .safe-x {
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
   }
   .safe-y {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
   }
   .safe-all {
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) max(env(safe-area-inset-bottom, 0px), 8px) env(safe-area-inset-left, 0px);
   }
 
   /* Touch-friendly button */

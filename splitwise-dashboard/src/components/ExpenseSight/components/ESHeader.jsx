@@ -316,45 +316,45 @@ export default function ESHeader({ onClose, onAddExpense, title = 'ExpenseSight'
         {/* Safe area padding at top */}
         <div className="safe-top" />
         
-        <div className="flex items-center justify-between px-4 py-3">
-          {/* Left: Hamburger + Quick Switch */}
-          <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between px-3 sm:px-4 py-3 gap-2">
+          {/* Left: Hamburger + Quick Switch (hidden on very small screens) */}
+          <div className="flex items-center gap-1 flex-shrink-0">
             {/* Hamburger menu button */}
             <button
               onClick={() => setMenuOpen(true)}
-              className="p-2.5 -ml-1 rounded-xl text-stone-400 hover:text-stone-200 hover:bg-stone-800/50 transition-all"
+              className="p-2 sm:p-2.5 -ml-1 rounded-xl text-stone-400 hover:text-stone-200 hover:bg-stone-800/50 active:bg-stone-800 transition-all touch-manipulation"
             >
               <Menu size={22} />
             </button>
             
-            {/* Quick App Switch Button */}
+            {/* Quick App Switch Button - icon only on small screens */}
             <button
               onClick={onClose}
-              className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 hover:from-emerald-500/20 hover:to-teal-500/20 transition-all group touch-manipulation"
+              className="flex items-center gap-1.5 p-2 sm:px-2 sm:py-1.5 rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 hover:from-emerald-500/20 hover:to-teal-500/20 active:from-emerald-500/30 active:to-teal-500/30 transition-all group touch-manipulation"
               title="Switch to SplitSight"
             >
               <SplitSightMiniLogo size={18} />
-              <span className="text-[10px] font-medium text-emerald-400 group-hover:text-emerald-300">
+              <span className="hidden sm:inline text-[10px] font-medium text-emerald-400 group-hover:text-emerald-300">
                 SplitSight
               </span>
             </button>
           </div>
 
-          {/* Centered Title */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-white">
+          {/* Center: Title - flexible width */}
+          <div className="flex items-center justify-center gap-2 flex-1 min-w-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white">
                 <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
                 <circle cx="12" cy="12" r="3"/>
               </svg>
             </div>
-            <h1 className="text-lg font-display text-stone-200">{title}</h1>
+            <h1 className="text-base sm:text-lg font-display text-stone-200 truncate">{title}</h1>
           </div>
 
-          {/* Add expense button */}
+          {/* Right: Add expense button */}
           <button
             onClick={onAddExpense}
-            className="p-2.5 rounded-xl bg-teal-500/20 text-teal-400 hover:bg-teal-500/30 transition-colors"
+            className="p-2 sm:p-2.5 rounded-xl bg-teal-500/20 text-teal-400 hover:bg-teal-500/30 active:bg-teal-500/40 transition-colors flex-shrink-0 touch-manipulation"
           >
             <Plus size={20} />
           </button>
