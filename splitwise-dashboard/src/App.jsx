@@ -330,6 +330,7 @@ function Dashboard() {
           onSelectFriend={handleSearchSelectFriend}
           onNavigate={handleTabChange}
           isOnline={isOnline}
+          onOpenExpenseSight={() => { haptic.light(); setShowExpenseSightApp(true); }}
         />
       )}
 

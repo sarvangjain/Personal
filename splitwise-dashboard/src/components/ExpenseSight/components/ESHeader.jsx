@@ -270,6 +270,24 @@ function SlideMenu({ isOpen, onClose, onBackToSplitSight, activeTab, onNavigate,
   );
 }
 
+// SplitSight logo component for the switch button
+function SplitSightMiniLogo({ size = 20 }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={size} height={size}>
+      <defs>
+        <linearGradient id="esBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style={{ stopColor: '#10b981' }} />
+          <stop offset="100%" style={{ stopColor: '#0d9488' }} />
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="108" fill="url(#esBgGrad)" />
+      <circle cx="200" cy="256" r="80" fill="none" stroke="white" strokeWidth="28" opacity="0.9" />
+      <circle cx="312" cy="256" r="80" fill="none" stroke="white" strokeWidth="28" opacity="0.9" />
+      <ellipse cx="256" cy="256" rx="18" ry="60" fill="white" opacity="0.85" />
+    </svg>
+  );
+}
+
 export default function ESHeader({ onClose, onAddExpense, title = 'ExpenseSight', activeTab = 'home', onNavigate, recentTabs = [] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   
@@ -280,13 +298,28 @@ export default function ESHeader({ onClose, onAddExpense, title = 'ExpenseSight'
         <div className="safe-top" />
         
         <div className="flex items-center justify-between px-4 py-3">
-          {/* Hamburger menu button */}
-          <button
-            onClick={() => setMenuOpen(true)}
-            className="p-2.5 -ml-1 rounded-xl text-stone-400 hover:text-stone-200 hover:bg-stone-800/50 transition-all"
-          >
-            <Menu size={22} />
-          </button>
+          {/* Left: Hamburger + Quick Switch */}
+          <div className="flex items-center gap-1">
+            {/* Hamburger menu button */}
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="p-2.5 -ml-1 rounded-xl text-stone-400 hover:text-stone-200 hover:bg-stone-800/50 transition-all"
+            >
+              <Menu size={22} />
+            </button>
+            
+            {/* Quick App Switch Button */}
+            <button
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 hover:from-emerald-500/20 hover:to-teal-500/20 transition-all group touch-manipulation"
+              title="Switch to SplitSight"
+            >
+              <SplitSightMiniLogo size={18} />
+              <span className="text-[10px] font-medium text-emerald-400 group-hover:text-emerald-300">
+                SplitSight
+              </span>
+            </button>
+          </div>
 
           {/* Centered Title */}
           <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">

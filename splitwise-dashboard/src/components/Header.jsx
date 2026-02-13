@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, Plus, WifiOff, Search, X } from 'lucide-react';
+import { Menu, Plus, WifiOff, Search, X, Eye } from 'lucide-react';
 import SearchBar from './SearchBar';
 
 // SVG Logo component matching the PWA icon
@@ -30,7 +30,7 @@ function AppLogo({ size = 36, className = '' }) {
   );
 }
 
-export default function Header({ user, onOpenSidebar, onAddExpense, groups, friends, expenses, onSelectGroup, onSelectFriend, onNavigate, isOnline = true }) {
+export default function Header({ user, onOpenSidebar, onAddExpense, groups, friends, expenses, onSelectGroup, onSelectFriend, onNavigate, isOnline = true, onOpenExpenseSight }) {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   
   return (
@@ -59,6 +59,22 @@ export default function Header({ user, onOpenSidebar, onAddExpense, groups, frie
               <p className="text-[8px] sm:text-[10px] text-stone-500 font-medium tracking-widest uppercase">Analytics</p>
             </div>
           </div>
+          
+          {/* Quick App Switch Button */}
+          {onOpenExpenseSight && (
+            <button
+              onClick={onOpenExpenseSight}
+              className="ml-1 sm:ml-2 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-gradient-to-r from-teal-500/10 to-cyan-500/10 border border-teal-500/30 hover:from-teal-500/20 hover:to-cyan-500/20 transition-all group touch-manipulation"
+              title="Switch to ExpenseSight"
+            >
+              <div className="w-5 h-5 rounded bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
+                <Eye size={11} className="text-white" />
+              </div>
+              <span className="hidden sm:inline text-[10px] font-medium text-teal-400 group-hover:text-teal-300">
+                ExpenseSight
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Center: Search Bar - desktop only */}
