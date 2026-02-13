@@ -7,7 +7,7 @@ import {
   ShoppingCart, Car, Utensils, Zap, ShoppingBag,
   Tv, Heart, Plane, User, CreditCard, HelpCircle,
   Coffee, Home, Fuel, Train, Bus, Bike, Smartphone,
-  Gift, Scissors, Dumbbell, Music, Gamepad2, Film
+  Gift, Scissors, Dumbbell, Music, Gamepad2, Film, Building2
 } from 'lucide-react';
 
 // ─── Category Definitions ────────────────────────────────────────────────────
@@ -56,6 +56,19 @@ export const CATEGORIES = {
       'kfc', 'order'
     ],
   },
+  'Rent': {
+    icon: Building2,
+    color: 'slate',
+    gradient: 'from-slate-500/20 to-gray-500/20',
+    text: 'text-slate-400',
+    bg: 'bg-slate-500/20',
+    border: 'border-slate-500/30',
+    bar: 'bg-slate-500',
+    keywords: [
+      'rent', 'house rent', 'room rent', 'flat rent', 'apartment', 'monthly rent',
+      'accommodation', 'housing', 'pg', 'paying guest'
+    ],
+  },
   'Utilities': {
     icon: Zap,
     color: 'yellow',
@@ -66,7 +79,7 @@ export const CATEGORIES = {
     bar: 'bg-yellow-500',
     keywords: [
       'wifi', 'internet', 'electricity', 'electric', 'water', 'gas', 'cylinder',
-      'rent', 'bill', 'maintenance', 'society', 'airtel', 'jio', 'vodafone',
+      'bill', 'maintenance', 'society', 'airtel', 'jio', 'vodafone',
       'mobile bill', 'recharge', 'icloud'
     ],
   },
@@ -216,6 +229,7 @@ export function inferCategory(description) {
  */
 export function getDefaultCategoryBudget(categoryName) {
   const defaults = {
+    'Rent': 15000,
     'Food & Dining': 8000,
     'Transport': 5000,
     'Groceries': 6000,

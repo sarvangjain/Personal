@@ -11,17 +11,19 @@
  * - Savings goals
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { 
   Wallet, TrendingUp, Calendar, Settings, ChevronLeft, ChevronRight,
   AlertTriangle, CheckCircle, Target, PiggyBank, Sparkles, ArrowRight,
-  Edit3, Save, X, Plus, Minus, Info
+  Edit3, Save, X, Plus, Minus, Info, Loader2, Cloud, CloudOff
 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDaysInMonth, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { formatCurrency } from '../../../utils/analytics';
 import { TOOLTIP_STYLE, STATUS_COLORS } from '../../../utils/chartConfig';
 import { getCategoryIcon, getCategoryColors, getAllCategories, getDefaultCategoryBudget } from '../../../utils/categoryConfig';
+import { getBudgetSettings, saveBudgetSettings } from '../../../firebase/expenseSightService';
+import { isFirebaseConfigured } from '../../../firebase/config';
 
 // ─── Budget Setup Wizard ─────────────────────────────────────────────────────
 
@@ -692,7 +694,7 @@ function getDefaultCategoryBudgets() {
   return defaults;
 }
 
-// Helper to load budget from localStorage
+// Helper to load budget from localStorage (fallback)
 function loadBudgetFromStorage(userId) {
   if (!userId) return { budget: 30000, categoryBudgets: getDefaultCategoryBudgets() };
   
@@ -710,7 +712,7 @@ function loadBudgetFromStorage(userId) {
   }
 }
 
-// Helper to save budget to localStorage
+// Helper to save budget to localStorage (cache/fallback)
 function saveBudgetToStorage(userId, budget, categoryBudgets) {
   if (!userId) return;
   
@@ -726,45 +728,145 @@ export default function ESBudget({ expenses, userId }) {
   const [month, setMonth] = useState(new Date());
   const [showSetup, setShowSetup] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('idle'); // 'idle' | 'syncing' | 'synced' | 'error'
+  const saveTimeoutRef = useRef(null);
   
   // Budget state
   const [budget, setBudget] = useState(30000);
   const [categoryBudgets, setCategoryBudgets] = useState(getDefaultCategoryBudgets);
 
+  const firebaseEnabled = isFirebaseConfigured();
+
+  // Load budget data from Firebase (primary) with localStorage fallback
+  const loadBudgetData = useCallback(async () => {
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Try Firebase first
+      if (firebaseEnabled) {
+        const firebaseData = await getBudgetSettings(userId);
+        
+        if (firebaseData && firebaseData.monthlyBudget !== undefined) {
+          // Use Firebase data
+          const loadedBudget = firebaseData.monthlyBudget || 30000;
+          const loadedCategoryBudgets = firebaseData.categoryBudgets || getDefaultCategoryBudgets();
+          
+          setBudget(loadedBudget);
+          setCategoryBudgets(loadedCategoryBudgets);
+          
+          // Also update localStorage as cache
+          saveBudgetToStorage(userId, loadedBudget, loadedCategoryBudgets);
+          
+          setIsInitialized(true);
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // Fallback to localStorage
+      const localData = loadBudgetFromStorage(userId);
+      setBudget(localData.budget);
+      setCategoryBudgets(localData.categoryBudgets);
+      
+      // If we have local data and Firebase is enabled, sync it to Firebase
+      if (firebaseEnabled && (localData.budget !== 30000 || Object.keys(localData.categoryBudgets).length > 0)) {
+        await saveBudgetSettings(userId, {
+          monthlyBudget: localData.budget,
+          categoryBudgets: localData.categoryBudgets,
+        });
+      }
+      
+      setIsInitialized(true);
+    } catch (error) {
+      console.error('Error loading budget data:', error);
+      // Fallback to localStorage on error
+      const localData = loadBudgetFromStorage(userId);
+      setBudget(localData.budget);
+      setCategoryBudgets(localData.categoryBudgets);
+      setIsInitialized(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, firebaseEnabled]);
+
   // Load budget data when userId changes or component mounts
   useEffect(() => {
-    if (userId) {
-      const { budget: loadedBudget, categoryBudgets: loadedCategoryBudgets } = loadBudgetFromStorage(userId);
-      setBudget(loadedBudget);
-      setCategoryBudgets(loadedCategoryBudgets);
-      setIsInitialized(true);
-    }
-  }, [userId]);
+    loadBudgetData();
+  }, [loadBudgetData]);
 
-  // Auto-save budget changes to localStorage (debounced)
-  useEffect(() => {
+  // Save budget data to Firebase and localStorage (debounced)
+  const saveBudgetData = useCallback(async (newBudget, newCategoryBudgets) => {
     if (!userId || !isInitialized) return;
     
-    const timeoutId = setTimeout(() => {
-      saveBudgetToStorage(userId, budget, categoryBudgets);
-    }, 500); // Debounce saves by 500ms
+    // Immediately save to localStorage (for instant feedback)
+    saveBudgetToStorage(userId, newBudget, newCategoryBudgets);
     
-    return () => clearTimeout(timeoutId);
-  }, [userId, budget, categoryBudgets, isInitialized]);
+    // Debounce Firebase save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    if (firebaseEnabled) {
+      setSyncStatus('syncing');
+      setIsSyncing(true);
+      
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          const result = await saveBudgetSettings(userId, {
+            monthlyBudget: newBudget,
+            categoryBudgets: newCategoryBudgets,
+          });
+          
+          if (result.success) {
+            setSyncStatus('synced');
+            // Reset to idle after showing synced status
+            setTimeout(() => setSyncStatus('idle'), 2000);
+          } else {
+            setSyncStatus('error');
+            console.error('Failed to sync budget to Firebase:', result.error);
+          }
+        } catch (error) {
+          setSyncStatus('error');
+          console.error('Error syncing budget to Firebase:', error);
+        } finally {
+          setIsSyncing(false);
+        }
+      }, 1000); // 1 second debounce for Firebase
+    }
+  }, [userId, isInitialized, firebaseEnabled]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Handle budget setup completion
-  const handleSetupComplete = (newBudget, newCategoryBudgets) => {
+  const handleSetupComplete = useCallback((newBudget, newCategoryBudgets) => {
     setBudget(newBudget);
     setCategoryBudgets(newCategoryBudgets);
-    // Auto-save effect will handle persisting to localStorage
+    saveBudgetData(newBudget, newCategoryBudgets);
     setShowSetup(false);
-  };
+  }, [saveBudgetData]);
 
   // Update single category budget
-  const handleUpdateCategoryBudget = (category, newBudget) => {
-    setCategoryBudgets(prev => ({ ...prev, [category]: newBudget }));
-    // Auto-save effect will handle persisting to localStorage
-  };
+  const handleUpdateCategoryBudget = useCallback((category, newBudgetValue) => {
+    setCategoryBudgets(prev => {
+      const updated = { ...prev, [category]: newBudgetValue };
+      saveBudgetData(budget, updated);
+      return updated;
+    });
+  }, [budget, saveBudgetData]);
 
   // Filter expenses for current month
   const monthExpenses = useMemo(() => {
@@ -809,6 +911,18 @@ export default function ESBudget({ expenses, userId }) {
     }
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <Loader2 size={32} className="animate-spin text-teal-400 mx-auto mb-4" />
+          <p className="text-sm text-stone-400">Loading budget...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (showSetup) {
     return (
       <div className="space-y-4">
@@ -836,7 +950,34 @@ export default function ESBudget({ expenses, userId }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-display text-stone-200">Budget</h2>
-          <p className="text-xs text-stone-500">Track your spending limits</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-stone-500">Track your spending limits</p>
+            {/* Sync status indicator */}
+            {firebaseEnabled && (
+              <div className={`flex items-center gap-1 transition-opacity ${
+                syncStatus === 'idle' ? 'opacity-0' : 'opacity-100'
+              }`}>
+                {syncStatus === 'syncing' && (
+                  <span className="flex items-center gap-1 text-[10px] text-teal-400">
+                    <Loader2 size={10} className="animate-spin" />
+                    Syncing...
+                  </span>
+                )}
+                {syncStatus === 'synced' && (
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-400">
+                    <Cloud size={10} />
+                    Synced
+                  </span>
+                )}
+                {syncStatus === 'error' && (
+                  <span className="flex items-center gap-1 text-[10px] text-amber-400">
+                    <CloudOff size={10} />
+                    Offline
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <button
           onClick={() => setShowSetup(true)}

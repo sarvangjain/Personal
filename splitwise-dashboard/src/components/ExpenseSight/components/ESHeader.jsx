@@ -2,12 +2,110 @@
  * ESHeader - ExpenseSight app header with hamburger menu
  */
 
-import { useState } from 'react';
-import { Menu, Plus, X, ArrowLeft, Settings, HelpCircle, Info } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { 
+  Menu, Plus, X, ArrowLeft, Settings, HelpCircle, Info, 
+  Clock, Home, Receipt, Wallet, TrendingUp, FlaskConical,
+  ChevronRight, Target, PieChart
+} from 'lucide-react';
+
+// Tab metadata for ExpenseSight
+const ES_TAB_META = {
+  home:     { icon: Home,        label: 'Home',      color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  activity: { icon: Receipt,     label: 'Activity',  color: 'text-teal-400',    bg: 'bg-teal-500/10' },
+  budget:   { icon: Wallet,      label: 'Budget',    color: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
+  insights: { icon: TrendingUp,  label: 'Insights',  color: 'text-purple-400',  bg: 'bg-purple-500/10' },
+  labs:     { icon: FlaskConical,label: 'Labs',      color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10' },
+};
+
+// Navigation sections
+const NAV_SECTIONS = [
+  {
+    title: 'Main',
+    items: ['home', 'activity'],
+  },
+  {
+    title: 'Finance',
+    items: ['budget', 'insights'],
+  },
+  {
+    title: 'Explore',
+    items: ['labs'],
+  },
+];
+
+// Recent tab item component
+function RecentTabItem({ tabId, onClick }) {
+  const meta = ES_TAB_META[tabId];
+  if (!meta) return null;
+  const Icon = meta.icon;
+
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-stone-800/40 active:bg-stone-800/60 transition-colors w-full touch-manipulation"
+    >
+      <Clock size={12} className="text-stone-600 flex-shrink-0" />
+      <Icon size={14} className={meta.color} />
+      <span className="text-xs text-stone-400 flex-1 text-left">{meta.label}</span>
+    </button>
+  );
+}
+
+// Navigation item component
+function NavItem({ tabId, isActive, onClick }) {
+  const meta = ES_TAB_META[tabId];
+  if (!meta) return null;
+  const Icon = meta.icon;
+
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group touch-manipulation ${
+        isActive
+          ? 'bg-stone-800/80 border border-stone-700/50'
+          : 'hover:bg-stone-800/40 active:bg-stone-800/60 border border-transparent'
+      }`}
+    >
+      <div className={`w-8 h-8 rounded-lg ${isActive ? meta.bg : 'bg-stone-800/50 group-hover:bg-stone-800'} flex items-center justify-center transition-colors`}>
+        <Icon size={16} className={isActive ? meta.color : 'text-stone-500 group-hover:text-stone-400'} />
+      </div>
+      <span className={`text-sm font-medium flex-1 text-left ${isActive ? 'text-stone-200' : 'text-stone-400 group-hover:text-stone-300'}`}>
+        {meta.label}
+      </span>
+      <ChevronRight size={14} className={`${isActive ? 'text-stone-500' : 'text-stone-700 group-hover:text-stone-600'} transition-colors`} />
+    </button>
+  );
+}
 
 // Slide-out menu
-function SlideMenu({ isOpen, onClose, onBackToSplitSight }) {
+function SlideMenu({ isOpen, onClose, onBackToSplitSight, activeTab, onNavigate, recentTabs = [] }) {
+  const sidebarRef = useRef(null);
+  
+  // Swipe to close (left swipe)
+  useEffect(() => {
+    if (!isOpen) return;
+    let startX = 0;
+    const handleTouchStart = (e) => { startX = e.touches[0].clientX; };
+    const handleTouchEnd = (e) => {
+      const diff = startX - e.changedTouches[0].clientX;
+      if (diff > 80) onClose(); // Swiped left by 80px+
+    };
+    const el = sidebarRef.current;
+    if (el) {
+      el.addEventListener('touchstart', handleTouchStart, { passive: true });
+      el.addEventListener('touchend', handleTouchEnd, { passive: true });
+      return () => {
+        el.removeEventListener('touchstart', handleTouchStart);
+        el.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
+  
+  // Filter recent tabs to exclude current active tab
+  const filteredRecents = recentTabs.filter(tabId => tabId !== activeTab && ES_TAB_META[tabId]);
   
   return (
     <>
@@ -18,10 +116,16 @@ function SlideMenu({ isOpen, onClose, onBackToSplitSight }) {
       />
       
       {/* Menu panel */}
-      <div className="fixed top-0 left-0 h-full w-72 bg-stone-900 border-r border-stone-800/50 z-50 animate-slide-in-left safe-top">
-        <div className="p-4 pt-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+      <div 
+        ref={sidebarRef}
+        className="fixed top-0 left-0 h-full w-72 bg-stone-900 border-r border-stone-800/50 z-50 animate-slide-in-left flex flex-col"
+      >
+        {/* Safe area top */}
+        <div className="safe-top flex-shrink-0" />
+        
+        {/* Header */}
+        <div className="p-4 flex-shrink-0">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white">
@@ -36,51 +140,137 @@ function SlideMenu({ isOpen, onClose, onBackToSplitSight }) {
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg text-stone-500 hover:text-stone-300 hover:bg-stone-800/50"
+              className="p-2 rounded-lg text-stone-500 hover:text-stone-300 hover:bg-stone-800/50 transition-colors"
             >
               <X size={20} />
             </button>
           </div>
+        </div>
+        
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-4">
+          {/* Recent tabs */}
+          {filteredRecents.length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-[10px] uppercase tracking-wider text-stone-600 font-medium px-3 mb-2">
+                Recently Visited
+              </h3>
+              <div className="space-y-0.5">
+                {filteredRecents.slice(0, 3).map(tabId => (
+                  <RecentTabItem
+                    key={tabId}
+                    tabId={tabId}
+                    onClick={() => {
+                      onNavigate(tabId);
+                      onClose();
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           
-          {/* Menu items */}
-          <div className="space-y-1">
-            <button
-              onClick={() => { onBackToSplitSight(); onClose(); }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-stone-300 hover:bg-stone-800/50 transition-colors"
-            >
-              <ArrowLeft size={20} />
-              <span className="text-sm">Back to SplitSight</span>
-            </button>
-            
-            <div className="h-px bg-stone-800 my-3" />
-            
-            <button className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-stone-400 hover:bg-stone-800/50 transition-colors">
-              <Settings size={20} />
-              <span className="text-sm">Settings</span>
-            </button>
-            
-            <button className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-stone-400 hover:bg-stone-800/50 transition-colors">
-              <HelpCircle size={20} />
-              <span className="text-sm">Help & Support</span>
-            </button>
-            
-            <button className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-stone-400 hover:bg-stone-800/50 transition-colors">
-              <Info size={20} />
-              <span className="text-sm">About</span>
-            </button>
+          {/* Navigation sections */}
+          {NAV_SECTIONS.map((section, idx) => (
+            <div key={section.title}>
+              <h3 className="text-[10px] uppercase tracking-wider text-stone-600 font-medium px-3 mb-2">
+                {section.title}
+              </h3>
+              <div className="space-y-1">
+                {section.items.map(tabId => (
+                  <NavItem
+                    key={tabId}
+                    tabId={tabId}
+                    isActive={activeTab === tabId}
+                    onClick={() => {
+                      onNavigate(tabId);
+                      onClose();
+                    }}
+                  />
+                ))}
+              </div>
+              {idx < NAV_SECTIONS.length - 1 && (
+                <div className="h-px bg-stone-800/50 my-3" />
+              )}
+            </div>
+          ))}
+          
+          {/* Quick Actions */}
+          <div className="h-px bg-stone-800/50 my-3" />
+          <div>
+            <h3 className="text-[10px] uppercase tracking-wider text-stone-600 font-medium px-3 mb-2">
+              Quick Actions
+            </h3>
+            <div className="space-y-1">
+              <button
+                onClick={() => {
+                  onNavigate('budget');
+                  onClose();
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stone-800/40 active:bg-stone-800/60 transition-colors group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center">
+                  <Target size={16} className="text-teal-400" />
+                </div>
+                <span className="text-sm font-medium text-stone-400 group-hover:text-stone-300">Set Budget Goal</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  onNavigate('insights');
+                  onClose();
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stone-800/40 active:bg-stone-800/60 transition-colors group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <PieChart size={16} className="text-purple-400" />
+                </div>
+                <span className="text-sm font-medium text-stone-400 group-hover:text-stone-300">View Analytics</span>
+              </button>
+            </div>
           </div>
+          
+          {/* Back to SplitSight */}
+          <div className="h-px bg-stone-800/50 my-3" />
+          <button
+            onClick={() => { onBackToSplitSight(); onClose(); }}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors"
+          >
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <ArrowLeft size={16} className="text-white" />
+            </div>
+            <span className="text-sm font-medium text-emerald-300 flex-1 text-left">Back to SplitSight</span>
+            <span className="px-1.5 py-0.5 text-[9px] bg-emerald-500/20 text-emerald-400 rounded-full font-medium">
+              App
+            </span>
+          </button>
         </div>
         
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-stone-800/50 safe-bottom">
-          <p className="text-xs text-stone-600 text-center">ExpenseSight v1.0</p>
+        <div className="flex-shrink-0 p-4 border-t border-stone-800/50">
+          <div className="flex items-center justify-between">
+            <div className="flex gap-1">
+              <button className="p-2 rounded-lg text-stone-500 hover:text-stone-300 hover:bg-stone-800/50 transition-colors">
+                <Settings size={18} />
+              </button>
+              <button className="p-2 rounded-lg text-stone-500 hover:text-stone-300 hover:bg-stone-800/50 transition-colors">
+                <HelpCircle size={18} />
+              </button>
+              <button className="p-2 rounded-lg text-stone-500 hover:text-stone-300 hover:bg-stone-800/50 transition-colors">
+                <Info size={18} />
+              </button>
+            </div>
+            <p className="text-[10px] text-stone-600">v1.0</p>
+          </div>
+          {/* Safe area bottom */}
+          <div className="safe-bottom" />
         </div>
       </div>
     </>
   );
 }
 
-export default function ESHeader({ onClose, onAddExpense, title = 'ExpenseSight' }) {
+export default function ESHeader({ onClose, onAddExpense, title = 'ExpenseSight', activeTab = 'home', onNavigate, recentTabs = [] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   
   return (
@@ -124,6 +314,9 @@ export default function ESHeader({ onClose, onAddExpense, title = 'ExpenseSight'
         isOpen={menuOpen} 
         onClose={() => setMenuOpen(false)}
         onBackToSplitSight={onClose}
+        activeTab={activeTab}
+        onNavigate={onNavigate}
+        recentTabs={recentTabs}
       />
     </>
   );

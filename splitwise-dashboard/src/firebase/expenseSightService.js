@@ -397,6 +397,80 @@ export function clearCache(userId) {
   }
 }
 
+// ─── Budget Management ───────────────────────────────────────────────────────
+
+/**
+ * Get budget settings subcollection reference
+ */
+function getBudgetDoc(userId) {
+  return doc(db, COLLECTION_NAME, normalizeUserId(userId), 'settings', 'budget');
+}
+
+/**
+ * Get user's budget settings from Firebase
+ */
+export async function getBudgetSettings(userId) {
+  if (!isFirebaseConfigured() || !userId) {
+    return null;
+  }
+
+  try {
+    const docSnap = await getDoc(getBudgetDoc(userId));
+    if (docSnap.exists()) {
+      return docSnap.data();
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching budget settings:', error);
+    return null;
+  }
+}
+
+/**
+ * Save budget settings to Firebase
+ */
+export async function saveBudgetSettings(userId, budgetData) {
+  if (!isFirebaseConfigured() || !userId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const docRef = getBudgetDoc(userId);
+    await setDoc(docRef, {
+      ...budgetData,
+      userId: normalizeUserId(userId),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving budget settings:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Update specific budget fields
+ */
+export async function updateBudgetSettings(userId, updates) {
+  if (!isFirebaseConfigured() || !userId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const docRef = getBudgetDoc(userId);
+    await setDoc(docRef, {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating budget settings:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // ─── Export for Analytics Integration ────────────────────────────────────────
 
 /**

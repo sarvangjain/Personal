@@ -13,7 +13,7 @@ import ESInsights from './tabs/ESInsights';
 import ESLabs from './tabs/ESLabs';
 import ESCategoryDetail from './tabs/ESCategoryDetail';
 import QuickAddModal from './QuickAddModal';
-import { getExpenses, clearCache } from '../../firebase/expenseSightService';
+import { getExpenses, clearCache, updateExpense, deleteExpense } from '../../firebase/expenseSightService';
 import { isFirebaseConfigured } from '../../firebase/config';
 
 export default function ExpenseSightApp({ userId, onClose }) {
@@ -23,6 +23,17 @@ export default function ExpenseSightApp({ userId, onClose }) {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [showCategoryDetail, setShowCategoryDetail] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [recentTabs, setRecentTabs] = useState([]);
+  
+  // Track tab visits
+  const handleTabChange = useCallback((tabId) => {
+    setActiveTab(tabId);
+    setRecentTabs(prev => {
+      // Remove if already exists, add to front
+      const filtered = prev.filter(t => t !== tabId);
+      return [tabId, ...filtered].slice(0, 5); // Keep only last 5
+    });
+  }, []);
   
   // Pull-to-refresh state
   const [pullDistance, setPullDistance] = useState(0);
@@ -141,6 +152,32 @@ export default function ExpenseSightApp({ userId, onClose }) {
   const handleQuickAddSaved = () => {
     loadExpenses(true);
   };
+  
+  // Handle update expense
+  const handleUpdateExpense = useCallback(async (expenseId, data) => {
+    if (!userId) return;
+    
+    const result = await updateExpense(userId, expenseId, data);
+    if (result.success) {
+      // Update local state immediately for snappy UX
+      setExpenses(prev => prev.map(exp => 
+        exp.id === expenseId ? { ...exp, ...data } : exp
+      ));
+    }
+    return result;
+  }, [userId]);
+  
+  // Handle delete expense
+  const handleDeleteExpense = useCallback(async (expenseId) => {
+    if (!userId) return;
+    
+    const result = await deleteExpense(userId, expenseId);
+    if (result.success) {
+      // Remove from local state immediately
+      setExpenses(prev => prev.filter(exp => exp.id !== expenseId));
+    }
+    return result;
+  }, [userId]);
 
   // Render tab content
   const renderTabContent = () => {
@@ -177,6 +214,8 @@ export default function ExpenseSightApp({ userId, onClose }) {
             userId={userId}
             onRefresh={handleRefresh}
             onShowCategoryDetail={() => setShowCategoryDetail(true)}
+            onUpdateExpense={handleUpdateExpense}
+            onDeleteExpense={handleDeleteExpense}
           />
         );
       case 'budget':
@@ -214,6 +253,9 @@ export default function ExpenseSightApp({ userId, onClose }) {
       <ESHeader 
         onClose={onClose}
         onAddExpense={() => setQuickAddOpen(true)}
+        activeTab={activeTab}
+        onNavigate={handleTabChange}
+        recentTabs={recentTabs}
       />
 
       {/* Pull-to-refresh indicator */}
@@ -257,7 +299,7 @@ export default function ExpenseSightApp({ userId, onClose }) {
       {/* Bottom navigation */}
       <ESBottomNav 
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
       />
 
       {/* Quick Add Modal */}

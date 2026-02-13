@@ -1,16 +1,17 @@
 /**
- * ESActivity - Activity tab with expense list, search, filters, and spending heatmap
+ * ESActivity - Activity tab with expense list, search, filters, spending heatmap, and edit functionality
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { 
   Search, RefreshCw, Calendar, ChevronDown,
-  DollarSign, X
+  DollarSign, X, Edit2, Trash2, Check, RotateCcw
 } from 'lucide-react';
 import { format, parseISO, isToday, isYesterday, isThisWeek, isThisMonth, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { formatCurrency } from '../../../utils/analytics';
 import SpendingHeatmap from '../../SpendingHeatmap';
 import CategoryQuickCards from '../components/CategoryQuickCards';
+import { getCategoryIcon, getCategoryColors, getAllCategories } from '../../../utils/categoryConfig';
 
 // Date range filter options
 const DATE_FILTERS = [
@@ -33,21 +34,89 @@ function GroupHeader({ title, count, total }) {
   );
 }
 
-// Expense item
-function ExpenseItem({ expense }) {
+// Expense item with edit functionality
+function ExpenseItem({ expense, onEdit, onDelete, isEditing, editData, setEditData, onSaveEdit, onCancelEdit }) {
+  const CategoryIcon = getCategoryIcon(expense.category);
+  const categoryColors = getCategoryColors(expense.category);
+  
+  // Edit mode
+  if (isEditing) {
+    const categories = getAllCategories();
+    return (
+      <div className="p-3 bg-stone-800/60 border border-teal-500/30 rounded-xl space-y-3">
+        <input
+          type="text"
+          value={editData.description}
+          onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+          className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500"
+          placeholder="Description"
+        />
+        <div className="flex gap-2">
+          <input
+            type="number"
+            value={editData.amount}
+            onChange={(e) => setEditData({ ...editData, amount: parseFloat(e.target.value) || 0 })}
+            className="flex-1 px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500"
+            placeholder="Amount"
+          />
+          <input
+            type="date"
+            value={editData.date}
+            onChange={(e) => setEditData({ ...editData, date: e.target.value })}
+            className="flex-1 px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500"
+          />
+        </div>
+        <div className="relative z-30">
+          <select
+            value={editData.category}
+            onChange={(e) => setEditData({ ...editData, category: e.target.value })}
+            className="w-full px-3 py-2.5 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 focus:outline-none focus:border-teal-500 appearance-none cursor-pointer"
+            style={{ 
+              backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+              backgroundPosition: 'right 0.5rem center',
+              backgroundRepeat: 'no-repeat',
+              backgroundSize: '1.5em 1.5em',
+              paddingRight: '2.5rem'
+            }}
+          >
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={onSaveEdit}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-teal-500/20 text-teal-400 rounded-lg text-sm font-medium hover:bg-teal-500/30 transition-colors"
+          >
+            <Check size={16} />
+            Save
+          </button>
+          <button
+            onClick={onCancelEdit}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-stone-700/50 text-stone-400 rounded-lg text-sm font-medium hover:bg-stone-700 transition-colors"
+          >
+            <X size={16} />
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
+    <div className={`flex items-center gap-3 p-3 rounded-xl transition-colors group ${
       expense.isRefund 
         ? 'bg-emerald-500/5 border border-emerald-500/20' 
-        : 'bg-stone-800/30 border border-stone-800/50'
+        : 'bg-stone-800/30 border border-stone-800/50 hover:border-stone-700/50'
     }`}>
-      <div className="w-10 h-10 rounded-xl bg-stone-800/50 flex items-center justify-center text-stone-400">
-        <DollarSign size={18} />
+      <div className={`w-10 h-10 rounded-xl ${categoryColors.bg} ${categoryColors.border} border flex items-center justify-center`}>
+        <CategoryIcon size={18} className={categoryColors.text} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-stone-200 truncate">{expense.description}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[10px] px-1.5 py-0.5 bg-stone-800/80 text-stone-400 rounded">
+          <span className={`text-[10px] px-1.5 py-0.5 ${categoryColors.bg} ${categoryColors.text} rounded`}>
             {expense.category}
           </span>
           <span className="text-[10px] text-stone-600">
@@ -55,23 +124,77 @@ function ExpenseItem({ expense }) {
           </span>
         </div>
       </div>
-      <div className="text-right">
-        <p className={`text-sm font-mono font-medium ${
-          expense.isRefund ? 'text-emerald-400' : 'text-stone-200'
-        }`}>
-          {expense.isRefund ? '+' : ''}{formatCurrency(expense.amount, 'INR')}
-        </p>
+      <div className="flex items-center gap-2">
+        <div className="text-right">
+          <p className={`text-sm font-mono font-medium ${
+            expense.isRefund ? 'text-emerald-400' : 'text-stone-200'
+          }`}>
+            {expense.isRefund ? '+' : ''}{formatCurrency(expense.amount, 'INR')}
+          </p>
+        </div>
+        {/* Edit/Delete buttons - visible on hover */}
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => onEdit(expense)}
+            className="p-1.5 rounded-lg bg-stone-700/50 text-stone-400 hover:text-teal-400 hover:bg-stone-700 transition-colors"
+            title="Edit expense"
+          >
+            <Edit2 size={14} />
+          </button>
+          <button
+            onClick={() => onDelete(expense.id)}
+            className="p-1.5 rounded-lg bg-stone-700/50 text-stone-400 hover:text-red-400 hover:bg-stone-700 transition-colors"
+            title="Delete expense"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-export default function ESActivity({ expenses, userId, onRefresh, onShowCategoryDetail }) {
+export default function ESActivity({ expenses, userId, onRefresh, onShowCategoryDetail, onUpdateExpense, onDeleteExpense }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showCategoryCards, setShowCategoryCards] = useState(true);
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
+  const [editData, setEditData] = useState({ description: '', amount: 0, category: '', date: '' });
+  
+  // Handle edit expense
+  const handleEditExpense = useCallback((expense) => {
+    setEditingExpenseId(expense.id);
+    setEditData({
+      description: expense.description,
+      amount: expense.amount,
+      category: expense.category,
+      date: expense.date,
+    });
+  }, []);
+  
+  // Handle save edit
+  const handleSaveEdit = useCallback(async () => {
+    if (onUpdateExpense && editingExpenseId) {
+      await onUpdateExpense(editingExpenseId, editData);
+      setEditingExpenseId(null);
+      setEditData({ description: '', amount: 0, category: '', date: '' });
+    }
+  }, [onUpdateExpense, editingExpenseId, editData]);
+  
+  // Handle cancel edit
+  const handleCancelEdit = useCallback(() => {
+    setEditingExpenseId(null);
+    setEditData({ description: '', amount: 0, category: '', date: '' });
+  }, []);
+  
+  // Handle delete expense
+  const handleDeleteExpense = useCallback(async (expenseId) => {
+    if (onDeleteExpense && window.confirm('Are you sure you want to delete this expense?')) {
+      await onDeleteExpense(expenseId);
+    }
+  }, [onDeleteExpense]);
 
   // Apply date filter (used for category cards)
   const dateFilteredExpenses = useMemo(() => {
@@ -273,7 +396,17 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
               />
               <div className="space-y-2">
                 {group.expenses.map(expense => (
-                  <ExpenseItem key={expense.id} expense={expense} />
+                  <ExpenseItem 
+                    key={expense.id} 
+                    expense={expense}
+                    onEdit={handleEditExpense}
+                    onDelete={handleDeleteExpense}
+                    isEditing={editingExpenseId === expense.id}
+                    editData={editData}
+                    setEditData={setEditData}
+                    onSaveEdit={handleSaveEdit}
+                    onCancelEdit={handleCancelEdit}
+                  />
                 ))}
               </div>
             </div>
