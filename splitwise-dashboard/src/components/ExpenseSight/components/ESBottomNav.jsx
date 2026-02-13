@@ -14,7 +14,12 @@ const TABS = [
 
 export default function ESBottomNav({ activeTab, onTabChange }) {
   return (
-    <nav className="flex-shrink-0 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/50">
+    <nav 
+      className="flex-shrink-0 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/50"
+      style={{ 
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)'
+      }}
+    >
       {/* Main nav content with padding */}
       <div className="flex items-center justify-around px-2 py-2">
         {TABS.map(tab => {
@@ -25,10 +30,10 @@ export default function ESBottomNav({ activeTab, onTabChange }) {
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all min-w-[56px] ${
+              className={`flex flex-col items-center gap-0.5 px-2 sm:px-3 py-2 rounded-xl transition-all min-w-[52px] sm:min-w-[56px] touch-manipulation ${
                 isActive 
                   ? 'text-teal-400' 
-                  : 'text-stone-500 hover:text-stone-300'
+                  : 'text-stone-500 hover:text-stone-300 active:text-stone-200'
               }`}
             >
               <div className={`p-1.5 rounded-lg transition-colors ${
@@ -45,8 +50,6 @@ export default function ESBottomNav({ activeTab, onTabChange }) {
           );
         })}
       </div>
-      {/* Safe area padding at the bottom */}
-      <div className="safe-bottom" style={{ minHeight: '8px' }} />
     </nav>
   );
 }

@@ -10,6 +10,80 @@ import {
   Gift, Scissors, Dumbbell, Music, Gamepad2, Film, Building2
 } from 'lucide-react';
 
+// ─── Needs vs Wants Classification ───────────────────────────────────────────
+// Based on financial planning best practices:
+// - NEEDS: Essential expenses required for basic living
+// - WANTS: Discretionary spending that enhances lifestyle
+
+export const BUDGET_TYPES = {
+  needs: {
+    label: 'Needs',
+    description: 'Essential expenses',
+    color: 'emerald',
+    icon: '🏠',
+    text: 'text-emerald-400',
+    bg: 'bg-emerald-500/20',
+    border: 'border-emerald-500/30',
+    gradient: 'from-emerald-500/20 to-green-500/20',
+  },
+  wants: {
+    label: 'Wants',
+    description: 'Lifestyle spending',
+    color: 'purple',
+    icon: '✨',
+    text: 'text-purple-400',
+    bg: 'bg-purple-500/20',
+    border: 'border-purple-500/30',
+    gradient: 'from-purple-500/20 to-pink-500/20',
+  },
+};
+
+// Map each expense category to needs or wants
+export const CATEGORY_BUDGET_TYPE = {
+  // NEEDS - Essential expenses
+  'Groceries': 'needs',      // Food is essential
+  'Rent': 'needs',           // Housing is essential
+  'Utilities': 'needs',      // Electricity, water, internet
+  'Transport': 'needs',      // Commuting to work
+  'Health': 'needs',         // Medical expenses
+  'Payments': 'needs',       // Debt repayment (neutral but necessary)
+  
+  // WANTS - Discretionary spending
+  'Food & Dining': 'wants',  // Eating out/ordering is discretionary
+  'Shopping': 'wants',       // Non-essential purchases
+  'Entertainment': 'wants',  // Movies, subscriptions, games
+  'Travel': 'wants',         // Vacations and trips
+  'Personal': 'wants',       // Grooming, spa, salon
+  'Other': 'wants',          // Generally discretionary
+};
+
+/**
+ * Get budget type (needs/wants) for a category
+ */
+export function getCategoryBudgetType(categoryName) {
+  return CATEGORY_BUDGET_TYPE[categoryName] || 'wants';
+}
+
+/**
+ * Get budget type config (label, colors, etc.)
+ */
+export function getBudgetTypeConfig(type) {
+  return BUDGET_TYPES[type] || BUDGET_TYPES.wants;
+}
+
+/**
+ * Group categories by budget type
+ */
+export function getCategoriesByBudgetType() {
+  const grouped = { needs: [], wants: [] };
+  
+  for (const [category, type] of Object.entries(CATEGORY_BUDGET_TYPE)) {
+    grouped[type].push(category);
+  }
+  
+  return grouped;
+}
+
 // ─── Category Definitions ────────────────────────────────────────────────────
 
 export const CATEGORIES = {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 /**
  * Custom hook for PWA functionality
@@ -130,75 +130,18 @@ export function usePWA() {
 
 /**
  * Hook for pull-to-refresh functionality
+ * DISABLED: Custom pull-to-refresh is disabled to prevent scroll interference.
+ * The app uses CSS overscroll-behavior: none to prevent native pull-to-refresh.
+ * Users can refresh using the refresh button in the UI instead.
  */
 export function usePullToRefresh(onRefresh, threshold = 80) {
-  const [isPulling, setIsPulling] = useState(false);
-  const [pullDistance, setPullDistance] = useState(0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Use refs to avoid stale closures and excessive listener re-registration
-  const pullDistanceRef = useRef(0);
-  const isRefreshingRef = useRef(false);
-  const onRefreshRef = useRef(onRefresh);
-  onRefreshRef.current = onRefresh;
-
-  useEffect(() => {
-    let startY = 0;
-
-    const handleTouchStart = (e) => {
-      if (window.scrollY === 0) {
-        startY = e.touches[0].clientY;
-      }
-    };
-
-    const handleTouchMove = (e) => {
-      if (startY === 0 || isRefreshingRef.current) return;
-      
-      const currentY = e.touches[0].clientY;
-      const distance = currentY - startY;
-
-      if (distance > 0 && window.scrollY === 0) {
-        const clamped = Math.min(distance * 0.5, threshold * 1.5);
-        pullDistanceRef.current = clamped;
-        setIsPulling(true);
-        setPullDistance(clamped);
-        
-        if (distance > threshold) {
-          e.preventDefault();
-        }
-      }
-    };
-
-    const handleTouchEnd = async () => {
-      if (pullDistanceRef.current >= threshold && !isRefreshingRef.current && onRefreshRef.current) {
-        isRefreshingRef.current = true;
-        setIsRefreshing(true);
-        try {
-          await onRefreshRef.current();
-        } finally {
-          isRefreshingRef.current = false;
-          setIsRefreshing(false);
-        }
-      }
-      
-      pullDistanceRef.current = 0;
-      setIsPulling(false);
-      setPullDistance(0);
-      startY = 0;
-    };
-
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd, { passive: true });
-
-    return () => {
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [threshold]);
-
-  return { isPulling, pullDistance, isRefreshing };
+  // Return disabled state - no pull-to-refresh functionality
+  // This prevents scroll interference on mobile devices
+  return { 
+    isPulling: false, 
+    pullDistance: 0, 
+    isRefreshing: false 
+  };
 }
 
 /**

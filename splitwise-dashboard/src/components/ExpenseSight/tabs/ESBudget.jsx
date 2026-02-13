@@ -21,7 +21,7 @@ import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDaysI
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { formatCurrency } from '../../../utils/analytics';
 import { TOOLTIP_STYLE, STATUS_COLORS } from '../../../utils/chartConfig';
-import { getCategoryIcon, getCategoryColors, getAllCategories, getDefaultCategoryBudget } from '../../../utils/categoryConfig';
+import { getCategoryIcon, getCategoryColors, getAllCategories, getDefaultCategoryBudget, getCategoryBudgetType, getBudgetTypeConfig, BUDGET_TYPES } from '../../../utils/categoryConfig';
 import { getBudgetSettings, saveBudgetSettings } from '../../../firebase/expenseSightService';
 import { isFirebaseConfigured } from '../../../firebase/config';
 
@@ -309,6 +309,162 @@ function BudgetHealthGauge({ spent, budget, daysInMonth, currentDay }) {
   );
 }
 
+// ─── Needs vs Wants Breakdown ─────────────────────────────────────────────────
+
+function NeedsWantsBreakdown({ categoryBreakdown, budget }) {
+  // Calculate totals for needs and wants
+  const breakdown = useMemo(() => {
+    let needsTotal = 0;
+    let wantsTotal = 0;
+    const needsCategories = [];
+    const wantsCategories = [];
+    
+    for (const [category, amount] of categoryBreakdown) {
+      const budgetType = getCategoryBudgetType(category);
+      if (budgetType === 'needs') {
+        needsTotal += amount;
+        needsCategories.push({ category, amount });
+      } else {
+        wantsTotal += amount;
+        wantsCategories.push({ category, amount });
+      }
+    }
+    
+    const total = needsTotal + wantsTotal;
+    const needsPercent = total > 0 ? (needsTotal / total) * 100 : 0;
+    const wantsPercent = total > 0 ? (wantsTotal / total) * 100 : 0;
+    
+    return {
+      needsTotal,
+      wantsTotal,
+      total,
+      needsPercent,
+      wantsPercent,
+      needsCategories,
+      wantsCategories,
+    };
+  }, [categoryBreakdown]);
+
+  const needsConfig = getBudgetTypeConfig('needs');
+  const wantsConfig = getBudgetTypeConfig('wants');
+
+  // Ideal ratio tip based on 50/30/20 rule (50% needs, 30% wants, 20% savings)
+  const idealNeedsPercent = 62.5; // 50/(50+30) = 62.5% of spending
+  const idealWantsPercent = 37.5; // 30/(50+30) = 37.5% of spending
+  
+  const isNeedsHigh = breakdown.needsPercent > idealNeedsPercent + 10;
+  const isWantsHigh = breakdown.wantsPercent > idealWantsPercent + 10;
+
+  if (breakdown.total === 0) return null;
+
+  return (
+    <div className="glass-card p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium text-stone-300 flex items-center gap-2">
+          <span className="text-base">⚖️</span>
+          Needs vs Wants
+        </h3>
+        <span className="text-[10px] text-stone-500">50/30/20 rule</span>
+      </div>
+      
+      {/* Visual bar */}
+      <div className="h-4 rounded-full overflow-hidden flex bg-stone-800/50 mb-4">
+        <div 
+          className={`bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all duration-500`}
+          style={{ width: `${breakdown.needsPercent}%` }}
+        />
+        <div 
+          className={`bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500`}
+          style={{ width: `${breakdown.wantsPercent}%` }}
+        />
+      </div>
+      
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Needs */}
+        <div className={`p-3 rounded-xl ${needsConfig.bg} border ${needsConfig.border}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">{needsConfig.icon}</span>
+            <span className={`text-sm font-medium ${needsConfig.text}`}>{needsConfig.label}</span>
+          </div>
+          <p className={`text-xl font-display ${needsConfig.text}`}>
+            {formatCurrency(breakdown.needsTotal, 'INR')}
+          </p>
+          <p className="text-xs text-stone-500 mt-1">
+            {breakdown.needsPercent.toFixed(0)}% of spending
+          </p>
+          {/* Top categories */}
+          <div className="mt-2 space-y-1">
+            {breakdown.needsCategories.slice(0, 2).map(({ category, amount }) => {
+              const Icon = getCategoryIcon(category);
+              const colors = getCategoryColors(category);
+              return (
+                <div key={category} className="flex items-center gap-1.5 text-xs">
+                  <Icon size={10} className={colors.text} />
+                  <span className="text-stone-400 truncate flex-1">{category}</span>
+                  <span className="text-stone-500 font-mono">{formatCurrency(amount, 'INR')}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
+        {/* Wants */}
+        <div className={`p-3 rounded-xl ${wantsConfig.bg} border ${wantsConfig.border}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">{wantsConfig.icon}</span>
+            <span className={`text-sm font-medium ${wantsConfig.text}`}>{wantsConfig.label}</span>
+          </div>
+          <p className={`text-xl font-display ${wantsConfig.text}`}>
+            {formatCurrency(breakdown.wantsTotal, 'INR')}
+          </p>
+          <p className="text-xs text-stone-500 mt-1">
+            {breakdown.wantsPercent.toFixed(0)}% of spending
+          </p>
+          {/* Top categories */}
+          <div className="mt-2 space-y-1">
+            {breakdown.wantsCategories.slice(0, 2).map(({ category, amount }) => {
+              const Icon = getCategoryIcon(category);
+              const colors = getCategoryColors(category);
+              return (
+                <div key={category} className="flex items-center gap-1.5 text-xs">
+                  <Icon size={10} className={colors.text} />
+                  <span className="text-stone-400 truncate flex-1">{category}</span>
+                  <span className="text-stone-500 font-mono">{formatCurrency(amount, 'INR')}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      
+      {/* Insight tip */}
+      {(isNeedsHigh || isWantsHigh) && (
+        <div className={`mt-3 p-2 rounded-lg flex items-start gap-2 ${
+          isWantsHigh ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-teal-500/10 border border-teal-500/20'
+        }`}>
+          <Sparkles size={14} className={isWantsHigh ? 'text-amber-400' : 'text-teal-400'} />
+          <p className={`text-xs ${isWantsHigh ? 'text-amber-400' : 'text-teal-400'}`}>
+            {isWantsHigh 
+              ? `Wants are ${(breakdown.wantsPercent - idealWantsPercent).toFixed(0)}% higher than ideal. Consider cutting back on discretionary spending.`
+              : `Essential expenses are higher than usual. Review if any needs can be optimized.`
+            }
+          </p>
+        </div>
+      )}
+      
+      {/* Legend */}
+      <div className="mt-3 pt-3 border-t border-stone-700/30">
+        <p className="text-[10px] text-stone-600">
+          <span className="font-medium text-stone-500">Needs:</span> Groceries, Rent, Utilities, Transport, Health
+          <span className="mx-2">•</span>
+          <span className="font-medium text-stone-500">Wants:</span> Dining, Shopping, Entertainment, Travel
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Daily & Weekly Allowance ────────────────────────────────────────────────
 
 function AllowanceCards({ remaining, daysLeft, expenses, month }) {
@@ -510,6 +666,8 @@ function CategoryBudgetsList({ categories, categoryBudgets, onEditBudget }) {
           const isOverBudget = percentage >= 100;
           const isNearLimit = percentage >= 80 && percentage < 100;
           const isEditing = editingCategory === category;
+          const budgetType = getCategoryBudgetType(category);
+          const typeConfig = getBudgetTypeConfig(budgetType);
           
           return (
             <div 
@@ -527,6 +685,10 @@ function CategoryBudgetsList({ categories, categoryBudgets, onEditBudget }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-stone-200 truncate">{category}</span>
+                    {/* Needs/Wants badge */}
+                    <span className={`text-[8px] px-1 py-0.5 rounded ${typeConfig.bg} ${typeConfig.text}`}>
+                      {budgetType === 'needs' ? '🏠' : '✨'}
+                    </span>
                     {isOverBudget && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400">OVER</span>
                     )}
@@ -1022,6 +1184,12 @@ export default function ESBudget({ expenses, userId }) {
       <BudgetAlerts 
         categories={categoryBreakdown} 
         categoryBudgets={categoryBudgets}
+      />
+
+      {/* Needs vs Wants Breakdown */}
+      <NeedsWantsBreakdown
+        categoryBreakdown={categoryBreakdown}
+        budget={budget}
       />
 
       {/* Allowance Cards */}
