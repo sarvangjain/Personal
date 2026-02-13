@@ -11,6 +11,8 @@ import ESActivity from './tabs/ESActivity';
 import ESBudget from './tabs/ESBudget';
 import ESInsights from './tabs/ESInsights';
 import ESLabs from './tabs/ESLabs';
+import ESBills from './tabs/ESBills';
+import ESGoals from './tabs/ESGoals';
 import ESCategoryDetail from './tabs/ESCategoryDetail';
 import QuickAddModal from './QuickAddModal';
 import { getExpenses, clearCache, updateExpense, deleteExpense } from '../../firebase/expenseSightService';
@@ -200,6 +202,7 @@ export default function ExpenseSightApp({ userId, onClose }) {
             userId={userId}
             onRefresh={handleRefresh}
             onAddExpense={() => setQuickAddOpen(true)}
+            onNavigateToBills={() => handleTabChange('bills')}
           />
         );
       case 'activity':
@@ -238,6 +241,19 @@ export default function ExpenseSightApp({ userId, onClose }) {
             userId={userId}
           />
         );
+      case 'bills':
+        return (
+          <ESBills 
+            userId={userId}
+          />
+        );
+      case 'goals':
+        return (
+          <ESGoals 
+            userId={userId}
+            expenses={expenses}
+          />
+        );
       default:
         return null;
     }
@@ -256,6 +272,7 @@ export default function ExpenseSightApp({ userId, onClose }) {
         activeTab={activeTab}
         onNavigate={handleTabChange}
         recentTabs={recentTabs}
+        userId={userId}
       />
 
       {/* Pull-to-refresh indicator */}

@@ -1,7 +1,7 @@
 {
-  "name": "SplitSight — Splitwise Analytics",
+  "name": "SplitSight — Expense Analytics",
   "short_name": "SplitSight",
-  "description": "Premium expense analytics dashboard for Splitwise - track spending, balances, and insights",
+  "description": "Premium expense analytics dashboard with Splitwise integration, ExpenseSight personal tracking, bills, goals, and smart insights",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -13,6 +13,14 @@
   "lang": "en",
   "dir": "ltr",
   "prefer_related_applications": false,
+  "related_applications": [],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
   "icons": [
     { "src": "/icons/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
@@ -20,5 +28,21 @@
     { "src": "/icons/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" },
     { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
     { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Expense",
+      "short_name": "Add",
+      "description": "Quickly add a new expense",
+      "url": "/?app=expensesight&action=add",
+      "icons": [{ "src": "/icons/shortcut-add.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "View Bills",
+      "short_name": "Bills",
+      "description": "Check upcoming bills",
+      "url": "/?app=expensesight&tab=bills",
+      "icons": [{ "src": "/icons/shortcut-bills.png", "sizes": "96x96" }]
+    }
   ]
 }

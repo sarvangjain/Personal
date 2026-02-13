@@ -260,6 +260,9 @@
 /* Mobile-friendly font size overrides */
 @media (max-width: 640px) {
   /* Increase tiny text sizes for readability */
+  .text-\[8px\] {
+    font-size: 10px !important;
+  }
   .text-\[9px\] {
     font-size: 11px !important;
   }
@@ -271,6 +274,12 @@
   }
   .text-sm {
     font-size: 0.9375rem !important; /* 15px instead of 14px */
+  }
+  
+  /* Ensure touch targets are at least 44px */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
   }
   
   /* Note: Glass card padding is handled by Tailwind utility classes on each component.

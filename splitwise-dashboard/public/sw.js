@@ -100,3 +100,98 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+
+// ─── Push Notification Handlers ─────────────────────────────────────────────
+
+// Handle push notifications
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  try {
+    const data = event.data.json();
+    
+    const options = {
+      body: data.body || '',
+      icon: '/logo192.png',
+      badge: '/logo192.png',
+      vibrate: [200, 100, 200],
+      tag: data.tag || 'expensesight-notification',
+      data: data.data || {},
+      actions: data.actions || [],
+      requireInteraction: data.requireInteraction || false,
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'ExpenseSight', options)
+    );
+  } catch (err) {
+    console.error('Error handling push notification:', err);
+  }
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const data = event.notification.data || {};
+  let targetUrl = '/';
+
+  // Determine target URL based on notification type
+  switch (data.type) {
+    case 'daily-summary':
+    case 'weekly-checkin':
+      targetUrl = '/?app=expensesight&tab=insights';
+      break;
+    case 'budget-warning':
+      targetUrl = '/?app=expensesight&tab=budget';
+      break;
+    case 'bill-reminder':
+      targetUrl = '/?app=expensesight&tab=bills';
+      break;
+    case 'goal-progress':
+      targetUrl = '/?app=expensesight&tab=goals';
+      break;
+    default:
+      targetUrl = '/?app=expensesight';
+  }
+
+  // Handle action clicks
+  if (event.action) {
+    switch (event.action) {
+      case 'view-details':
+        // Already handled above
+        break;
+      case 'dismiss':
+        return; // Just close the notification
+      case 'mark-paid':
+        // Could send message to app to mark bill as paid
+        targetUrl = '/?app=expensesight&tab=bills&action=mark-paid&id=' + data.billId;
+        break;
+      default:
+        break;
+    }
+  }
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If app is already open, focus it and navigate
+      for (const client of clientList) {
+        if ('focus' in client && 'navigate' in client) {
+          return client.focus().then(() => {
+            return client.navigate(targetUrl);
+          });
+        }
+      }
+      // Otherwise open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
+// Handle notification close
+self.addEventListener('notificationclose', (event) => {
+  // Could track dismissed notifications here
+  console.log('Notification closed:', event.notification.tag);
+});

@@ -6,14 +6,18 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   Menu, Plus, X, ArrowLeft, Settings, HelpCircle, Info, 
   Clock, Home, Receipt, Wallet, TrendingUp, FlaskConical,
-  ChevronRight, Target, PieChart
+  ChevronRight, Target, PieChart, CreditCard, Bell
 } from 'lucide-react';
+import NotificationSettings from './NotificationSettings';
+import useNotifications from '../../../hooks/useNotifications';
 
 // Tab metadata for ExpenseSight
 const ES_TAB_META = {
   home:     { icon: Home,        label: 'Home',      color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
   activity: { icon: Receipt,     label: 'Activity',  color: 'text-teal-400',    bg: 'bg-teal-500/10' },
   budget:   { icon: Wallet,      label: 'Budget',    color: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
+  bills:    { icon: CreditCard,  label: 'Bills',     color: 'text-amber-400',   bg: 'bg-amber-500/10' },
+  goals:    { icon: Target,      label: 'Goals',     color: 'text-pink-400',    bg: 'bg-pink-500/10' },
   insights: { icon: TrendingUp,  label: 'Insights',  color: 'text-purple-400',  bg: 'bg-purple-500/10' },
   labs:     { icon: FlaskConical,label: 'Labs',      color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10' },
 };
@@ -26,7 +30,11 @@ const NAV_SECTIONS = [
   },
   {
     title: 'Finance',
-    items: ['budget', 'insights'],
+    items: ['budget', 'bills', 'goals'],
+  },
+  {
+    title: 'Analytics',
+    items: ['insights'],
   },
   {
     title: 'Explore',
@@ -79,7 +87,7 @@ function NavItem({ tabId, isActive, onClick }) {
 }
 
 // Slide-out menu
-function SlideMenu({ isOpen, onClose, onBackToSplitSight, activeTab, onNavigate, recentTabs = [] }) {
+function SlideMenu({ isOpen, onClose, onBackToSplitSight, activeTab, onNavigate, recentTabs = [], onOpenNotifications }) {
   const sidebarRef = useRef(null);
   
   // Swipe to close (left swipe)
@@ -250,6 +258,13 @@ function SlideMenu({ isOpen, onClose, onBackToSplitSight, activeTab, onNavigate,
         <div className="flex-shrink-0 p-4 border-t border-stone-800/50">
           <div className="flex items-center justify-between">
             <div className="flex gap-1">
+              <button 
+                onClick={() => { onOpenNotifications(); onClose(); }}
+                className="p-2 rounded-lg text-stone-500 hover:text-stone-300 hover:bg-stone-800/50 transition-colors"
+                title="Notifications"
+              >
+                <Bell size={18} />
+              </button>
               <button className="p-2 rounded-lg text-stone-500 hover:text-stone-300 hover:bg-stone-800/50 transition-colors">
                 <Settings size={18} />
               </button>
@@ -288,8 +303,12 @@ function SplitSightMiniLogo({ size = 20 }) {
   );
 }
 
-export default function ESHeader({ onClose, onAddExpense, title = 'ExpenseSight', activeTab = 'home', onNavigate, recentTabs = [] }) {
+export default function ESHeader({ onClose, onAddExpense, title = 'ExpenseSight', activeTab = 'home', onNavigate, recentTabs = [], userId }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
+  
+  // Notifications hook
+  const notifications = useNotifications(userId);
   
   return (
     <>
@@ -350,6 +369,20 @@ export default function ESHeader({ onClose, onAddExpense, title = 'ExpenseSight'
         activeTab={activeTab}
         onNavigate={onNavigate}
         recentTabs={recentTabs}
+        onOpenNotifications={() => setNotificationSettingsOpen(true)}
+      />
+      
+      {/* Notification Settings Modal */}
+      <NotificationSettings
+        isOpen={notificationSettingsOpen}
+        onClose={() => setNotificationSettingsOpen(false)}
+        settings={notifications.settings}
+        permission={notifications.permission}
+        isSupported={notifications.isSupported}
+        onRequestPermission={notifications.requestPermission}
+        onUpdateSettings={notifications.updateSettings}
+        onDisable={notifications.disableNotifications}
+        loading={notifications.loading}
       />
     </>
   );
