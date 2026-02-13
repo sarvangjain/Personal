@@ -1,0 +1,5 @@
+# Proxy for Splitwise API to avoid CORS issues
+/splitwise-api/*  https://secure.splitwise.com/api/:splat  200
+
+# SPA routing - all routes to index.html
+/*  /index.html  200

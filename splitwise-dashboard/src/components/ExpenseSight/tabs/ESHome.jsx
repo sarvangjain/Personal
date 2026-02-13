@@ -10,6 +10,7 @@ import {
 import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval } from 'date-fns';
 import { formatCurrency } from '../../../utils/analytics';
 import { getCategoryIcon, getCategoryColors } from '../../../utils/categoryConfig';
+import UpcomingBills from '../components/UpcomingBills';
 
 // Stat Card Component
 function StatCard({ title, value, subtitle, icon: Icon, trend, trendValue, color = 'teal' }) {
@@ -79,7 +80,7 @@ function InsightCard({ insight }) {
   );
 }
 
-export default function ESHome({ expenses, userId, onRefresh, onAddExpense }) {
+export default function ESHome({ expenses, userId, onRefresh, onAddExpense, onNavigateToBills }) {
   // Calculate stats
   const stats = useMemo(() => {
     const now = new Date();
@@ -233,6 +234,13 @@ export default function ESHome({ expenses, userId, onRefresh, onAddExpense }) {
         <Plus size={18} />
         Add Expense
       </button>
+
+      {/* Upcoming Bills */}
+      <UpcomingBills 
+        userId={userId} 
+        onViewAll={onNavigateToBills}
+        limit={3}
+      />
 
       {/* Recent Expenses */}
       <div className="glass-card p-4">

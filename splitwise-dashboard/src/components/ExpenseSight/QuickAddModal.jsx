@@ -12,9 +12,11 @@ import { format, subDays } from 'date-fns';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { parseExpenseLine } from '../../utils/expenseParser';
 import { formatCurrency } from '../../utils/analytics';
-import { addExpenses, clearCache, getRecentExpensesForDuplicateCheck, getFrequentExpenses, getExpenses } from '../../firebase/expenseSightService';
+import { addExpenses, clearCache, getRecentExpensesForDuplicateCheck, getFrequentExpenses, getExpenses, getTags, createTag, incrementTagUsage } from '../../firebase/expenseSightService';
 import { detectDuplicates, getExpensesToSave, getDuplicateCount, markAsKeepAnyway, unmarkKeepAnyway } from '../../utils/duplicateDetector';
 import { getAllCategories, getCategoryBadgeClasses } from '../../utils/categoryConfig';
+import TagInput from './components/TagInput';
+import TagBadge from './components/TagBadge';
 
 const CATEGORIES = getAllCategories();
 
@@ -70,8 +72,8 @@ function DuplicateBadge({ expense, onKeepAnyway }) {
   );
 }
 
-// Expense Card with duplicate support
-function ExpenseCard({ expense, onUpdate, onDelete, onKeepAnyway }) {
+// Expense Card with duplicate support and tags
+function ExpenseCard({ expense, onUpdate, onDelete, onKeepAnyway, availableTags, onCreateTag }) {
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState(expense);
 
@@ -121,6 +123,20 @@ function ExpenseCard({ expense, onUpdate, onDelete, onKeepAnyway }) {
             ))}
           </select>
         </div>
+        {/* Tags input */}
+        <div className="relative z-40">
+          <label className="text-[10px] text-stone-500 uppercase tracking-wider mb-1 block">
+            Tags (optional)
+          </label>
+          <TagInput
+            selectedTags={editData.tags || []}
+            availableTags={availableTags}
+            onTagsChange={(tags) => setEditData({ ...editData, tags })}
+            onCreateTag={onCreateTag}
+            placeholder="Add tags..."
+            maxTags={3}
+          />
+        </div>
         <div className="flex gap-2 pt-1">
           <button
             onClick={handleSave}
@@ -150,9 +166,22 @@ function ExpenseCard({ expense, onUpdate, onDelete, onKeepAnyway }) {
           <p className={`text-sm truncate ${isDimmed ? 'text-stone-400 line-through' : 'text-stone-200'}`}>
             {expense.description}
           </p>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded ${getCategoryBadgeClasses(expense.category)}`}>
-            {expense.category}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap mt-1">
+            <span className={`text-[10px] px-1.5 py-0.5 rounded ${getCategoryBadgeClasses(expense.category)}`}>
+              {expense.category}
+            </span>
+            {expense.tags?.length > 0 && expense.tags.map(tagName => {
+              const tagData = availableTags?.find(t => t.name === tagName);
+              return (
+                <TagBadge 
+                  key={tagName} 
+                  name={tagName} 
+                  color={tagData?.color || 'stone'} 
+                  size="xs" 
+                />
+              );
+            })}
+          </div>
         </div>
         <div className="text-right">
           <p className={`text-sm font-mono font-medium ${isDimmed ? 'text-stone-500' : 'text-stone-200'}`}>
@@ -327,6 +356,9 @@ export default function QuickAddModal({ isOpen, onClose, userId, onSaved }) {
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   
+  // Tags state
+  const [availableTags, setAvailableTags] = useState([]);
+  
   // Autocomplete state
   const [expenseHistory, setExpenseHistory] = useState([]);
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
@@ -339,16 +371,18 @@ export default function QuickAddModal({ isOpen, onClose, userId, onSaved }) {
   const dateOptions = useMemo(() => getDateOptions(), []);
   const currentDate = dateOptions.find(d => d.id === selectedDate)?.date || new Date();
 
-  // Load templates and expense history on mount
+  // Load templates, expense history, and tags on mount
   useEffect(() => {
     if (isOpen && userId && templates.length === 0) {
       setLoadingTemplates(true);
       Promise.all([
         getFrequentExpenses(userId, 5),
         getExpenses(userId, { limitCount: 200, useCache: true }),
+        getTags(userId),
       ])
-        .then(([frequentExpenses, allExpenses]) => {
+        .then(([frequentExpenses, allExpenses, tags]) => {
           setTemplates(frequentExpenses);
+          setAvailableTags(tags);
           
           // Build unique expense descriptions with average amounts
           const descMap = {};
@@ -381,6 +415,18 @@ export default function QuickAddModal({ isOpen, onClose, userId, onSaved }) {
         .finally(() => setLoadingTemplates(false));
     }
   }, [isOpen, userId, templates.length]);
+  
+  // Handle creating a new tag
+  const handleCreateTag = useCallback(async (tagData) => {
+    if (!userId) return;
+    const result = await createTag(userId, tagData);
+    if (result.success) {
+      // Refresh tags
+      const tags = await getTags(userId);
+      setAvailableTags(tags);
+    }
+    return result;
+  }, [userId]);
 
   // Parse input text into expenses with duplicate detection
   const handleParse = useCallback(async () => {
@@ -793,6 +839,8 @@ export default function QuickAddModal({ isOpen, onClose, userId, onSaved }) {
                           onUpdate={handleUpdateExpense}
                           onDelete={handleDeleteExpense}
                           onKeepAnyway={handleToggleKeepAnyway}
+                          availableTags={availableTags}
+                          onCreateTag={handleCreateTag}
                         />
                       ))}
                     </div>

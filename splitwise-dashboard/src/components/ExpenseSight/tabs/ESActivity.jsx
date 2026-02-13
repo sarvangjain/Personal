@@ -2,16 +2,19 @@
  * ESActivity - Activity tab with expense list, search, filters, spending heatmap, and edit functionality
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   Search, RefreshCw, Calendar, ChevronDown,
-  DollarSign, X, Edit2, Trash2, Check, RotateCcw
+  DollarSign, X, Edit2, Trash2, Check, RotateCcw, Hash, Tag
 } from 'lucide-react';
 import { format, parseISO, isToday, isYesterday, isThisWeek, isThisMonth, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { formatCurrency } from '../../../utils/analytics';
 import SpendingHeatmap from '../../SpendingHeatmap';
 import CategoryQuickCards from '../components/CategoryQuickCards';
 import { getCategoryIcon, getCategoryColors, getAllCategories } from '../../../utils/categoryConfig';
+import TagBadge from '../components/TagBadge';
+import TagInput from '../components/TagInput';
+import { getTags, createTag } from '../../../firebase/expenseSightService';
 
 // Date range filter options
 const DATE_FILTERS = [
@@ -34,8 +37,8 @@ function GroupHeader({ title, count, total }) {
   );
 }
 
-// Expense item with edit functionality
-function ExpenseItem({ expense, onEdit, onDelete, isEditing, editData, setEditData, onSaveEdit, onCancelEdit }) {
+// Expense item with edit functionality and tags
+function ExpenseItem({ expense, onEdit, onDelete, isEditing, editData, setEditData, onSaveEdit, onCancelEdit, availableTags, onCreateTag }) {
   const CategoryIcon = getCategoryIcon(expense.category);
   const categoryColors = getCategoryColors(expense.category);
   
@@ -84,6 +87,20 @@ function ExpenseItem({ expense, onEdit, onDelete, isEditing, editData, setEditDa
             ))}
           </select>
         </div>
+        {/* Tags input */}
+        <div className="relative z-40">
+          <label className="text-[10px] text-stone-500 uppercase tracking-wider mb-1 block">
+            Tags
+          </label>
+          <TagInput
+            selectedTags={editData.tags || []}
+            availableTags={availableTags || []}
+            onTagsChange={(tags) => setEditData({ ...editData, tags })}
+            onCreateTag={onCreateTag}
+            placeholder="Add tags..."
+            maxTags={3}
+          />
+        </div>
         <div className="flex gap-2">
           <button
             onClick={onSaveEdit}
@@ -115,13 +132,24 @@ function ExpenseItem({ expense, onEdit, onDelete, isEditing, editData, setEditDa
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-stone-200 truncate">{expense.description}</p>
-        <div className="flex items-center gap-2 mt-0.5">
+        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
           <span className={`text-[10px] px-1.5 py-0.5 ${categoryColors.bg} ${categoryColors.text} rounded`}>
             {expense.category}
           </span>
           <span className="text-[10px] text-stone-600">
             {format(parseISO(expense.date), 'MMM d')}
           </span>
+          {expense.tags?.length > 0 && expense.tags.map(tagName => {
+            const tagData = availableTags?.find(t => t.name === tagName);
+            return (
+              <TagBadge 
+                key={tagName} 
+                name={tagName} 
+                color={tagData?.color || 'stone'} 
+                size="xs" 
+              />
+            );
+          })}
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -158,10 +186,31 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState(null);
+  const [tagFilter, setTagFilter] = useState(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showCategoryCards, setShowCategoryCards] = useState(true);
+  const [showTagFilter, setShowTagFilter] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState(null);
-  const [editData, setEditData] = useState({ description: '', amount: 0, category: '', date: '' });
+  const [editData, setEditData] = useState({ description: '', amount: 0, category: '', date: '', tags: [] });
+  const [availableTags, setAvailableTags] = useState([]);
+  
+  // Load tags
+  useEffect(() => {
+    if (userId) {
+      getTags(userId).then(setAvailableTags).catch(console.error);
+    }
+  }, [userId]);
+  
+  // Handle creating a new tag
+  const handleCreateTag = useCallback(async (tagData) => {
+    if (!userId) return;
+    const result = await createTag(userId, tagData);
+    if (result.success) {
+      const tags = await getTags(userId);
+      setAvailableTags(tags);
+    }
+    return result;
+  }, [userId]);
   
   // Handle edit expense
   const handleEditExpense = useCallback((expense) => {
@@ -171,6 +220,7 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
       amount: expense.amount,
       category: expense.category,
       date: expense.date,
+      tags: expense.tags || [],
     });
   }, []);
   
@@ -179,14 +229,14 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
     if (onUpdateExpense && editingExpenseId) {
       await onUpdateExpense(editingExpenseId, editData);
       setEditingExpenseId(null);
-      setEditData({ description: '', amount: 0, category: '', date: '' });
+      setEditData({ description: '', amount: 0, category: '', date: '', tags: [] });
     }
   }, [onUpdateExpense, editingExpenseId, editData]);
   
   // Handle cancel edit
   const handleCancelEdit = useCallback(() => {
     setEditingExpenseId(null);
-    setEditData({ description: '', amount: 0, category: '', date: '' });
+    setEditData({ description: '', amount: 0, category: '', date: '', tags: [] });
   }, []);
   
   // Handle delete expense
@@ -220,16 +270,17 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
     return filtered;
   }, [expenses, dateFilter]);
 
-  // Filter expenses (with search and category)
+  // Filter expenses (with search, category, and tags)
   const filteredExpenses = useMemo(() => {
     let filtered = dateFilteredExpenses;
     
-    // Search filter
+    // Search filter (also searches tags)
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(e => 
         e.description.toLowerCase().includes(query) ||
-        e.category.toLowerCase().includes(query)
+        e.category.toLowerCase().includes(query) ||
+        (e.tags && e.tags.some(t => t.toLowerCase().includes(query)))
       );
     }
     
@@ -238,8 +289,24 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
       filtered = filtered.filter(e => e.category === categoryFilter);
     }
     
+    // Tag filter
+    if (tagFilter) {
+      filtered = filtered.filter(e => e.tags && e.tags.includes(tagFilter));
+    }
+    
     return filtered.sort((a, b) => b.date.localeCompare(a.date));
-  }, [dateFilteredExpenses, searchQuery, categoryFilter]);
+  }, [dateFilteredExpenses, searchQuery, categoryFilter, tagFilter]);
+  
+  // Get unique tags used in expenses
+  const usedTags = useMemo(() => {
+    const tagSet = new Set();
+    for (const exp of expenses) {
+      if (exp.tags) {
+        exp.tags.forEach(t => tagSet.add(t));
+      }
+    }
+    return Array.from(tagSet);
+  }, [expenses]);
 
   // Group expenses by date
   const groupedExpenses = useMemo(() => {
@@ -332,6 +399,48 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
         ))}
       </div>
 
+      {/* Tag Filter */}
+      {usedTags.length > 0 && (
+        <>
+          <button
+            onClick={() => setShowTagFilter(!showTagFilter)}
+            className="w-full flex items-center justify-between p-3 bg-stone-800/30 rounded-xl text-sm text-stone-400 hover:bg-stone-800/50 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Tag size={16} />
+              Filter by Tags
+              {tagFilter && (
+                <TagBadge 
+                  name={tagFilter} 
+                  color={availableTags.find(t => t.name === tagFilter)?.color || 'stone'} 
+                  size="sm"
+                  onRemove={() => setTagFilter(null)}
+                />
+              )}
+            </span>
+            <ChevronDown size={16} className={`transition-transform ${showTagFilter ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showTagFilter && (
+            <div className="flex flex-wrap gap-2 p-3 bg-stone-800/20 rounded-xl">
+              {usedTags.map(tag => {
+                const tagData = availableTags.find(t => t.name === tag);
+                return (
+                  <TagBadge
+                    key={tag}
+                    name={tag}
+                    color={tagData?.color || 'stone'}
+                    size="sm"
+                    isActive={tagFilter === tag}
+                    onClick={() => setTagFilter(tagFilter === tag ? null : tag)}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Category Quick Cards */}
       <button
         onClick={() => setShowCategoryCards(!showCategoryCards)}
@@ -406,6 +515,8 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
                     setEditData={setEditData}
                     onSaveEdit={handleSaveEdit}
                     onCancelEdit={handleCancelEdit}
+                    availableTags={availableTags}
+                    onCreateTag={handleCreateTag}
                   />
                 ))}
               </div>

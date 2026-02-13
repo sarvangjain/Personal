@@ -471,6 +471,502 @@ export async function updateBudgetSettings(userId, updates) {
   }
 }
 
+// ─── Tags Management ─────────────────────────────────────────────────────────
+
+/**
+ * Predefined tags with their colors
+ */
+export const PREDEFINED_TAGS = [
+  { name: 'work', color: 'blue', isCustom: false },
+  { name: 'personal', color: 'purple', isCustom: false },
+  { name: 'gift', color: 'pink', isCustom: false },
+  { name: 'reimbursable', color: 'green', isCustom: false },
+  { name: 'recurring', color: 'orange', isCustom: false },
+  { name: 'splurge', color: 'red', isCustom: false },
+  { name: 'essential', color: 'teal', isCustom: false },
+];
+
+function getTagsCollection(userId) {
+  return collection(db, COLLECTION_NAME, normalizeUserId(userId), 'tags');
+}
+
+function getTagDoc(userId, tagId) {
+  return doc(db, COLLECTION_NAME, normalizeUserId(userId), 'tags', tagId);
+}
+
+/**
+ * Get all tags for a user (predefined + custom)
+ */
+export async function getTags(userId) {
+  if (!isFirebaseConfigured() || !userId) {
+    return PREDEFINED_TAGS;
+  }
+
+  try {
+    const snapshot = await getDocs(getTagsCollection(userId));
+    const customTags = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    
+    // Merge predefined with custom (custom can override predefined)
+    const customTagNames = new Set(customTags.map(t => t.name.toLowerCase()));
+    const predefinedFiltered = PREDEFINED_TAGS.filter(
+      t => !customTagNames.has(t.name.toLowerCase())
+    );
+    
+    return [...predefinedFiltered, ...customTags];
+  } catch (error) {
+    console.error('Error fetching tags:', error);
+    return PREDEFINED_TAGS;
+  }
+}
+
+/**
+ * Create a custom tag
+ */
+export async function createTag(userId, tagData) {
+  if (!isFirebaseConfigured() || !userId || !tagData.name) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const tagId = `tag_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const docRef = getTagDoc(userId, tagId);
+    
+    await setDoc(docRef, {
+      id: tagId,
+      name: tagData.name.toLowerCase().trim(),
+      color: tagData.color || 'stone',
+      isCustom: true,
+      usageCount: 0,
+      createdAt: serverTimestamp(),
+    });
+    
+    return { success: true, id: tagId };
+  } catch (error) {
+    console.error('Error creating tag:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Update tag usage count
+ */
+export async function incrementTagUsage(userId, tagName) {
+  if (!isFirebaseConfigured() || !userId || !tagName) return;
+
+  try {
+    // Find the tag by name
+    const snapshot = await getDocs(getTagsCollection(userId));
+    const tagDoc = snapshot.docs.find(
+      doc => doc.data().name.toLowerCase() === tagName.toLowerCase()
+    );
+    
+    if (tagDoc) {
+      await setDoc(getTagDoc(userId, tagDoc.id), {
+        usageCount: (tagDoc.data().usageCount || 0) + 1,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    }
+  } catch (error) {
+    console.error('Error incrementing tag usage:', error);
+  }
+}
+
+/**
+ * Delete a custom tag
+ */
+export async function deleteTag(userId, tagId) {
+  if (!isFirebaseConfigured() || !userId || !tagId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    await deleteDoc(getTagDoc(userId, tagId));
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting tag:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ─── Goals Management ────────────────────────────────────────────────────────
+
+function getGoalsCollection(userId) {
+  return collection(db, COLLECTION_NAME, normalizeUserId(userId), 'goals');
+}
+
+function getGoalDoc(userId, goalId) {
+  return doc(db, COLLECTION_NAME, normalizeUserId(userId), 'goals', goalId);
+}
+
+/**
+ * Get all goals for a user
+ */
+export async function getGoals(userId) {
+  if (!isFirebaseConfigured() || !userId) {
+    return [];
+  }
+
+  try {
+    const q = query(getGoalsCollection(userId), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  } catch (error) {
+    console.error('Error fetching goals:', error);
+    return [];
+  }
+}
+
+/**
+ * Create a new goal
+ */
+export async function createGoal(userId, goalData) {
+  if (!isFirebaseConfigured() || !userId || !goalData.name) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const goalId = `goal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const docRef = getGoalDoc(userId, goalId);
+    
+    await setDoc(docRef, {
+      id: goalId,
+      name: goalData.name,
+      targetAmount: goalData.targetAmount || 0,
+      currentAmount: goalData.currentAmount || 0,
+      deadline: goalData.deadline || null,
+      category: goalData.category || null,
+      trackingType: goalData.trackingType || 'savings',
+      suggestedCutbacks: goalData.suggestedCutbacks || [],
+      isActive: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    
+    return { success: true, id: goalId };
+  } catch (error) {
+    console.error('Error creating goal:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Update a goal
+ */
+export async function updateGoal(userId, goalId, updates) {
+  if (!isFirebaseConfigured() || !userId || !goalId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const docRef = getGoalDoc(userId, goalId);
+    await setDoc(docRef, {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating goal:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Delete a goal
+ */
+export async function deleteGoal(userId, goalId) {
+  if (!isFirebaseConfigured() || !userId || !goalId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    await deleteDoc(getGoalDoc(userId, goalId));
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting goal:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Add amount to a savings goal
+ */
+export async function addToGoal(userId, goalId, amount) {
+  if (!isFirebaseConfigured() || !userId || !goalId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const docSnap = await getDoc(getGoalDoc(userId, goalId));
+    if (!docSnap.exists()) {
+      return { success: false, error: 'Goal not found' };
+    }
+    
+    const goal = docSnap.data();
+    const newAmount = (goal.currentAmount || 0) + amount;
+    
+    await setDoc(getGoalDoc(userId, goalId), {
+      currentAmount: newAmount,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    
+    return { success: true, newAmount };
+  } catch (error) {
+    console.error('Error adding to goal:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ─── Bills Management ────────────────────────────────────────────────────────
+
+function getBillsCollection(userId) {
+  return collection(db, COLLECTION_NAME, normalizeUserId(userId), 'bills');
+}
+
+function getBillDoc(userId, billId) {
+  return doc(db, COLLECTION_NAME, normalizeUserId(userId), 'bills', billId);
+}
+
+/**
+ * Get all bills for a user
+ */
+export async function getBills(userId) {
+  if (!isFirebaseConfigured() || !userId) {
+    return [];
+  }
+
+  try {
+    const q = query(getBillsCollection(userId), orderBy('dueDay', 'asc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  } catch (error) {
+    console.error('Error fetching bills:', error);
+    return [];
+  }
+}
+
+/**
+ * Create a new bill reminder
+ */
+export async function createBill(userId, billData) {
+  if (!isFirebaseConfigured() || !userId || !billData.name) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const billId = `bill_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const docRef = getBillDoc(userId, billId);
+    
+    // Calculate next due date
+    const today = new Date();
+    let nextDueDate = new Date(today.getFullYear(), today.getMonth(), billData.dueDay || 1);
+    if (nextDueDate <= today) {
+      nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+    }
+    
+    await setDoc(docRef, {
+      id: billId,
+      name: billData.name,
+      amount: billData.amount || 0,
+      category: billData.category || 'Utilities',
+      dueDay: billData.dueDay || 1,
+      frequency: billData.frequency || 'monthly',
+      isAutoPay: billData.isAutoPay || false,
+      reminderDays: billData.reminderDays || [1],
+      lastPaidDate: null,
+      nextDueDate: nextDueDate.toISOString().split('T')[0],
+      isActive: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    
+    return { success: true, id: billId };
+  } catch (error) {
+    console.error('Error creating bill:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Update a bill
+ */
+export async function updateBill(userId, billId, updates) {
+  if (!isFirebaseConfigured() || !userId || !billId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const docRef = getBillDoc(userId, billId);
+    await setDoc(docRef, {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating bill:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Delete a bill
+ */
+export async function deleteBill(userId, billId) {
+  if (!isFirebaseConfigured() || !userId || !billId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    await deleteDoc(getBillDoc(userId, billId));
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting bill:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Mark a bill as paid and calculate next due date
+ */
+export async function markBillPaid(userId, billId, paidDate = null) {
+  if (!isFirebaseConfigured() || !userId || !billId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const docSnap = await getDoc(getBillDoc(userId, billId));
+    if (!docSnap.exists()) {
+      return { success: false, error: 'Bill not found' };
+    }
+    
+    const bill = docSnap.data();
+    const lastPaidDate = paidDate || new Date().toISOString().split('T')[0];
+    
+    // Calculate next due date based on frequency
+    const currentDue = new Date(bill.nextDueDate);
+    let nextDue = new Date(currentDue);
+    
+    switch (bill.frequency) {
+      case 'monthly':
+        nextDue.setMonth(nextDue.getMonth() + 1);
+        break;
+      case 'quarterly':
+        nextDue.setMonth(nextDue.getMonth() + 3);
+        break;
+      case 'yearly':
+        nextDue.setFullYear(nextDue.getFullYear() + 1);
+        break;
+      case 'once':
+        // One-time bill - mark as inactive
+        await setDoc(getBillDoc(userId, billId), {
+          lastPaidDate,
+          isActive: false,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+        return { success: true, nextDueDate: null };
+      default:
+        nextDue.setMonth(nextDue.getMonth() + 1);
+    }
+    
+    const nextDueDate = nextDue.toISOString().split('T')[0];
+    
+    await setDoc(getBillDoc(userId, billId), {
+      lastPaidDate,
+      nextDueDate,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    
+    return { success: true, nextDueDate };
+  } catch (error) {
+    console.error('Error marking bill as paid:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get upcoming bills (due within N days)
+ */
+export async function getUpcomingBills(userId, days = 7) {
+  const bills = await getBills(userId);
+  const today = new Date();
+  const futureDate = new Date(today);
+  futureDate.setDate(futureDate.getDate() + days);
+  
+  return bills
+    .filter(bill => {
+      if (!bill.isActive) return false;
+      const dueDate = new Date(bill.nextDueDate);
+      return dueDate >= today && dueDate <= futureDate;
+    })
+    .sort((a, b) => new Date(a.nextDueDate) - new Date(b.nextDueDate));
+}
+
+// ─── Notification Settings ───────────────────────────────────────────────────
+
+function getNotificationSettingsDoc(userId) {
+  return doc(db, COLLECTION_NAME, normalizeUserId(userId), 'settings', 'notifications');
+}
+
+/**
+ * Get notification settings
+ */
+export async function getNotificationSettings(userId) {
+  if (!isFirebaseConfigured() || !userId) {
+    return null;
+  }
+
+  try {
+    const docSnap = await getDoc(getNotificationSettingsDoc(userId));
+    if (docSnap.exists()) {
+      return docSnap.data();
+    }
+    // Return defaults
+    return {
+      enabled: false,
+      dailySummary: { enabled: true, time: '21:00' },
+      weeklyCheckin: { enabled: true, day: 'sunday' },
+      budgetWarnings: { enabled: true, threshold: 80 },
+      billReminders: { enabled: true, daysBefore: 1 },
+      goalUpdates: { enabled: true },
+    };
+  } catch (error) {
+    console.error('Error fetching notification settings:', error);
+    return null;
+  }
+}
+
+/**
+ * Save notification settings
+ */
+export async function saveNotificationSettings(userId, settings) {
+  if (!isFirebaseConfigured() || !userId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const docRef = getNotificationSettingsDoc(userId);
+    await setDoc(docRef, {
+      ...settings,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving notification settings:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // ─── Export for Analytics Integration ────────────────────────────────────────
 
 /**
