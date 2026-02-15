@@ -14,6 +14,8 @@ import CategoryQuickCards from '../components/CategoryQuickCards';
 import { getCategoryIcon, getCategoryColors, getAllCategories } from '../../../utils/categoryConfig';
 import TagBadge from '../components/TagBadge';
 import TagInput from '../components/TagInput';
+import SwipeableRow from '../components/SwipeableRow';
+import { UndoToastContainer, useUndoToast } from '../components/UndoToast';
 import { getTags, createTag } from '../../../firebase/expenseSightService';
 
 // Date range filter options
@@ -194,6 +196,7 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [editData, setEditData] = useState({ description: '', amount: 0, category: '', date: '', tags: [] });
   const [availableTags, setAvailableTags] = useState([]);
+  const undoToast = useUndoToast();
   
   // Load tags
   useEffect(() => {
@@ -240,12 +243,29 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
     setEditData({ description: '', amount: 0, category: '', date: '', tags: [] });
   }, []);
   
-  // Handle delete expense
+  // Handle delete expense with undo toast
   const handleDeleteExpense = useCallback(async (expenseId) => {
-    if (onDeleteExpense && window.confirm('Are you sure you want to delete this expense?')) {
-      await onDeleteExpense(expenseId);
+    if (!onDeleteExpense) return;
+    
+    // Find the expense before removing for undo
+    const expenseToDelete = expenses.find(e => e.id === expenseId);
+    
+    // Optimistically delete
+    await onDeleteExpense(expenseId);
+    
+    // Show undo toast
+    if (expenseToDelete) {
+      undoToast.show(
+        `"${expenseToDelete.description}" deleted`,
+        async () => {
+          // Undo: re-add the expense (handled by parent re-fetch)
+          // For now, trigger a refresh to restore
+          if (typeof onRefresh === 'function') onRefresh();
+        },
+        5000
+      );
     }
-  }, [onDeleteExpense]);
+  }, [onDeleteExpense, expenses, undoToast, onRefresh]);
 
   // Apply date filter (used for category cards)
   const dateFilteredExpenses = useMemo(() => {
@@ -514,19 +534,25 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
               />
               <div className="space-y-2">
                 {group.expenses.map(expense => (
-                  <ExpenseItem 
-                    key={expense.id} 
-                    expense={expense}
-                    onEdit={handleEditExpense}
-                    onDelete={handleDeleteExpense}
-                    isEditing={editingExpenseId === expense.id}
-                    editData={editData}
-                    setEditData={setEditData}
-                    onSaveEdit={handleSaveEdit}
-                    onCancelEdit={handleCancelEdit}
-                    availableTags={availableTags}
-                    onCreateTag={handleCreateTag}
-                  />
+                  <SwipeableRow
+                    key={expense.id}
+                    onEdit={() => handleEditExpense(expense)}
+                    onDelete={() => handleDeleteExpense(expense.id)}
+                    disabled={editingExpenseId === expense.id}
+                  >
+                    <ExpenseItem 
+                      expense={expense}
+                      onEdit={handleEditExpense}
+                      onDelete={handleDeleteExpense}
+                      isEditing={editingExpenseId === expense.id}
+                      editData={editData}
+                      setEditData={setEditData}
+                      onSaveEdit={handleSaveEdit}
+                      onCancelEdit={handleCancelEdit}
+                      availableTags={availableTags}
+                      onCreateTag={handleCreateTag}
+                    />
+                  </SwipeableRow>
                 ))}
               </div>
             </div>
@@ -538,6 +564,13 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
           </div>
         )}
       </div>
+
+      {/* Undo Toast */}
+      <UndoToastContainer
+        toasts={undoToast.toasts}
+        onDismiss={undoToast.dismiss}
+        onUndo={undoToast.undo}
+      />
     </div>
   );
 }

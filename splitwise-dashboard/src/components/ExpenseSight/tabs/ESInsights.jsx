@@ -14,6 +14,8 @@ import {
 } from 'recharts';
 import { formatCurrency } from '../../../utils/analytics';
 import { CHART_COLORS, TOOLTIP_STYLE, TOUCH_ACTIVE_DOT } from '../../../utils/chartConfig';
+import MonthCompare from '../components/MonthCompare';
+import SpendingForecast from '../components/SpendingForecast';
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -560,6 +562,12 @@ export default function ESInsights({ expenses }) {
       {monthlyTrend.some(m => m.amount > 0) && (
         <MonthlyTrendChart data={monthlyTrend} />
       )}
+
+      {/* Spending Forecast */}
+      <SpendingForecast expenses={expenses} />
+
+      {/* Month vs Month Comparison */}
+      <MonthCompare expenses={expenses} />
 
       {/* Recurring Expenses */}
       <RecurringExpensesCard recurringExpenses={recurringExpenses} />

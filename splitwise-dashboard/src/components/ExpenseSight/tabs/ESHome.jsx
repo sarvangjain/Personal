@@ -5,9 +5,10 @@
 import { useMemo } from 'react';
 import { 
   TrendingUp, TrendingDown, Calendar,
-  RefreshCw, Plus, Sparkles, DollarSign, Wallet, PiggyBank
+  RefreshCw, Plus, Sparkles, DollarSign, Wallet, PiggyBank,
+  Zap, ArrowUpRight
 } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, subMonths, subDays, isWithinInterval, isToday } from 'date-fns';
 import { formatCurrency } from '../../../utils/analytics';
 import { getCategoryIcon, getCategoryColors } from '../../../utils/categoryConfig';
 import UpcomingBills from '../components/UpcomingBills';
@@ -76,6 +77,63 @@ function InsightCard({ insight }) {
         <Sparkles size={14} className="text-teal-400 mt-0.5 flex-shrink-0" />
         <p className="text-xs text-stone-300">{insight}</p>
       </div>
+    </div>
+  );
+}
+
+// Mini Sparkline - tiny 7-day trend chart
+function MiniSparkline({ data }) {
+  if (!data || data.length === 0) return null;
+  const max = Math.max(...data, 1);
+  const width = 120;
+  const height = 32;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - (v / max) * (height - 4) - 2;
+    return `${x},${y}`;
+  });
+  const polyline = points.join(' ');
+  const fillPoints = `0,${height} ${polyline} ${width},${height}`;
+  const isUp = data.length >= 2 && data[data.length - 1] > data[data.length - 2];
+
+  return (
+    <svg width={width} height={height} className="overflow-visible">
+      <defs>
+        <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={isUp ? '#f59e0b' : '#10b981'} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={isUp ? '#f59e0b' : '#10b981'} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={fillPoints} fill="url(#sparkFill)" />
+      <polyline points={polyline} fill="none" stroke={isUp ? '#f59e0b' : '#10b981'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Dot on the last point */}
+      {data.length > 0 && (
+        <circle cx={width} cy={height - (data[data.length - 1] / max) * (height - 4) - 2} r="2.5" fill={isUp ? '#f59e0b' : '#10b981'} />
+      )}
+    </svg>
+  );
+}
+
+// Biggest Expense Today callout
+function BiggestExpenseTodayCard({ expense }) {
+  if (!expense) return null;
+  const Icon = getCategoryIcon(expense.category);
+  const colors = getCategoryColors(expense.category);
+  return (
+    <div className="glass-card p-3 flex items-center gap-3">
+      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${colors.gradient} flex items-center justify-center flex-shrink-0`}>
+        <Icon size={18} className={colors.text} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] text-amber-400 uppercase tracking-wider flex items-center gap-1">
+          <ArrowUpRight size={10} />
+          Biggest spend today
+        </p>
+        <p className="text-sm text-stone-200 truncate">{expense.description}</p>
+      </div>
+      <p className="text-sm font-mono font-medium text-amber-400">
+        {formatCurrency(expense.amount, 'INR')}
+      </p>
     </div>
   );
 }
@@ -164,6 +222,43 @@ export default function ESHome({ expenses, userId, onRefresh, onAddExpense, onNa
     return insightsList.slice(0, 2);
   }, [stats, expenses]);
 
+  // 7-day sparkline data
+  const sparklineData = useMemo(() => {
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const day = subDays(new Date(), i);
+      const dateStr = format(day, 'yyyy-MM-dd');
+      let total = 0;
+      for (const exp of expenses) {
+        if (exp.cancelled || exp.isRefund) continue;
+        if (exp.date === dateStr) total += exp.amount;
+      }
+      data.push(total);
+    }
+    return data;
+  }, [expenses]);
+
+  // Biggest expense today
+  const biggestToday = useMemo(() => {
+    let biggest = null;
+    for (const exp of expenses) {
+      if (exp.cancelled || exp.isRefund) continue;
+      if (!isToday(parseISO(exp.date))) continue;
+      if (!biggest || exp.amount > biggest.amount) biggest = exp;
+    }
+    return biggest;
+  }, [expenses]);
+
+  // Today's total for velocity context
+  const todayTotal = useMemo(() => {
+    let total = 0;
+    for (const exp of expenses) {
+      if (exp.cancelled || exp.isRefund) continue;
+      if (isToday(parseISO(exp.date))) total += exp.amount;
+    }
+    return total;
+  }, [expenses]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -212,6 +307,28 @@ export default function ESHome({ expenses, userId, onRefresh, onAddExpense, onNa
           color="rose"
         />
       </div>
+
+      {/* 7-Day Sparkline + Today's Spend */}
+      <div className="glass-card p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-stone-500">Last 7 Days</p>
+            <p className="text-lg font-display text-stone-200 mt-1">
+              {formatCurrency(sparklineData.reduce((a, b) => a + b, 0), 'INR')}
+            </p>
+            {todayTotal > 0 && (
+              <p className="text-[10px] text-stone-500 mt-0.5 flex items-center gap-1">
+                <Zap size={10} className="text-amber-400" />
+                {formatCurrency(todayTotal, 'INR')} spent today
+              </p>
+            )}
+          </div>
+          <MiniSparkline data={sparklineData} />
+        </div>
+      </div>
+
+      {/* Biggest expense today */}
+      <BiggestExpenseTodayCard expense={biggestToday} />
 
       {/* Smart Insights */}
       {insights.length > 0 && (
