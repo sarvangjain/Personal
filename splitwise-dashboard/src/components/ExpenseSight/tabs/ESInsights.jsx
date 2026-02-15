@@ -2,12 +2,12 @@
  * ESInsights - Analytics tab with charts, trends, and insights
  */
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   BarChart3, TrendingUp, PieChart as PieIcon, Calendar,
   ArrowUpRight, Repeat, AlertCircle
 } from 'lucide-react';
-import { format, parseISO, subMonths, startOfMonth, endOfMonth, isWithinInterval, getDay, differenceInDays } from 'date-fns';
+import { format, parseISO, subMonths, subDays, startOfMonth, endOfMonth, isWithinInterval, getDay, differenceInDays } from 'date-fns';
 import { 
   PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer
@@ -317,8 +317,45 @@ function RecurringExpensesCard({ recurringExpenses }) {
   );
 }
 
+// Time filter options for insights
+const INSIGHTS_TIME_FILTERS = [
+  { id: 'all', label: 'All Time' },
+  { id: 'month', label: 'This Month' },
+  { id: 'last_month', label: 'Last Month' },
+  { id: '30d', label: 'Last 30 Days' },
+  { id: '90d', label: 'Last 90 Days' },
+  { id: '6m', label: 'Last 6 Months' },
+];
+
 export default function ESInsights({ expenses }) {
-  // Calculate monthly trend (6 months)
+  const [timeFilter, setTimeFilter] = useState('all');
+
+  // Apply time filter
+  const filteredExpenses = useMemo(() => {
+    const now = new Date();
+    return expenses.filter(exp => {
+      if (exp.cancelled || exp.isRefund) return false;
+      const expDate = parseISO(exp.date);
+      switch (timeFilter) {
+        case 'month':
+          return isWithinInterval(expDate, { start: startOfMonth(now), end: endOfMonth(now) });
+        case 'last_month': {
+          const lm = subMonths(now, 1);
+          return isWithinInterval(expDate, { start: startOfMonth(lm), end: endOfMonth(lm) });
+        }
+        case '30d':
+          return expDate >= subDays(now, 30);
+        case '90d':
+          return expDate >= subDays(now, 90);
+        case '6m':
+          return expDate >= subMonths(now, 6);
+        default:
+          return true;
+      }
+    });
+  }, [expenses, timeFilter]);
+
+  // Calculate monthly trend (6 months) - always uses all expenses for trend
   const monthlyTrend = useMemo(() => {
     const months = [];
     for (let i = 5; i >= 0; i--) {
@@ -346,37 +383,34 @@ export default function ESInsights({ expenses }) {
   // Category breakdown
   const categoryData = useMemo(() => {
     const breakdown = {};
-    for (const exp of expenses) {
-      if (exp.cancelled || exp.isRefund) continue;
+    for (const exp of filteredExpenses) {
       breakdown[exp.category] = (breakdown[exp.category] || 0) + exp.amount;
     }
     return Object.entries(breakdown)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
-  }, [expenses]);
+  }, [filteredExpenses]);
 
   // Day of week analysis
   const dayOfWeekData = useMemo(() => {
     const days = DAYS_OF_WEEK.map(day => ({ day, amount: 0, count: 0 }));
     
-    for (const exp of expenses) {
-      if (exp.cancelled || exp.isRefund) continue;
+    for (const exp of filteredExpenses) {
       const dayIndex = getDay(parseISO(exp.date));
       days[dayIndex].amount += exp.amount;
       days[dayIndex].count += 1;
     }
     
     return days;
-  }, [expenses]);
+  }, [filteredExpenses]);
 
   // Top expenses
   const topExpenses = useMemo(() => {
-    return [...expenses]
-      .filter(e => !e.cancelled && !e.isRefund)
+    return [...filteredExpenses]
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
-  }, [expenses]);
+  }, [filteredExpenses]);
 
   // Detect recurring expenses (subscriptions)
   const recurringExpenses = useMemo(() => {
@@ -479,9 +513,8 @@ export default function ESInsights({ expenses }) {
 
   // Summary stats
   const stats = useMemo(() => {
-    const validExpenses = expenses.filter(e => !e.cancelled && !e.isRefund);
-    const total = validExpenses.reduce((sum, e) => sum + e.amount, 0);
-    const avgExpense = validExpenses.length > 0 ? total / validExpenses.length : 0;
+    const total = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const avgExpense = filteredExpenses.length > 0 ? total / filteredExpenses.length : 0;
     
     // Find highest spending day of week
     const highestDayIndex = dayOfWeekData.reduce((maxIdx, day, idx, arr) => 
@@ -489,11 +522,11 @@ export default function ESInsights({ expenses }) {
     
     return {
       avgExpense,
-      count: validExpenses.length,
+      count: filteredExpenses.length,
       highestDay: DAYS_OF_WEEK[highestDayIndex],
       topCategory: categoryData[0]?.name || 'N/A',
     };
-  }, [expenses, dayOfWeekData, categoryData]);
+  }, [filteredExpenses, dayOfWeekData, categoryData]);
 
   return (
     <div className="space-y-4">
@@ -501,6 +534,23 @@ export default function ESInsights({ expenses }) {
       <div>
         <h2 className="text-xl font-display text-stone-200">Insights</h2>
         <p className="text-xs text-stone-500">Understand your spending patterns</p>
+      </div>
+
+      {/* Time Filter */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+        {INSIGHTS_TIME_FILTERS.map(filter => (
+          <button
+            key={filter.id}
+            onClick={() => setTimeFilter(filter.id)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+              timeFilter === filter.id
+                ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30'
+                : 'bg-stone-800/50 text-stone-400 border border-stone-700/50 hover:bg-stone-800'
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
       </div>
 
       {/* Stats Summary */}
@@ -528,11 +578,11 @@ export default function ESInsights({ expenses }) {
       )}
 
       {/* Empty State */}
-      {expenses.length === 0 && (
+      {filteredExpenses.length === 0 && (
         <div className="text-center py-12 glass-card">
           <BarChart3 size={40} className="mx-auto text-stone-600 mb-4" />
-          <p className="text-sm text-stone-500">No data yet</p>
-          <p className="text-xs text-stone-600 mt-1">Add expenses to see insights</p>
+          <p className="text-sm text-stone-500">{expenses.length === 0 ? 'No data yet' : 'No data for this period'}</p>
+          <p className="text-xs text-stone-600 mt-1">{expenses.length === 0 ? 'Add expenses to see insights' : 'Try a different time range'}</p>
         </div>
       )}
     </div>

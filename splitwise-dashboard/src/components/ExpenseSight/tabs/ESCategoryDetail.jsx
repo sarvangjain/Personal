@@ -6,9 +6,9 @@
 import { useState, useMemo } from 'react';
 import { 
   ArrowLeft, ChevronDown, ChevronUp, TrendingUp, TrendingDown,
-  Minus, DollarSign
+  Minus, DollarSign, Calendar
 } from 'lucide-react';
-import { format, parseISO, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, parseISO, subMonths, subDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatCurrency } from '../../../utils/analytics';
 import { getCategoryIcon, getCategoryColors } from '../../../utils/categoryConfig';
@@ -143,7 +143,6 @@ function TopMerchantsCard({ expenses, category }) {
     
     for (const exp of expenses) {
       if (category && exp.category !== category) continue;
-      if (exp.cancelled || exp.isRefund) continue;
       
       // Extract merchant name (first word or two)
       const desc = exp.description.toLowerCase();
@@ -188,9 +187,42 @@ function TopMerchantsCard({ expenses, category }) {
   );
 }
 
+// Time filter options
+const TIME_FILTERS = [
+  { id: 'all', label: 'All Time' },
+  { id: 'month', label: 'This Month' },
+  { id: 'last_month', label: 'Last Month' },
+  { id: '30d', label: 'Last 30 Days' },
+  { id: '90d', label: 'Last 90 Days' },
+];
+
 export default function ESCategoryDetail({ expenses, onClose }) {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedForComparison, setSelectedForComparison] = useState(null);
+  const [timeFilter, setTimeFilter] = useState('all');
+
+  // Apply time filter to expenses
+  const filteredExpenses = useMemo(() => {
+    const now = new Date();
+    return expenses.filter(exp => {
+      if (exp.cancelled || exp.isRefund) return false;
+      const expDate = parseISO(exp.date);
+      switch (timeFilter) {
+        case 'month':
+          return isWithinInterval(expDate, { start: startOfMonth(now), end: endOfMonth(now) });
+        case 'last_month': {
+          const lm = subMonths(now, 1);
+          return isWithinInterval(expDate, { start: startOfMonth(lm), end: endOfMonth(lm) });
+        }
+        case '30d':
+          return expDate >= subDays(now, 30);
+        case '90d':
+          return expDate >= subDays(now, 90);
+        default:
+          return true;
+      }
+    });
+  }, [expenses, timeFilter]);
 
   // Calculate category data with trends
   const { categoryData, pieData, grandTotal } = useMemo(() => {
@@ -201,8 +233,7 @@ export default function ESCategoryDetail({ expenses, onClose }) {
     const data = {};
     let total = 0;
     
-    for (const exp of expenses) {
-      if (exp.cancelled || exp.isRefund) continue;
+    for (const exp of filteredExpenses) {
       
       const cat = exp.category || 'Other';
       const expDate = parseISO(exp.date);
@@ -293,7 +324,7 @@ export default function ESCategoryDetail({ expenses, onClose }) {
       grandTotal: total,
       categories: sortedCategories,
     };
-  }, [expenses]);
+  }, [filteredExpenses]);
 
   const categories = Object.values(categoryData).sort((a, b) => b.total - a.total);
 
@@ -313,6 +344,23 @@ export default function ESCategoryDetail({ expenses, onClose }) {
             {formatCurrency(grandTotal, 'INR')} across {categories.length} categories
           </p>
         </div>
+      </div>
+
+      {/* Time Filter */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+        {TIME_FILTERS.map(filter => (
+          <button
+            key={filter.id}
+            onClick={() => setTimeFilter(filter.id)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+              timeFilter === filter.id
+                ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30'
+                : 'bg-stone-800/50 text-stone-400 border border-stone-700/50 hover:bg-stone-800'
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
       </div>
 
       {/* Pie Chart */}
@@ -388,27 +436,34 @@ export default function ESCategoryDetail({ expenses, onClose }) {
       )}
 
       {/* Top Merchants */}
-      <TopMerchantsCard expenses={expenses} category={selectedForComparison} />
+      <TopMerchantsCard expenses={filteredExpenses} category={selectedForComparison} />
 
       {/* Category List */}
       <div className="space-y-2">
         <h3 className="text-xs text-stone-500 uppercase tracking-wider px-1">All Categories</h3>
-        {categories.map(cat => (
-          <CategoryRow
-            key={cat.category}
-            category={cat.category}
-            total={cat.total}
-            count={cat.count}
-            percentage={cat.percentage}
-            expenses={cat.expenses}
-            trend={cat.trend}
-            isExpanded={expandedCategory === cat.category}
-            onToggle={() => {
-              setExpandedCategory(expandedCategory === cat.category ? null : cat.category);
-              setSelectedForComparison(cat.category);
-            }}
-          />
-        ))}
+        {categories.length > 0 ? (
+          categories.map(cat => (
+            <CategoryRow
+              key={cat.category}
+              category={cat.category}
+              total={cat.total}
+              count={cat.count}
+              percentage={cat.percentage}
+              expenses={cat.expenses}
+              trend={cat.trend}
+              isExpanded={expandedCategory === cat.category}
+              onToggle={() => {
+                setExpandedCategory(expandedCategory === cat.category ? null : cat.category);
+                setSelectedForComparison(cat.category);
+              }}
+            />
+          ))
+        ) : (
+          <div className="text-center py-12 glass-card">
+            <p className="text-sm text-stone-500">No expenses for this period</p>
+            <p className="text-xs text-stone-600 mt-1">Try a different time range</p>
+          </div>
+        )}
       </div>
     </div>
   );

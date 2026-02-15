@@ -23,9 +23,13 @@ const CATEGORY_KEYWORDS = {
     'drinks', 'bar', 'pub', 'f&b', 'garlic bread', 'dominos', 'mcd', 'thali',
     'kfc', 'order'
   ],
+  'Rent': [
+    'rent', 'house rent', 'room rent', 'flat rent', 'apartment', 'monthly rent',
+    'accommodation', 'housing', 'pg', 'paying guest'
+  ],
   'Utilities': [
     'wifi', 'internet', 'electricity', 'electric', 'water', 'gas', 'cylinder',
-    'rent', 'bill', 'maintenance', 'society', 'airtel', 'jio', 'vodafone',
+    'bill', 'maintenance', 'society', 'airtel', 'jio', 'vodafone',
     'mobile bill', 'recharge', 'icloud'
   ],
   'Shopping': [
@@ -70,8 +74,9 @@ const DATE_FORMATS = [
   'MMM d, yyyy',     // "Feb 11, 2025"
   'd/M/yyyy',        // "11/2/2025"
   'd-M-yyyy',        // "11-2-2025"
+  'dd/MM/yyyy',      // "11/02/2025"
+  'dd-MM-yyyy',      // "11-02-2025"
   'yyyy-MM-dd',      // "2025-02-11"
-  'dMMM',            // "8Jan" (no space)
 ];
 
 /**
@@ -108,6 +113,12 @@ export function isDateLine(line) {
     return false;
   }
   
+  // Skip single words that are too short to be a meaningful date (like "Feb" alone)
+  // Require at least a number + month or a recognized word like "today"/"yesterday"
+  if (!/\d/.test(trimmed) && trimmed !== 'today' && trimmed !== 'yesterday') {
+    return false;
+  }
+  
   // Try to parse as date
   const parsed = parseDateString(trimmed);
   return parsed !== null;
@@ -122,13 +133,13 @@ export function parseDateString(text) {
   
   for (const fmt of DATE_FORMATS) {
     try {
-      // Try with current year for formats without year
-      let dateStr = normalized;
-      if (!fmt.includes('yyyy') && !fmt.includes('yy')) {
-        dateStr = `${normalized} ${currentYear}`;
-      }
+      const hasYear = fmt.includes('yyyy') || fmt.includes('yy');
       
-      const parsed = parse(dateStr, fmt.includes('yyyy') ? fmt : `${fmt} yyyy`, new Date());
+      // For formats without year, append current year to both the string and format
+      const dateStr = hasYear ? normalized : `${normalized} ${currentYear}`;
+      const parseFormat = hasYear ? fmt : `${fmt} yyyy`;
+      
+      const parsed = parse(dateStr, parseFormat, new Date());
       
       if (isValid(parsed)) {
         // If parsed date is in the future, use previous year
@@ -140,6 +151,15 @@ export function parseDateString(text) {
     } catch {
       continue;
     }
+  }
+  
+  // Also try common relative date words
+  const lower = normalized.toLowerCase();
+  if (lower === 'today') return new Date();
+  if (lower === 'yesterday') {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d;
   }
   
   return null;
@@ -179,8 +199,8 @@ export function parseAmount(text) {
                        trimmed.includes('cashback');
   
   // Find all numbers and operators at the end of the line
-  // Match patterns like: "182", "-1500", "508 + 250", "508+250"
-  const amountMatch = text.match(/(-?\d+(?:\.\d+)?(?:\s*[+\-]\s*\d+(?:\.\d+)?)*)\s*$/);
+  // Match patterns like: "182", "-1500", "508 + 250", "508+250", "1,500", "22,500"
+  const amountMatch = text.match(/(-?[\d,]+(?:\.\d+)?(?:\s*[+\-]\s*[\d,]+(?:\.\d+)?)*)\s*$/);
   
   if (!amountMatch) {
     return { amount: null, isPending: false, isRefund: false };
@@ -193,8 +213,8 @@ export function parseAmount(text) {
   
   // Evaluate the expression
   try {
-    // Safe evaluation - only allow numbers and +/-
-    const sanitized = amountStr.replace(/[^0-9+\-.\s]/g, '');
+    // Safe evaluation - strip commas, only allow numbers and +/-
+    const sanitized = amountStr.replace(/,/g, '').replace(/[^0-9+\-.\s]/g, '');
     // eslint-disable-next-line no-eval
     const evaluated = Function('"use strict"; return (' + sanitized + ')')();
     
@@ -212,7 +232,7 @@ export function parseAmount(text) {
  * Extract description from expense line (everything before the amount)
  */
 export function parseDescription(text) {
-  // Remove the amount part from the end
+  // Remove the amount part from the end (including comma-formatted numbers)
   const withoutAmount = text.replace(/(-?\d+(?:\.\d+)?(?:\s*[+\-]\s*\d+(?:\.\d+)?)*)\s*$/, '');
   
   // Clean up the description

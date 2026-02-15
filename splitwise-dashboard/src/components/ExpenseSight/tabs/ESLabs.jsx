@@ -273,8 +273,6 @@ function SpendingStreaksCard({ expenses }) {
     let maxSpendStreak = 0;
     let currentNoSpend = 0;
     let currentSpend = 0;
-    let currentStreak = 0;
-    let lastWasSpend = null;
     
     for (const day of days) {
       const dateStr = format(day, 'yyyy-MM-dd');
@@ -289,13 +287,20 @@ function SpendingStreaksCard({ expenses }) {
         maxNoSpendStreak = Math.max(maxNoSpendStreak, currentNoSpend);
         currentSpend = 0;
       }
-      
-      // Track current streak (from today backwards)
-      if (lastWasSpend === null) {
-        lastWasSpend = hasExpense;
-        currentStreak = 1;
-      } else if (hasExpense === lastWasSpend) {
+    }
+    
+    // Track current streak from today backwards
+    let currentStreak = 0;
+    const reversedDays = [...days].reverse();
+    const todayHasExpense = expenseDates.has(format(today, 'yyyy-MM-dd'));
+    
+    for (const day of reversedDays) {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const hasExpense = expenseDates.has(dateStr);
+      if (hasExpense === todayHasExpense) {
         currentStreak++;
+      } else {
+        break;
       }
     }
     
@@ -303,7 +308,7 @@ function SpendingStreaksCard({ expenses }) {
       noSpendStreak: maxNoSpendStreak,
       spendStreak: maxSpendStreak,
       currentStreak,
-      currentType: lastWasSpend ? 'spending' : 'no-spend',
+      currentType: todayHasExpense ? 'spending' : 'no-spend',
     };
   }, [expenses]);
 

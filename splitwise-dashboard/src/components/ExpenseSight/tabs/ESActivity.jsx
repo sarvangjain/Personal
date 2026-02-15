@@ -7,7 +7,7 @@ import {
   Search, RefreshCw, Calendar, ChevronDown,
   DollarSign, X, Edit2, Trash2, Check, RotateCcw, Hash, Tag
 } from 'lucide-react';
-import { format, parseISO, isToday, isYesterday, isThisWeek, isThisMonth, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, parseISO, isToday, isYesterday, isThisWeek, isThisMonth, subDays, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { formatCurrency } from '../../../utils/analytics';
 import SpendingHeatmap from '../../SpendingHeatmap';
 import CategoryQuickCards from '../components/CategoryQuickCards';
@@ -19,9 +19,10 @@ import { getTags, createTag } from '../../../firebase/expenseSightService';
 // Date range filter options
 const DATE_FILTERS = [
   { id: 'all', label: 'All Time' },
-  { id: '7d', label: 'Last 7 days' },
-  { id: '30d', label: 'Last 30 days' },
   { id: 'month', label: 'This Month' },
+  { id: 'last_month', label: 'Last Month' },
+  { id: '7d', label: 'Last 7 Days' },
+  { id: '30d', label: 'Last 30 Days' },
 ];
 
 // Expense group header
@@ -160,8 +161,8 @@ function ExpenseItem({ expense, onEdit, onDelete, isEditing, editData, setEditDa
             {expense.isRefund ? '+' : ''}{formatCurrency(expense.amount, 'INR')}
           </p>
         </div>
-        {/* Edit/Delete buttons - visible on hover */}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Edit/Delete buttons - always visible on mobile, hover on desktop */}
+        <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => onEdit(expense)}
             className="p-1.5 rounded-lg bg-stone-700/50 text-stone-400 hover:text-teal-400 hover:bg-stone-700 transition-colors"
@@ -261,6 +262,14 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
     } else if (dateFilter === 'month') {
       const start = startOfMonth(now);
       const end = endOfMonth(now);
+      filtered = filtered.filter(e => {
+        const d = parseISO(e.date);
+        return d >= start && d <= end;
+      });
+    } else if (dateFilter === 'last_month') {
+      const lm = subMonths(now, 1);
+      const start = startOfMonth(lm);
+      const end = endOfMonth(lm);
       filtered = filtered.filter(e => {
         const d = parseISO(e.date);
         return d >= start && d <= end;

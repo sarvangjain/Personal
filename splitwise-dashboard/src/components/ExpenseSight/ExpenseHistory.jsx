@@ -2,7 +2,7 @@
  * ExpenseHistory - View and manage saved expenses
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format, parseISO, subDays, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { 
   Calendar, Search, Filter, Trash2, Edit2, Check, X, 
@@ -134,7 +134,7 @@ export default function ExpenseHistory({ expenses, userId, onRefresh, isRefreshi
   const [localExpenses, setLocalExpenses] = useState(expenses);
 
   // Update local expenses when props change
-  useMemo(() => {
+  useEffect(() => {
     setLocalExpenses(expenses);
   }, [expenses]);
 

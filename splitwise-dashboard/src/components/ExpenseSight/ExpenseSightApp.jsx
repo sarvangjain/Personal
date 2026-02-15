@@ -72,8 +72,6 @@ export default function ExpenseSightApp({ userId, onClose }) {
   const handleRefresh = useCallback(() => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    setPullDistance(0);
-    setIsPulling(false);
     clearCache(userId);
     loadExpenses(true);
   }, [userId, loadExpenses, isRefreshing]);
@@ -201,7 +199,7 @@ export default function ExpenseSightApp({ userId, onClose }) {
 
       {/* Main content - scrollable area */}
       <main 
-        className="flex-1 overflow-y-auto px-4 pt-4 pb-4"
+        className="flex-1 overflow-y-auto px-4 pt-4 pb-20"
         style={{ 
           overscrollBehavior: 'none',
           WebkitOverflowScrolling: 'touch',

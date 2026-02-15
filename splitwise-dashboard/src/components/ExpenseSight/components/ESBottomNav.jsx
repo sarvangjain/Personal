@@ -15,7 +15,7 @@ const TABS = [
 export default function ESBottomNav({ activeTab, onTabChange }) {
   return (
     <nav 
-      className="flex-shrink-0 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/50"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/50"
       style={{ 
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)'
       }}
