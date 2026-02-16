@@ -1,16 +1,18 @@
 /**
- * ESLabs - Experimental features: Year in Review, Lifestyle Score, Streaks
+ * ESLabs - Experimental features: Year in Review, Lifestyle Score, Streaks, Data Management
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { 
   FlaskConical, Sparkles, Target, Flame,
-  Star, Heart, Coffee, ShoppingBag, Home
+  Star, Heart, Coffee, ShoppingBag, Home,
+  Trash2, AlertTriangle, Loader2
 } from 'lucide-react';
 import { format, parseISO, startOfYear, endOfYear, isWithinInterval, subDays, eachDayOfInterval } from 'date-fns';
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from 'recharts';
 import { formatCurrency } from '../../../utils/analytics';
 import { CHART_COLORS } from '../../../utils/chartConfig';
+import { deleteAllExpenses } from '../../../firebase/expenseSightService';
 
 // Category to lifestyle dimension mapping
 const CATEGORY_DIMENSIONS = {
@@ -383,7 +385,112 @@ function SpendingPersonalityCard({ expenses }) {
   );
 }
 
-export default function ESLabs({ expenses, userId }) {
+// Data Management Card
+function DataManagementCard({ userId, expenseCount, onDeleteAllSuccess }) {
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState(null);
+  
+  const handleDeleteAll = useCallback(async () => {
+    if (confirmText !== 'DELETE ALL') return;
+    
+    setDeleting(true);
+    setError(null);
+    
+    try {
+      const result = await deleteAllExpenses(userId);
+      if (result.success) {
+        setShowConfirm(false);
+        setConfirmText('');
+        if (onDeleteAllSuccess) onDeleteAllSuccess(result.count);
+      } else {
+        setError(result.error || 'Failed to delete expenses');
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(false);
+    }
+  }, [userId, confirmText, onDeleteAllSuccess]);
+  
+  return (
+    <div className="glass-card p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <AlertTriangle size={18} className="text-red-400" />
+        <h3 className="text-sm font-medium text-stone-200">Data Management</h3>
+      </div>
+      
+      <p className="text-xs text-stone-500">
+        You have <span className="text-stone-300 font-medium">{expenseCount}</span> expenses tracked.
+      </p>
+      
+      {!showConfirm ? (
+        <button
+          onClick={() => setShowConfirm(true)}
+          disabled={expenseCount === 0}
+          className="w-full py-2.5 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-xl 
+                     hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                     flex items-center justify-center gap-2"
+        >
+          <Trash2 size={16} />
+          Delete All Expenses
+        </button>
+      ) : (
+        <div className="space-y-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+          <p className="text-xs text-red-400">
+            ⚠️ This will permanently delete <strong>ALL {expenseCount} expenses</strong>. This cannot be undone!
+          </p>
+          <p className="text-xs text-stone-500">
+            Type <code className="px-1 py-0.5 bg-stone-800 rounded text-red-400">DELETE ALL</code> to confirm:
+          </p>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
+            placeholder="Type DELETE ALL"
+            className="w-full px-3 py-2 bg-stone-800 border border-stone-700 rounded-lg text-sm text-stone-200 
+                       focus:outline-none focus:border-red-500 placeholder:text-stone-600"
+            disabled={deleting}
+          />
+          {error && (
+            <p className="text-xs text-red-400">{error}</p>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={handleDeleteAll}
+              disabled={confirmText !== 'DELETE ALL' || deleting}
+              className="flex-1 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-500 
+                         transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                         flex items-center justify-center gap-2"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 size={14} />
+                  Confirm Delete
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => { setShowConfirm(false); setConfirmText(''); setError(null); }}
+              disabled={deleting}
+              className="flex-1 py-2 bg-stone-700 text-stone-300 text-sm rounded-lg hover:bg-stone-600 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ESLabs({ expenses, userId, onDeleteAllSuccess }) {
   const currentYear = new Date().getFullYear();
   
   return (
@@ -411,6 +518,16 @@ export default function ESLabs({ expenses, userId }) {
       
       {/* Previous Year */}
       <YearInReviewCard expenses={expenses} year={currentYear - 1} />
+      
+      {/* Data Management - Danger Zone */}
+      <div className="pt-4 border-t border-stone-800">
+        <p className="text-xs text-stone-600 uppercase tracking-wider mb-3">Danger Zone</p>
+        <DataManagementCard 
+          userId={userId} 
+          expenseCount={expenses.length} 
+          onDeleteAllSuccess={onDeleteAllSuccess}
+        />
+      </div>
     </div>
   );
 }

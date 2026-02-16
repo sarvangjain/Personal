@@ -15,7 +15,7 @@ import ESBills from './tabs/ESBills';
 import ESGoals from './tabs/ESGoals';
 import ESCategoryDetail from './tabs/ESCategoryDetail';
 import QuickAddModal from './QuickAddModal';
-import { getExpenses, clearCache, updateExpense, deleteExpense, loadInitialData } from '../../firebase/expenseSightService';
+import { getExpenses, clearCache, updateExpense, deleteExpense, addExpenses, loadInitialData } from '../../firebase/expenseSightService';
 import { isFirebaseConfigured } from '../../firebase/config';
 
 export default function ExpenseSightApp({ userId, onClose }) {
@@ -87,16 +87,29 @@ export default function ExpenseSightApp({ userId, onClose }) {
     setShowCategoryDetail(false);
   }, [activeTab]);
 
-  // Handle refresh
-  const handleRefresh = useCallback(() => {
+  // Handle refresh - clear cache first, then fetch fresh data
+  const handleRefresh = useCallback(async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
+    
+    // Clear cache synchronously before fetching
     clearCache(userId);
-    loadExpenses(true);
-  }, [userId, loadExpenses, isRefreshing]);
+    
+    try {
+      // Fetch fresh data with cache bypass
+      const data = await getExpenses(userId, { useCache: false });
+      setExpenses(data);
+    } catch (err) {
+      console.error('Error refreshing expenses:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [userId, isRefreshing]);
 
   // Handle quick add saved
   const handleQuickAddSaved = () => {
+    // Clear cache and reload to ensure new expenses show
+    clearCache(userId);
     loadExpenses(true);
   };
   
@@ -114,17 +127,42 @@ export default function ExpenseSightApp({ userId, onClose }) {
     return result;
   }, [userId]);
   
-  // Handle delete expense
+  // Handle delete expense - returns the deleted expense for undo
   const handleDeleteExpense = useCallback(async (expenseId) => {
-    if (!userId) return;
+    if (!userId) return { success: false };
+    
+    // Find the expense before deleting (for potential undo)
+    const expenseToDelete = expenses.find(exp => exp.id === expenseId);
     
     const result = await deleteExpense(userId, expenseId);
     if (result.success) {
       // Remove from local state immediately
       setExpenses(prev => prev.filter(exp => exp.id !== expenseId));
+      // Return the deleted expense for undo
+      return { ...result, deletedExpense: expenseToDelete };
+    }
+    return result;
+  }, [userId, expenses]);
+  
+  // Handle restore expense (for undo)
+  const handleRestoreExpense = useCallback(async (expense) => {
+    if (!userId || !expense) return { success: false };
+    
+    // Re-add the expense to Firebase
+    const result = await addExpenses(userId, [expense]);
+    if (result.success) {
+      // Add back to local state
+      setExpenses(prev => [...prev, expense].sort((a, b) => b.date.localeCompare(a.date)));
     }
     return result;
   }, [userId]);
+  
+  // Handle delete all success
+  const handleDeleteAllSuccess = useCallback((count) => {
+    // Clear local state
+    setExpenses([]);
+    console.log(`Deleted ${count} expenses`);
+  }, []);
 
   // Render tab content
   const renderTabContent = () => {
@@ -164,6 +202,7 @@ export default function ExpenseSightApp({ userId, onClose }) {
             onShowCategoryDetail={() => setShowCategoryDetail(true)}
             onUpdateExpense={handleUpdateExpense}
             onDeleteExpense={handleDeleteExpense}
+            onRestoreExpense={handleRestoreExpense}
           />
         );
       case 'budget':
@@ -184,6 +223,7 @@ export default function ExpenseSightApp({ userId, onClose }) {
           <ESLabs 
             expenses={expenses}
             userId={userId}
+            onDeleteAllSuccess={handleDeleteAllSuccess}
           />
         );
       case 'bills':

@@ -185,7 +185,7 @@ function ExpenseItem({ expense, onEdit, onDelete, isEditing, editData, setEditDa
   );
 }
 
-export default function ESActivity({ expenses, userId, onRefresh, onShowCategoryDetail, onUpdateExpense, onDeleteExpense }) {
+export default function ESActivity({ expenses, userId, onRefresh, onShowCategoryDetail, onUpdateExpense, onDeleteExpense, onRestoreExpense }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState(null);
@@ -250,22 +250,23 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
     // Find the expense before removing for undo
     const expenseToDelete = expenses.find(e => e.id === expenseId);
     
-    // Optimistically delete
-    await onDeleteExpense(expenseId);
+    // Delete from Firebase
+    const result = await onDeleteExpense(expenseId);
     
-    // Show undo toast
-    if (expenseToDelete) {
+    // Show undo toast with proper restore functionality
+    if (expenseToDelete && result?.success) {
       undoToast.show(
         `"${expenseToDelete.description}" deleted`,
         async () => {
-          // Undo: re-add the expense (handled by parent re-fetch)
-          // For now, trigger a refresh to restore
-          if (typeof onRefresh === 'function') onRefresh();
+          // Undo: re-add the expense to Firebase
+          if (onRestoreExpense) {
+            await onRestoreExpense(expenseToDelete);
+          }
         },
         5000
       );
     }
-  }, [onDeleteExpense, expenses, undoToast, onRefresh]);
+  }, [onDeleteExpense, onRestoreExpense, expenses, undoToast]);
 
   // Apply date filter (used for category cards)
   const dateFilteredExpenses = useMemo(() => {
