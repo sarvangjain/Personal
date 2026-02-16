@@ -88,25 +88,35 @@ const DATE_FORMATS = [
 
 function normalizeDateString(text) {
   let normalized = text.trim();
+  // Remove ordinal suffixes (1st, 2nd, 3rd, 4th, etc.)
   normalized = normalized.replace(/(\d+)(st|nd|rd|th)\s*/gi, '$1 ');
+  // Add space between number and month if missing: "8Jan" -> "8 Jan"
   normalized = normalized.replace(/(\d+)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/gi, '$1 $2');
+  // Capitalize first letter of each month name for date-fns parse compatibility
+  // "16 feb" -> "16 Feb", "feb 16" -> "Feb 16"
+  normalized = normalized.replace(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december)\b/gi, 
+    (m) => m.charAt(0).toUpperCase() + m.slice(1).toLowerCase()
+  );
   return normalized.trim();
 }
 
 export function isDateLine(line) {
-  const trimmed = line.trim().toLowerCase();
+  const trimmed = line.trim();
+  const lower = trimmed.toLowerCase();
   
-  if (trimmed.includes('no expense') || trimmed.includes('nothing')) return false;
+  if (lower.includes('no expense') || lower.includes('nothing')) return false;
   
-  const hasAmountPattern = /\s\d{3,}/.test(line) || /\d{3,}\s*$/.test(line);
+  // Skip if it contains numbers that look like amounts (3+ digits not at start)
+  const hasAmountPattern = /\s\d{3,}/.test(trimmed) || /\d{3,}\s*$/.test(trimmed);
   if (hasAmountPattern) return false;
   
   // Must contain a digit or be a relative keyword
-  if (!/\d/.test(trimmed) && trimmed !== 'today' && trimmed !== 'yesterday') return false;
+  if (!/\d/.test(lower) && lower !== 'today' && lower !== 'yesterday') return false;
   
   // Should not contain hashtags (that's an expense line, not a date)
-  if (trimmed.includes('#')) return false;
+  if (lower.includes('#')) return false;
   
+  // Pass original (not lowercased) to parseDateString — normalization handles casing
   const parsed = parseDateString(trimmed);
   return parsed !== null;
 }

@@ -394,9 +394,8 @@ export default function QuickAddModal({ isOpen, onClose, userId, onSaved }) {
   const emiCount = parsedExpenses.filter(e => e.isEmi).length;
   const uniqueDates = [...new Set(parsedExpenses.map(e => e.date))];
 
-  if (!isOpen) return null;
-
   // Group parsed expenses by date for display
+  // IMPORTANT: This useMemo must be called BEFORE any early returns (React hooks rule)
   const groupedParsed = useMemo(() => {
     const groups = {};
     for (const exp of parsedExpenses) {
@@ -405,6 +404,8 @@ export default function QuickAddModal({ isOpen, onClose, userId, onSaved }) {
     }
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [parsedExpenses]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">

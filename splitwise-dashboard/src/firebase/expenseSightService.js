@@ -1,6 +1,12 @@
 /**
  * ExpenseSight Firebase Service
  * CRUD operations for personal expense tracking
+ * 
+ * Performance optimizations applied:
+ * 1. SmartCache with TTL (5 min) + size limit + surgical invalidation
+ * 2. Firestore where() date filtering with graceful fallback
+ * 3. loadInitialData() for parallel bootstrap
+ * 4. Atomic increment() for goal/tag counters
  */
 
 import { 
@@ -13,20 +19,89 @@ import {
   query, 
   orderBy, 
   limit,
+  where,
   writeBatch,
-  serverTimestamp
+  serverTimestamp,
+  increment
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './config';
 
 const COLLECTION_NAME = 'expenseSight';
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// IMPROVEMENT 1: Smart Cache with TTL, size limits, and surgical invalidation
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Old behavior: plain Map(), no expiry, clearCache() nuked everything.
+// New behavior: 
+//   - Each entry expires after CACHE_TTL (5 min)
+//   - LRU eviction when MAX_CACHE_ENTRIES reached
+//   - Keys are domain-prefixed: exp_, tags_, budget_, bills_, goals_, notif_
+//   - invalidate(prefix) only clears entries matching that prefix
+//   - update/delete mutate cached arrays in-place (no re-fetch needed)
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_ENTRIES = 50;
+
+class SmartCache {
+  constructor() {
+    this._store = new Map();
+  }
+
+  get(key) {
+    const entry = this._store.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.ts > CACHE_TTL) {
+      this._store.delete(key);
+      return null;
+    }
+    return entry.data;
+  }
+
+  set(key, data) {
+    // LRU eviction: remove oldest entry if at capacity
+    if (this._store.size >= MAX_CACHE_ENTRIES && !this._store.has(key)) {
+      let oldestKey = null;
+      let oldestTs = Infinity;
+      for (const [k, v] of this._store) {
+        if (v.ts < oldestTs) { oldestTs = v.ts; oldestKey = k; }
+      }
+      if (oldestKey) this._store.delete(oldestKey);
+    }
+    this._store.set(key, { data, ts: Date.now() });
+  }
+
+  /** Remove all entries whose key starts with `prefix` */
+  invalidate(prefix) {
+    for (const key of [...this._store.keys()]) {
+      if (key.startsWith(prefix)) this._store.delete(key);
+    }
+  }
+
+  /** Mutate the data array inside every matching cache entry */
+  patchArrayEntries(prefix, patchFn) {
+    for (const [key, entry] of this._store) {
+      if (key.startsWith(prefix) && Array.isArray(entry.data)) {
+        entry.data = patchFn(entry.data);
+      }
+    }
+  }
+
+  clear() {
+    this._store.clear();
+  }
+}
+
+const cache = new SmartCache();
+
 // ─── Helper Functions ────────────────────────────────────────────────────────
 
-/**
- * Ensure userId is a string for Firestore paths
- */
 function normalizeUserId(userId) {
   return String(userId);
+}
+
+function userPrefix(userId, domain) {
+  return `${domain}_${normalizeUserId(userId)}`;
 }
 
 function getUserCollection(userId) {
@@ -48,23 +123,28 @@ export async function addExpenses(userId, expenses) {
   }
 
   try {
-    const batch = writeBatch(db);
-    const now = serverTimestamp();
-    
-    for (const expense of expenses) {
-      const docRef = doc(getUserCollection(userId), expense.id);
-      batch.set(docRef, {
-        ...expense,
-        userId,
-        createdAt: now,
-        updatedAt: now,
-      });
+    // Firestore batch limit is 500 operations; chunk to stay safe
+    const CHUNK_SIZE = 450;
+    for (let i = 0; i < expenses.length; i += CHUNK_SIZE) {
+      const chunk = expenses.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      const now = serverTimestamp();
+      
+      for (const expense of chunk) {
+        const docRef = doc(getUserCollection(userId), expense.id);
+        batch.set(docRef, {
+          ...expense,
+          userId,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      
+      await batch.commit();
     }
     
-    await batch.commit();
-    
-    // Invalidate cache
-    clearCache(userId);
+    // Surgical invalidation: only expense cache for this user
+    cache.invalidate(userPrefix(userId, 'exp'));
     
     return { success: true, count: expenses.length };
   } catch (error) {
@@ -72,6 +152,18 @@ export async function addExpenses(userId, expenses) {
     return { success: false, error: error.message };
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// IMPROVEMENT 2: Firestore where() for date range queries
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Old behavior: always fetched 500 docs with orderBy+limit, then filtered
+//   date ranges in JS memory — wasteful when you only need last 7 days.
+// New behavior:
+//   - Adds where('date', '>=', startDate) / where('date', '<=', endDate)
+//   - Firestore returns only matching docs → less bandwidth, less parsing
+//   - Graceful fallback if composite index doesn't exist yet
+//     (catches 'failed-precondition' and retries without where())
 
 /**
  * Get expenses for a user with optional filters
@@ -89,45 +181,59 @@ export async function getExpenses(userId, options = {}) {
     useCache = true 
   } = options;
 
-  // Check cache
-  const normalizedId = normalizeUserId(userId);
-  const cacheKey = `${normalizedId}_${startDate || ''}_${endDate || ''}_${category || ''}_${limitCount}`;
-  if (useCache && expenseSightCache.has(cacheKey)) {
-    return expenseSightCache.get(cacheKey);
+  const uid = normalizeUserId(userId);
+  const cacheKey = `${userPrefix(userId, 'exp')}_${startDate || ''}_${endDate || ''}_${category || ''}_${limitCount}`;
+  
+  if (useCache) {
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
   }
 
   try {
-    let q = query(
-      getUserCollection(userId),
-      orderBy('date', 'desc'),
-      limit(limitCount)
-    );
-
-    // Note: Firestore requires composite indexes for multiple where clauses
-    // For now, we'll filter in memory after fetching
+    const constraints = [orderBy('date', 'desc')];
     
-    const snapshot = await getDocs(q);
-    let expenses = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    // Apply Firestore-level date filters
+    if (startDate) constraints.push(where('date', '>=', startDate));
+    if (endDate) constraints.push(where('date', '<=', endDate));
+    constraints.push(limit(limitCount));
 
-    // Apply filters in memory
-    if (startDate) {
-      expenses = expenses.filter(e => e.date >= startDate);
-    }
-    if (endDate) {
-      expenses = expenses.filter(e => e.date <= endDate);
-    }
+    const q = query(getUserCollection(userId), ...constraints);
+    const snapshot = await getDocs(q);
+    let expenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Category: still in-memory (composite index would be needed otherwise)
     if (category && category !== 'all') {
       expenses = expenses.filter(e => e.category === category);
     }
 
-    // Cache results
-    expenseSightCache.set(cacheKey, expenses);
-    
+    cache.set(cacheKey, expenses);
     return expenses;
   } catch (error) {
+    // Graceful fallback when Firestore composite index is missing
+    if (error.code === 'failed-precondition') {
+      console.warn('Firestore index missing for date range query, falling back to in-memory filter.');
+      try {
+        const q = query(
+          getUserCollection(userId),
+          orderBy('date', 'desc'),
+          limit(limitCount)
+        );
+        const snapshot = await getDocs(q);
+        let expenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        if (startDate) expenses = expenses.filter(e => e.date >= startDate);
+        if (endDate) expenses = expenses.filter(e => e.date <= endDate);
+        if (category && category !== 'all') {
+          expenses = expenses.filter(e => e.category === category);
+        }
+
+        cache.set(cacheKey, expenses);
+        return expenses;
+      } catch (fallbackErr) {
+        console.error('Error fetching expenses (fallback):', fallbackErr);
+        return [];
+      }
+    }
     console.error('Error fetching expenses:', error);
     return [];
   }
@@ -139,6 +245,18 @@ export async function getExpenses(userId, options = {}) {
 export async function getExpense(userId, expenseId) {
   if (!isFirebaseConfigured() || !userId || !expenseId) {
     return null;
+  }
+
+  // Check cached expense lists first — avoids a Firestore read
+  const prefix = userPrefix(userId, 'exp');
+  for (const [key] of cache._store) {
+    if (key.startsWith(prefix)) {
+      const list = cache.get(key);
+      if (Array.isArray(list)) {
+        const found = list.find(e => e.id === expenseId);
+        if (found) return found;
+      }
+    }
   }
 
   try {
@@ -168,8 +286,10 @@ export async function updateExpense(userId, expenseId, data) {
       updatedAt: serverTimestamp(),
     }, { merge: true });
     
-    // Invalidate cache
-    clearCache(userId);
+    // Patch cached arrays in-place — no re-fetch needed
+    cache.patchArrayEntries(userPrefix(userId, 'exp'), list =>
+      list.map(e => e.id === expenseId ? { ...e, ...data } : e)
+    );
     
     return { success: true };
   } catch (error) {
@@ -189,8 +309,10 @@ export async function deleteExpense(userId, expenseId) {
   try {
     await deleteDoc(getExpenseDoc(userId, expenseId));
     
-    // Invalidate cache
-    clearCache(userId);
+    // Remove from cached arrays in-place — no re-fetch needed
+    cache.patchArrayEntries(userPrefix(userId, 'exp'), list =>
+      list.filter(e => e.id !== expenseId)
+    );
     
     return { success: true };
   } catch (error) {
@@ -215,9 +337,7 @@ export async function deleteExpenses(userId, expenseIds) {
     }
     
     await batch.commit();
-    
-    // Invalidate cache
-    clearCache(userId);
+    cache.invalidate(userPrefix(userId, 'exp'));
     
     return { success: true, count: expenseIds.length };
   } catch (error) {
@@ -259,11 +379,9 @@ export async function getExpenseStats(userId, options = {}) {
     } else {
       totalSpent += expense.amount;
       
-      // Category breakdown
       const cat = expense.category || 'Other';
       categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + expense.amount;
       
-      // Daily totals
       const date = expense.date;
       dailyTotals[date] = (dailyTotals[date] || 0) + expense.amount;
     }
@@ -295,11 +413,10 @@ export async function getMonthlyTrend(userId, months = 6) {
   for (const expense of expenses) {
     if (expense.isPending || expense.isRefund) continue;
     
-    const month = expense.date.substring(0, 7); // "2025-02"
+    const month = expense.date.substring(0, 7);
     monthlyData[month] = (monthlyData[month] || 0) + expense.amount;
   }
   
-  // Sort by month and take last N months
   const sortedMonths = Object.keys(monthlyData).sort().slice(-months);
   
   return sortedMonths.map(month => ({
@@ -312,23 +429,22 @@ export async function getMonthlyTrend(userId, months = 6) {
 
 /**
  * Get recent expenses for duplicate checking
- * Fetches expenses from the last N days for comparison
+ * Uses date-range query so Firestore only returns recent docs
  */
 export async function getRecentExpensesForDuplicateCheck(userId, days = 7) {
   if (!isFirebaseConfigured() || !userId) {
     return [];
   }
 
-  const endDate = new Date();
+  const now = new Date();
   const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-  
+  startDate.setDate(now.getDate() - days);
   const startDateStr = startDate.toISOString().split('T')[0];
-  const endDateStr = endDate.toISOString().split('T')[0];
+  const endDateStr = now.toISOString().split('T')[0];
   
   return getExpenses(userId, {
     startDate: startDateStr,
-    endDate: endDateStr,
+    endDate: endDateStr, // Include upper bound to exclude future-dated expenses
     limitCount: 200,
     useCache: false, // Always fetch fresh for duplicate checking
   });
@@ -336,7 +452,7 @@ export async function getRecentExpensesForDuplicateCheck(userId, days = 7) {
 
 /**
  * Get frequent expense descriptions for templates
- * Returns top N most common expense descriptions with their average amounts
+ * Reuses the main expense cache — no extra Firestore call if data is warm
  */
 export async function getFrequentExpenses(userId, topN = 5) {
   if (!isFirebaseConfigured() || !userId) {
@@ -345,7 +461,6 @@ export async function getFrequentExpenses(userId, topN = 5) {
 
   const expenses = await getExpenses(userId, { limitCount: 500, useCache: true });
   
-  // Count occurrences and sum amounts per description
   const descriptionStats = {};
   
   for (const expense of expenses) {
@@ -354,7 +469,7 @@ export async function getFrequentExpenses(userId, topN = 5) {
     const desc = expense.description.toLowerCase().trim();
     if (!descriptionStats[desc]) {
       descriptionStats[desc] = {
-        description: expense.description, // Keep original casing from first occurrence
+        description: expense.description,
         category: expense.category,
         count: 0,
         totalAmount: 0,
@@ -364,7 +479,6 @@ export async function getFrequentExpenses(userId, topN = 5) {
     descriptionStats[desc].totalAmount += expense.amount;
   }
   
-  // Convert to array, calculate averages, and sort by count
   const sorted = Object.values(descriptionStats)
     .map(stat => ({
       description: stat.description,
@@ -372,7 +486,7 @@ export async function getFrequentExpenses(userId, topN = 5) {
       count: stat.count,
       avgAmount: Math.round(stat.totalAmount / stat.count),
     }))
-    .filter(stat => stat.count >= 2) // Only show if used at least twice
+    .filter(stat => stat.count >= 2)
     .sort((a, b) => b.count - a.count)
     .slice(0, topN);
   
@@ -381,43 +495,46 @@ export async function getFrequentExpenses(userId, topN = 5) {
 
 // ─── Cache Management ────────────────────────────────────────────────────────
 
-const expenseSightCache = new Map();
-
 export function clearCache(userId) {
   if (userId) {
-    // Clear all cache entries for this user
-    const normalizedId = normalizeUserId(userId);
-    for (const key of expenseSightCache.keys()) {
-      if (key.startsWith(normalizedId)) {
-        expenseSightCache.delete(key);
-      }
-    }
+    // Cache keys are domain-prefixed: "exp_userId_...", "budget_userId", etc.
+    // We need to invalidate all domains for this user
+    const uid = normalizeUserId(userId);
+    cache.invalidate(`exp_${uid}`);
+    cache.invalidate(`budget_${uid}`);
+    cache.invalidate(`tags_${uid}`);
+    cache.invalidate(`goals_${uid}`);
+    cache.invalidate(`bills_${uid}`);
+    cache.invalidate(`notif_${uid}`);
   } else {
-    expenseSightCache.clear();
+    cache.clear();
   }
 }
 
 // ─── Budget Management ───────────────────────────────────────────────────────
 
-/**
- * Get budget settings subcollection reference
- */
 function getBudgetDoc(userId) {
   return doc(db, COLLECTION_NAME, normalizeUserId(userId), 'settings', 'budget');
 }
 
 /**
- * Get user's budget settings from Firebase
+ * Get user's budget settings from Firebase (cached)
  */
 export async function getBudgetSettings(userId) {
   if (!isFirebaseConfigured() || !userId) {
     return null;
   }
 
+  const cacheKey = userPrefix(userId, 'budget');
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
   try {
     const docSnap = await getDoc(getBudgetDoc(userId));
     if (docSnap.exists()) {
-      return docSnap.data();
+      const data = docSnap.data();
+      cache.set(cacheKey, data);
+      return data;
     }
     return null;
   } catch (error) {
@@ -442,6 +559,8 @@ export async function saveBudgetSettings(userId, budgetData) {
       updatedAt: serverTimestamp(),
     }, { merge: true });
     
+    cache.invalidate(userPrefix(userId, 'budget'));
+    
     return { success: true };
   } catch (error) {
     console.error('Error saving budget settings:', error);
@@ -464,6 +583,8 @@ export async function updateBudgetSettings(userId, updates) {
       updatedAt: serverTimestamp(),
     }, { merge: true });
     
+    cache.invalidate(userPrefix(userId, 'budget'));
+    
     return { success: true };
   } catch (error) {
     console.error('Error updating budget settings:', error);
@@ -473,9 +594,6 @@ export async function updateBudgetSettings(userId, updates) {
 
 // ─── Tags Management ─────────────────────────────────────────────────────────
 
-/**
- * Predefined tags with their colors
- */
 export const PREDEFINED_TAGS = [
   { name: 'work', color: 'blue', isCustom: false },
   { name: 'personal', color: 'purple', isCustom: false },
@@ -495,12 +613,16 @@ function getTagDoc(userId, tagId) {
 }
 
 /**
- * Get all tags for a user (predefined + custom)
+ * Get all tags for a user (predefined + custom) — cached
  */
 export async function getTags(userId) {
   if (!isFirebaseConfigured() || !userId) {
     return PREDEFINED_TAGS;
   }
+
+  const cacheKey = userPrefix(userId, 'tags');
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
 
   try {
     const snapshot = await getDocs(getTagsCollection(userId));
@@ -509,13 +631,14 @@ export async function getTags(userId) {
       ...doc.data(),
     }));
     
-    // Merge predefined with custom (custom can override predefined)
     const customTagNames = new Set(customTags.map(t => t.name.toLowerCase()));
     const predefinedFiltered = PREDEFINED_TAGS.filter(
       t => !customTagNames.has(t.name.toLowerCase())
     );
     
-    return [...predefinedFiltered, ...customTags];
+    const merged = [...predefinedFiltered, ...customTags];
+    cache.set(cacheKey, merged);
+    return merged;
   } catch (error) {
     console.error('Error fetching tags:', error);
     return PREDEFINED_TAGS;
@@ -543,6 +666,8 @@ export async function createTag(userId, tagData) {
       createdAt: serverTimestamp(),
     });
     
+    cache.invalidate(userPrefix(userId, 'tags'));
+    
     return { success: true, id: tagId };
   } catch (error) {
     console.error('Error creating tag:', error);
@@ -550,22 +675,37 @@ export async function createTag(userId, tagData) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// IMPROVEMENT 4: Atomic increment() for counters
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Old behavior for incrementTagUsage:
+//   1. getDocs(entire tags collection) — reads ALL tag docs
+//   2. .find() the one matching tagName
+//   3. setDoc({ usageCount: oldCount + 1 }) — full write
+//   → 1 collection read + 1 doc write per call; race condition if concurrent
+//
+// New behavior:
+//   1. getTags(userId) — reads from cache (0 Firestore reads if warm)
+//   2. increment(1) — atomic single write, no preceding read needed
+//   → 0 reads + 1 atomic write; no race condition
+
 /**
- * Update tag usage count
+ * Update tag usage count — atomic increment, uses cached tag list
  */
 export async function incrementTagUsage(userId, tagName) {
   if (!isFirebaseConfigured() || !userId || !tagName) return;
 
   try {
-    // Find the tag by name
-    const snapshot = await getDocs(getTagsCollection(userId));
-    const tagDoc = snapshot.docs.find(
-      doc => doc.data().name.toLowerCase() === tagName.toLowerCase()
+    // Use the cached tag list to resolve tagName → docId
+    const tags = await getTags(userId);
+    const tagDoc = tags.find(
+      t => t.name.toLowerCase() === tagName.toLowerCase()
     );
     
-    if (tagDoc) {
+    if (tagDoc && tagDoc.id) {
       await setDoc(getTagDoc(userId, tagDoc.id), {
-        usageCount: (tagDoc.data().usageCount || 0) + 1,
+        usageCount: increment(1),
         updatedAt: serverTimestamp(),
       }, { merge: true });
     }
@@ -584,6 +724,7 @@ export async function deleteTag(userId, tagId) {
 
   try {
     await deleteDoc(getTagDoc(userId, tagId));
+    cache.invalidate(userPrefix(userId, 'tags'));
     return { success: true };
   } catch (error) {
     console.error('Error deleting tag:', error);
@@ -602,20 +743,26 @@ function getGoalDoc(userId, goalId) {
 }
 
 /**
- * Get all goals for a user
+ * Get all goals for a user (cached)
  */
 export async function getGoals(userId) {
   if (!isFirebaseConfigured() || !userId) {
     return [];
   }
 
+  const cacheKey = userPrefix(userId, 'goals');
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
   try {
     const q = query(getGoalsCollection(userId), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
+    const goals = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
     }));
+    cache.set(cacheKey, goals);
+    return goals;
   } catch (error) {
     console.error('Error fetching goals:', error);
     return [];
@@ -648,6 +795,8 @@ export async function createGoal(userId, goalData) {
       updatedAt: serverTimestamp(),
     });
     
+    cache.invalidate(userPrefix(userId, 'goals'));
+    
     return { success: true, id: goalId };
   } catch (error) {
     console.error('Error creating goal:', error);
@@ -670,6 +819,8 @@ export async function updateGoal(userId, goalId, updates) {
       updatedAt: serverTimestamp(),
     }, { merge: true });
     
+    cache.invalidate(userPrefix(userId, 'goals'));
+    
     return { success: true };
   } catch (error) {
     console.error('Error updating goal:', error);
@@ -687,6 +838,7 @@ export async function deleteGoal(userId, goalId) {
 
   try {
     await deleteDoc(getGoalDoc(userId, goalId));
+    cache.invalidate(userPrefix(userId, 'goals'));
     return { success: true };
   } catch (error) {
     console.error('Error deleting goal:', error);
@@ -695,7 +847,10 @@ export async function deleteGoal(userId, goalId) {
 }
 
 /**
- * Add amount to a savings goal
+ * Add amount to a savings goal — uses atomic increment()
+ *
+ * We first verify the goal exists, then use increment() for atomic update.
+ * This prevents accidentally creating partial goal documents.
  */
 export async function addToGoal(userId, goalId, amount) {
   if (!isFirebaseConfigured() || !userId || !goalId) {
@@ -703,18 +858,23 @@ export async function addToGoal(userId, goalId, amount) {
   }
 
   try {
-    const docSnap = await getDoc(getGoalDoc(userId, goalId));
+    // First check if goal exists BEFORE updating
+    const docRef = getGoalDoc(userId, goalId);
+    const docSnap = await getDoc(docRef);
     if (!docSnap.exists()) {
       return { success: false, error: 'Goal not found' };
     }
     
-    const goal = docSnap.data();
-    const newAmount = (goal.currentAmount || 0) + amount;
-    
-    await setDoc(getGoalDoc(userId, goalId), {
-      currentAmount: newAmount,
+    // Atomic increment — safe since we verified document exists
+    await setDoc(docRef, {
+      currentAmount: increment(amount),
       updatedAt: serverTimestamp(),
     }, { merge: true });
+    
+    // Read back the new value for the UI
+    const updatedSnap = await getDoc(docRef);
+    const newAmount = updatedSnap.data().currentAmount;
+    cache.invalidate(userPrefix(userId, 'goals'));
     
     return { success: true, newAmount };
   } catch (error) {
@@ -734,20 +894,26 @@ function getBillDoc(userId, billId) {
 }
 
 /**
- * Get all bills for a user
+ * Get all bills for a user (cached)
  */
 export async function getBills(userId) {
   if (!isFirebaseConfigured() || !userId) {
     return [];
   }
 
+  const cacheKey = userPrefix(userId, 'bills');
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
   try {
     const q = query(getBillsCollection(userId), orderBy('dueDay', 'asc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
+    const bills = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
     }));
+    cache.set(cacheKey, bills);
+    return bills;
   } catch (error) {
     console.error('Error fetching bills:', error);
     return [];
@@ -766,7 +932,6 @@ export async function createBill(userId, billData) {
     const billId = `bill_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const docRef = getBillDoc(userId, billId);
     
-    // Calculate next due date
     const today = new Date();
     let nextDueDate = new Date(today.getFullYear(), today.getMonth(), billData.dueDay || 1);
     if (nextDueDate <= today) {
@@ -788,6 +953,8 @@ export async function createBill(userId, billData) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+    
+    cache.invalidate(userPrefix(userId, 'bills'));
     
     return { success: true, id: billId };
   } catch (error) {
@@ -811,6 +978,8 @@ export async function updateBill(userId, billId, updates) {
       updatedAt: serverTimestamp(),
     }, { merge: true });
     
+    cache.invalidate(userPrefix(userId, 'bills'));
+    
     return { success: true };
   } catch (error) {
     console.error('Error updating bill:', error);
@@ -828,6 +997,7 @@ export async function deleteBill(userId, billId) {
 
   try {
     await deleteDoc(getBillDoc(userId, billId));
+    cache.invalidate(userPrefix(userId, 'bills'));
     return { success: true };
   } catch (error) {
     console.error('Error deleting bill:', error);
@@ -852,7 +1022,6 @@ export async function markBillPaid(userId, billId, paidDate = null) {
     const bill = docSnap.data();
     const lastPaidDate = paidDate || new Date().toISOString().split('T')[0];
     
-    // Calculate next due date based on frequency
     const currentDue = new Date(bill.nextDueDate);
     let nextDue = new Date(currentDue);
     
@@ -867,12 +1036,12 @@ export async function markBillPaid(userId, billId, paidDate = null) {
         nextDue.setFullYear(nextDue.getFullYear() + 1);
         break;
       case 'once':
-        // One-time bill - mark as inactive
         await setDoc(getBillDoc(userId, billId), {
           lastPaidDate,
           isActive: false,
           updatedAt: serverTimestamp(),
         }, { merge: true });
+        cache.invalidate(userPrefix(userId, 'bills'));
         return { success: true, nextDueDate: null };
       default:
         nextDue.setMonth(nextDue.getMonth() + 1);
@@ -885,6 +1054,8 @@ export async function markBillPaid(userId, billId, paidDate = null) {
       nextDueDate,
       updatedAt: serverTimestamp(),
     }, { merge: true });
+    
+    cache.invalidate(userPrefix(userId, 'bills'));
     
     return { success: true, nextDueDate };
   } catch (error) {
@@ -918,17 +1089,23 @@ function getNotificationSettingsDoc(userId) {
 }
 
 /**
- * Get notification settings
+ * Get notification settings (cached)
  */
 export async function getNotificationSettings(userId) {
   if (!isFirebaseConfigured() || !userId) {
     return null;
   }
 
+  const cacheKey = userPrefix(userId, 'notif');
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
   try {
     const docSnap = await getDoc(getNotificationSettingsDoc(userId));
     if (docSnap.exists()) {
-      return docSnap.data();
+      const data = docSnap.data();
+      cache.set(cacheKey, data);
+      return data;
     }
     // Return defaults
     return {
@@ -960,11 +1137,44 @@ export async function saveNotificationSettings(userId, settings) {
       updatedAt: serverTimestamp(),
     }, { merge: true });
     
+    cache.invalidate(userPrefix(userId, 'notif'));
+    
     return { success: true };
   } catch (error) {
     console.error('Error saving notification settings:', error);
     return { success: false, error: error.message };
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// IMPROVEMENT 3: Parallel initial data load
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Old behavior: ExpenseSightApp calls getExpenses() on mount. Then each tab
+//   (ESBudget, ESBills, ESGoals, ESActivity) individually calls its own
+//   get*() on mount — creating a waterfall of sequential Firestore reads.
+//
+// New: loadInitialData() fires all 4 in Promise.all() so they run concurrently.
+//   Each result gets cached, so when individual tabs mount they hit cache.
+
+/**
+ * Load all essential data in parallel on app startup.
+ * Call this once in ExpenseSightApp instead of individual getExpenses().
+ * Each result is automatically cached by the individual get* functions.
+ */
+export async function loadInitialData(userId) {
+  if (!isFirebaseConfigured() || !userId) {
+    return { expenses: [], budget: null, tags: PREDEFINED_TAGS, bills: [] };
+  }
+
+  const [expenses, budget, tags, bills] = await Promise.all([
+    getExpenses(userId, { useCache: false }),
+    getBudgetSettings(userId),
+    getTags(userId),
+    getBills(userId),
+  ]);
+
+  return { expenses, budget, tags, bills };
 }
 
 // ─── Export for Analytics Integration ────────────────────────────────────────

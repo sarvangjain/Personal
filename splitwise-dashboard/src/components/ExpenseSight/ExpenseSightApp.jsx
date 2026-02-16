@@ -2,7 +2,7 @@
  * ExpenseSightApp - Main app shell for the standalone ExpenseSight experience
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import ESHeader from './components/ESHeader';
 import ESBottomNav from './components/ESBottomNav';
@@ -15,7 +15,7 @@ import ESBills from './tabs/ESBills';
 import ESGoals from './tabs/ESGoals';
 import ESCategoryDetail from './tabs/ESCategoryDetail';
 import QuickAddModal from './QuickAddModal';
-import { getExpenses, clearCache, updateExpense, deleteExpense } from '../../firebase/expenseSightService';
+import { getExpenses, clearCache, updateExpense, deleteExpense, loadInitialData } from '../../firebase/expenseSightService';
 import { isFirebaseConfigured } from '../../firebase/config';
 
 export default function ExpenseSightApp({ userId, onClose }) {
@@ -38,8 +38,9 @@ export default function ExpenseSightApp({ userId, onClose }) {
   }, []);
 
   const firebaseEnabled = isFirebaseConfigured();
+  const hasBootstrapped = useRef(false);
 
-  // Load expenses
+  // Load expenses (also used for refresh)
   const loadExpenses = useCallback(async (showRefresh = false) => {
     if (!firebaseEnabled || !userId) {
       setLoading(false);
@@ -59,9 +60,27 @@ export default function ExpenseSightApp({ userId, onClose }) {
     }
   }, [userId, firebaseEnabled]);
 
+  // Initial parallel load: expenses + budget + tags + bills in one go
+  // Subsequent tab mounts will hit the warm cache instead of making new requests
   useEffect(() => {
-    loadExpenses();
-  }, [loadExpenses]);
+    if (!firebaseEnabled || !userId || hasBootstrapped.current) {
+      if (!firebaseEnabled || !userId) setLoading(false);
+      return;
+    }
+    hasBootstrapped.current = true;
+    
+    setLoading(true);
+    loadInitialData(userId)
+      .then(({ expenses: data }) => {
+        setExpenses(data);
+      })
+      .catch(err => {
+        console.error('Error in initial load:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [userId, firebaseEnabled]);
 
   // Reset category detail when switching tabs
   useEffect(() => {

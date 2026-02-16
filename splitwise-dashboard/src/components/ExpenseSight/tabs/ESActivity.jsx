@@ -417,10 +417,10 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
           <button
             key={filter.id}
             onClick={() => setDateFilter(filter.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all touch-manipulation ${
               dateFilter === filter.id
                 ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30'
-                : 'bg-stone-800/50 text-stone-400 border border-stone-700/50 hover:bg-stone-800'
+                : 'bg-stone-800/50 text-stone-400 border border-stone-700/50 hover:bg-stone-800 active:bg-stone-700'
             }`}
           >
             {filter.label}

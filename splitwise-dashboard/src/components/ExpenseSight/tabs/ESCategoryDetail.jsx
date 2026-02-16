@@ -334,7 +334,7 @@ export default function ESCategoryDetail({ expenses, onClose }) {
       <div className="flex items-center gap-3">
         <button
           onClick={onClose}
-          className="p-2 rounded-xl bg-stone-800/50 text-stone-400 hover:text-stone-200 hover:bg-stone-800 transition-colors"
+          className="p-2 rounded-xl bg-stone-800/50 text-stone-400 hover:text-stone-200 hover:bg-stone-800 transition-colors touch-manipulation active:scale-95"
         >
           <ArrowLeft size={18} />
         </button>
@@ -352,10 +352,10 @@ export default function ESCategoryDetail({ expenses, onClose }) {
           <button
             key={filter.id}
             onClick={() => setTimeFilter(filter.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all touch-manipulation ${
               timeFilter === filter.id
                 ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30'
-                : 'bg-stone-800/50 text-stone-400 border border-stone-700/50 hover:bg-stone-800'
+                : 'bg-stone-800/50 text-stone-400 border border-stone-700/50 hover:bg-stone-800 active:bg-stone-700'
             }`}
           >
             {filter.label}
