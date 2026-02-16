@@ -331,7 +331,7 @@ export function parseExpenseLine(line, date) {
         cancelled: false,
         rawText: trimmed,
         notes: `EMI: ₹${amount} ÷ ${emiMonths} months`,
-        tags: tags.length > 0 ? tags : undefined,
+        tags: tags.length > 0 ? tags : [],
         isEmi: true,
         emiTotal: amount,
         emiMonth: i + 1,
@@ -354,7 +354,7 @@ export function parseExpenseLine(line, date) {
     cancelled: cancelled || false,
     rawText: trimmed,
     notes: null,
-    tags: tags.length > 0 ? tags : undefined,
+    tags: tags.length > 0 ? tags : [],
   };
 }
 

@@ -110,6 +110,9 @@ function PullIndicator({ distance, isRefreshing }) {
   );
 }
 
+// Storage key for persisting last active app
+const LAST_ACTIVE_APP_KEY = 'splitsight_last_active_app';
+
 function Dashboard() {
   const [user, setUser] = useState(null);
   const [groups, setGroups] = useState([]);
@@ -129,8 +132,32 @@ function Dashboard() {
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [showCreateExpensePage, setShowCreateExpensePage] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [showExpenseSightApp, setShowExpenseSightApp] = useState(false);
+  // Initialize ExpenseSight state from localStorage to restore last active app
+  const [showExpenseSightApp, setShowExpenseSightApp] = useState(() => {
+    try {
+      return localStorage.getItem(LAST_ACTIVE_APP_KEY) === 'expensesight';
+    } catch {
+      return false;
+    }
+  });
   const [expenseSightOriginRect, setExpenseSightOriginRect] = useState(null);
+  
+  // Persist app state changes to localStorage
+  const openExpenseSight = useCallback((originRect = null) => {
+    setExpenseSightOriginRect(originRect);
+    setShowExpenseSightApp(true);
+    try {
+      localStorage.setItem(LAST_ACTIVE_APP_KEY, 'expensesight');
+    } catch { /* ignore storage errors */ }
+  }, []);
+  
+  const closeExpenseSight = useCallback(() => {
+    setShowExpenseSightApp(false);
+    setExpenseSightOriginRect(null);
+    try {
+      localStorage.setItem(LAST_ACTIVE_APP_KEY, 'splitsight');
+    } catch { /* ignore storage errors */ }
+  }, []);
 
   const userId = getUserId();
   
@@ -330,7 +357,7 @@ function Dashboard() {
           onSelectFriend={handleSearchSelectFriend}
           onNavigate={handleTabChange}
           isOnline={isOnline}
-          onOpenExpenseSight={() => { haptic.light(); setShowExpenseSightApp(true); }}
+          onOpenExpenseSight={() => { haptic.light(); openExpenseSight(); }}
         />
       )}
 
@@ -634,8 +661,7 @@ function Dashboard() {
         onNavigate={handleTabChange}
         onOpenSettings={() => { setShowSidebar(false); setShowSettings(true); }}
         onOpenExpenseSight={(rect) => { 
-          setExpenseSightOriginRect(rect);
-          setShowExpenseSightApp(true); 
+          openExpenseSight(rect);
         }}
         user={user}
         recentTabs={getSidebarRecents(3)}
@@ -645,7 +671,7 @@ function Dashboard() {
       {/* ExpenseSight Standalone App */}
       <ExpenseSightLauncher
         isOpen={showExpenseSightApp}
-        onClose={() => { setShowExpenseSightApp(false); setExpenseSightOriginRect(null); }}
+        onClose={closeExpenseSight}
         userId={userId}
         originRect={expenseSightOriginRect}
       />

@@ -115,6 +115,19 @@ function getExpenseDoc(userId, expenseId) {
 // ─── CRUD Operations ─────────────────────────────────────────────────────────
 
 /**
+ * Sanitize an object by removing undefined values (Firestore doesn't accept undefined)
+ */
+function sanitizeForFirestore(obj) {
+  const result = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+/**
  * Add multiple expenses in a batch
  */
 export async function addExpenses(userId, expenses) {
@@ -132,12 +145,15 @@ export async function addExpenses(userId, expenses) {
       
       for (const expense of chunk) {
         const docRef = doc(getUserCollection(userId), expense.id);
-        batch.set(docRef, {
+        // Sanitize expense data to remove any undefined values
+        const sanitizedExpense = sanitizeForFirestore({
           ...expense,
           userId,
+          tags: expense.tags || [], // Ensure tags is always an array
           createdAt: now,
           updatedAt: now,
         });
+        batch.set(docRef, sanitizedExpense);
       }
       
       await batch.commit();
@@ -281,10 +297,12 @@ export async function updateExpense(userId, expenseId, data) {
 
   try {
     const docRef = getExpenseDoc(userId, expenseId);
-    await setDoc(docRef, {
+    // Sanitize data to remove undefined values
+    const sanitizedData = sanitizeForFirestore({
       ...data,
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    });
+    await setDoc(docRef, sanitizedData, { merge: true });
     
     // Patch cached arrays in-place — no re-fetch needed
     cache.patchArrayEntries(userPrefix(userId, 'exp'), list =>
@@ -553,11 +571,12 @@ export async function saveBudgetSettings(userId, budgetData) {
 
   try {
     const docRef = getBudgetDoc(userId);
-    await setDoc(docRef, {
+    const sanitizedData = sanitizeForFirestore({
       ...budgetData,
       userId: normalizeUserId(userId),
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    });
+    await setDoc(docRef, sanitizedData, { merge: true });
     
     cache.invalidate(userPrefix(userId, 'budget'));
     
@@ -578,10 +597,11 @@ export async function updateBudgetSettings(userId, updates) {
 
   try {
     const docRef = getBudgetDoc(userId);
-    await setDoc(docRef, {
+    const sanitizedData = sanitizeForFirestore({
       ...updates,
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    });
+    await setDoc(docRef, sanitizedData, { merge: true });
     
     cache.invalidate(userPrefix(userId, 'budget'));
     
@@ -814,10 +834,11 @@ export async function updateGoal(userId, goalId, updates) {
 
   try {
     const docRef = getGoalDoc(userId, goalId);
-    await setDoc(docRef, {
+    const sanitizedData = sanitizeForFirestore({
       ...updates,
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    });
+    await setDoc(docRef, sanitizedData, { merge: true });
     
     cache.invalidate(userPrefix(userId, 'goals'));
     
@@ -973,10 +994,11 @@ export async function updateBill(userId, billId, updates) {
 
   try {
     const docRef = getBillDoc(userId, billId);
-    await setDoc(docRef, {
+    const sanitizedData = sanitizeForFirestore({
       ...updates,
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    });
+    await setDoc(docRef, sanitizedData, { merge: true });
     
     cache.invalidate(userPrefix(userId, 'bills'));
     
@@ -1132,10 +1154,11 @@ export async function saveNotificationSettings(userId, settings) {
 
   try {
     const docRef = getNotificationSettingsDoc(userId);
-    await setDoc(docRef, {
+    const sanitizedData = sanitizeForFirestore({
       ...settings,
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    });
+    await setDoc(docRef, sanitizedData, { merge: true });
     
     cache.invalidate(userPrefix(userId, 'notif'));
     
