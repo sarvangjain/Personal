@@ -806,6 +806,24 @@ function getGoalDoc(userId, goalId) {
   return doc(db, COLLECTION_NAME, normalizeUserId(userId), 'goals', goalId);
 }
 
+function getContributionsCollection(userId, goalId) {
+  return collection(db, COLLECTION_NAME, normalizeUserId(userId), 'goals', goalId, 'contributions');
+}
+
+function getContributionDoc(userId, goalId, contributionId) {
+  return doc(db, COLLECTION_NAME, normalizeUserId(userId), 'goals', goalId, 'contributions', contributionId);
+}
+
+export const GOAL_ICONS = [
+  'plane', 'car', 'home', 'gift', 'graduation-cap', 'heart', 
+  'smartphone', 'laptop', 'piggy-bank', 'umbrella', 'briefcase', 'star'
+];
+
+export const GOAL_COLORS = [
+  'teal', 'cyan', 'emerald', 'blue', 'purple', 'pink', 
+  'amber', 'orange', 'red', 'indigo', 'rose', 'lime'
+];
+
 /**
  * Get all goals for a user (cached)
  */
@@ -834,7 +852,7 @@ export async function getGoals(userId) {
 }
 
 /**
- * Create a new goal
+ * Create a new goal (enhanced with auto-allocation support)
  */
 export async function createGoal(userId, goalData) {
   if (!isFirebaseConfigured() || !userId || !goalData.name) {
@@ -845,7 +863,7 @@ export async function createGoal(userId, goalData) {
     const goalId = `goal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const docRef = getGoalDoc(userId, goalId);
     
-    await setDoc(docRef, {
+    const sanitizedData = sanitizeForFirestore({
       id: goalId,
       name: goalData.name,
       targetAmount: goalData.targetAmount || 0,
@@ -854,11 +872,18 @@ export async function createGoal(userId, goalData) {
       category: goalData.category || null,
       trackingType: goalData.trackingType || 'savings',
       suggestedCutbacks: goalData.suggestedCutbacks || [],
+      // NEW fields for enhanced savings
+      autoAllocatePercent: goalData.autoAllocatePercent || 0, // 0 = manual only
+      linkedIncomeCategories: goalData.linkedIncomeCategories || ['salary', 'freelance', 'bonus'],
+      priority: goalData.priority || 1, // Lower = higher priority
+      color: goalData.color || 'teal',
+      icon: goalData.icon || 'piggy-bank',
       isActive: true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
     
+    await setDoc(docRef, sanitizedData);
     cache.invalidate(userPrefix(userId, 'goals'));
     
     return { success: true, id: goalId };
@@ -944,6 +969,196 @@ export async function addToGoal(userId, goalId, amount) {
     return { success: true, newAmount };
   } catch (error) {
     console.error('Error adding to goal:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ─── Goal Contributions (Enhanced Savings Tracking) ───────────────────────────
+
+/**
+ * Add a contribution to a goal (with full history tracking)
+ * Types: manual, auto, withdrawal
+ */
+export async function addContribution(userId, goalId, contributionData) {
+  if (!isFirebaseConfigured() || !userId || !goalId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const contribId = `contrib_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const contribRef = getContributionDoc(userId, goalId, contribId);
+    
+    const amount = contributionData.amount || 0;
+    const isWithdrawal = contributionData.type === 'withdrawal' || amount < 0;
+    
+    const sanitizedData = sanitizeForFirestore({
+      id: contribId,
+      date: contributionData.date || new Date().toISOString().split('T')[0],
+      amount: Math.abs(amount) * (isWithdrawal ? -1 : 1),
+      type: contributionData.type || 'manual', // manual, auto, withdrawal
+      sourceIncomeId: contributionData.sourceIncomeId || null, // Link to income if auto-allocated
+      notes: contributionData.notes || null,
+      createdAt: serverTimestamp(),
+    });
+    
+    await setDoc(contribRef, sanitizedData);
+    
+    // Update goal's currentAmount
+    await addToGoal(userId, goalId, sanitizedData.amount);
+    
+    return { success: true, id: contribId, contribution: sanitizedData };
+  } catch (error) {
+    console.error('Error adding contribution:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get all contributions for a goal
+ */
+export async function getContributions(userId, goalId) {
+  if (!isFirebaseConfigured() || !userId || !goalId) {
+    return [];
+  }
+
+  try {
+    const q = query(
+      getContributionsCollection(userId, goalId),
+      orderBy('date', 'desc')
+    );
+    
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error fetching contributions:', error);
+    return [];
+  }
+}
+
+/**
+ * Delete a contribution (and update goal amount)
+ */
+export async function deleteContribution(userId, goalId, contributionId) {
+  if (!isFirebaseConfigured() || !userId || !goalId || !contributionId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    // Get the contribution to know the amount to subtract
+    const contribRef = getContributionDoc(userId, goalId, contributionId);
+    const contribSnap = await getDoc(contribRef);
+    
+    if (!contribSnap.exists()) {
+      return { success: false, error: 'Contribution not found' };
+    }
+    
+    const contribution = contribSnap.data();
+    
+    // Delete the contribution
+    await deleteDoc(contribRef);
+    
+    // Reverse the amount from the goal (subtract what was added)
+    await addToGoal(userId, goalId, -(contribution.amount || 0));
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting contribution:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get goals that have auto-allocation enabled
+ */
+export async function getAllocatableGoals(userId) {
+  if (!isFirebaseConfigured() || !userId) {
+    return [];
+  }
+
+  try {
+    const goals = await getGoals(userId);
+    return goals
+      .filter(g => g.isActive && (g.autoAllocatePercent || 0) > 0)
+      .sort((a, b) => (a.priority || 99) - (b.priority || 99)); // Sort by priority
+  } catch (error) {
+    console.error('Error fetching allocatable goals:', error);
+    return [];
+  }
+}
+
+/**
+ * Calculate suggested allocations based on income amount and goal rules
+ * Returns array of { goalId, goalName, amount, percent }
+ */
+export function calculateAllocations(incomeAmount, incomeCategory, goals) {
+  const allocations = [];
+  let remainingPercent = 100;
+  
+  // Filter goals that match the income category
+  const eligibleGoals = goals.filter(g => {
+    const linkedCategories = g.linkedIncomeCategories || ['salary', 'freelance', 'bonus'];
+    return linkedCategories.includes(incomeCategory);
+  });
+  
+  // Sort by priority (lower number = higher priority)
+  const sortedGoals = [...eligibleGoals].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+  
+  for (const goal of sortedGoals) {
+    const percent = Math.min(goal.autoAllocatePercent || 0, remainingPercent);
+    if (percent <= 0) continue;
+    
+    const amount = Math.round((incomeAmount * percent) / 100);
+    
+    // Check if goal would be overfunded
+    const remaining = (goal.targetAmount || 0) - (goal.currentAmount || 0);
+    const cappedAmount = remaining > 0 ? Math.min(amount, remaining) : amount;
+    
+    if (cappedAmount > 0) {
+      allocations.push({
+        goalId: goal.id,
+        goalName: goal.name,
+        amount: cappedAmount,
+        percent,
+        goalColor: goal.color || 'teal',
+        goalIcon: goal.icon || 'piggy-bank',
+      });
+      
+      remainingPercent -= percent;
+    }
+  }
+  
+  return allocations;
+}
+
+/**
+ * Execute allocations - create contributions for each goal
+ */
+export async function executeAllocations(userId, allocations, sourceIncomeId = null) {
+  if (!isFirebaseConfigured() || !userId || !allocations.length) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const results = [];
+    
+    for (const allocation of allocations) {
+      const result = await addContribution(userId, allocation.goalId, {
+        amount: allocation.amount,
+        type: 'auto',
+        sourceIncomeId,
+        notes: `Auto-allocated ${allocation.percent}% from income`,
+      });
+      
+      results.push({
+        goalId: allocation.goalId,
+        success: result.success,
+        contributionId: result.id,
+      });
+    }
+    
+    return { success: true, results };
+  } catch (error) {
+    console.error('Error executing allocations:', error);
     return { success: false, error: error.message };
   }
 }
@@ -1214,6 +1429,539 @@ export async function saveNotificationSettings(userId, settings) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// INCOME TRACKING MODULE
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Simple income tracking: date, amount, source, category
+// Categories: salary, freelance, bonus, gift, interest, dividend, refund, other
+
+// ─── Income Collection Helpers ────────────────────────────────────────────────
+
+function getIncomeCollection(userId) {
+  return collection(db, COLLECTION_NAME, normalizeUserId(userId), 'income');
+}
+
+function getIncomeDoc(userId, incomeId) {
+  return doc(db, COLLECTION_NAME, normalizeUserId(userId), 'income', incomeId);
+}
+
+export const INCOME_CATEGORIES = [
+  { id: 'salary', label: 'Salary', icon: 'briefcase', color: 'emerald' },
+  { id: 'freelance', label: 'Freelance', icon: 'laptop', color: 'cyan' },
+  { id: 'bonus', label: 'Bonus', icon: 'gift', color: 'amber' },
+  { id: 'gift', label: 'Gift', icon: 'heart', color: 'pink' },
+  { id: 'interest', label: 'Interest', icon: 'percent', color: 'blue' },
+  { id: 'dividend', label: 'Dividend', icon: 'trending-up', color: 'purple' },
+  { id: 'refund', label: 'Refund', icon: 'rotate-ccw', color: 'teal' },
+  { id: 'rental', label: 'Rental', icon: 'home', color: 'orange' },
+  { id: 'other', label: 'Other', icon: 'circle', color: 'stone' },
+];
+
+/**
+ * Add a new income entry
+ */
+export async function addIncome(userId, incomeData) {
+  if (!isFirebaseConfigured() || !userId || !incomeData.amount) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const incomeId = `inc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const docRef = getIncomeDoc(userId, incomeId);
+    
+    const sanitizedData = sanitizeForFirestore({
+      id: incomeId,
+      date: incomeData.date || new Date().toISOString().split('T')[0],
+      amount: incomeData.amount,
+      source: incomeData.source || '',
+      category: incomeData.category || 'other',
+      isRecurring: incomeData.isRecurring || false,
+      notes: incomeData.notes || null,
+      tags: incomeData.tags || [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    
+    await setDoc(docRef, sanitizedData);
+    cache.invalidate(userPrefix(userId, 'inc'));
+    
+    return { success: true, id: incomeId, income: { ...sanitizedData, id: incomeId } };
+  } catch (error) {
+    console.error('Error adding income:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get all income entries (with optional filtering)
+ */
+export async function getIncome(userId, options = {}) {
+  if (!isFirebaseConfigured() || !userId) {
+    return [];
+  }
+
+  const { startDate, endDate, category, useCache = true, limitCount = 500 } = options;
+  const cacheKey = userPrefix(userId, 'inc') + `_${startDate || 'all'}_${endDate || 'all'}_${category || 'all'}`;
+  
+  if (useCache) {
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+  }
+
+  try {
+    const q = query(
+      getIncomeCollection(userId),
+      orderBy('date', 'desc'),
+      limit(limitCount)
+    );
+    
+    const snapshot = await getDocs(q);
+    let incomeList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Apply filters in memory
+    if (startDate) {
+      incomeList = incomeList.filter(i => i.date >= startDate);
+    }
+    if (endDate) {
+      incomeList = incomeList.filter(i => i.date <= endDate);
+    }
+    if (category && category !== 'all') {
+      incomeList = incomeList.filter(i => i.category === category);
+    }
+    
+    cache.set(cacheKey, incomeList);
+    return incomeList;
+  } catch (error) {
+    console.error('Error fetching income:', error);
+    return [];
+  }
+}
+
+/**
+ * Update an income entry
+ */
+export async function updateIncome(userId, incomeId, data) {
+  if (!isFirebaseConfigured() || !userId || !incomeId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const docRef = getIncomeDoc(userId, incomeId);
+    const sanitizedData = sanitizeForFirestore({
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+    await setDoc(docRef, sanitizedData, { merge: true });
+    
+    cache.invalidate(userPrefix(userId, 'inc'));
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating income:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Delete an income entry
+ */
+export async function deleteIncome(userId, incomeId) {
+  if (!isFirebaseConfigured() || !userId || !incomeId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    await deleteDoc(getIncomeDoc(userId, incomeId));
+    cache.invalidate(userPrefix(userId, 'inc'));
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting income:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get income statistics (monthly/yearly totals)
+ */
+export async function getIncomeStats(userId, options = {}) {
+  if (!isFirebaseConfigured() || !userId) {
+    return { monthly: {}, yearly: {}, total: 0, byCategory: {} };
+  }
+
+  try {
+    const incomeList = await getIncome(userId, { useCache: true });
+    
+    const stats = {
+      monthly: {},   // { '2024-02': 150000, '2024-01': 145000 }
+      yearly: {},    // { '2024': 1800000, '2023': 1700000 }
+      total: 0,
+      byCategory: {},// { salary: 1500000, freelance: 300000 }
+      count: incomeList.length,
+    };
+    
+    for (const income of incomeList) {
+      const amount = income.amount || 0;
+      const month = income.date?.substring(0, 7); // '2024-02'
+      const year = income.date?.substring(0, 4);  // '2024'
+      const category = income.category || 'other';
+      
+      stats.total += amount;
+      stats.monthly[month] = (stats.monthly[month] || 0) + amount;
+      stats.yearly[year] = (stats.yearly[year] || 0) + amount;
+      stats.byCategory[category] = (stats.byCategory[category] || 0) + amount;
+    }
+    
+    return stats;
+  } catch (error) {
+    console.error('Error calculating income stats:', error);
+    return { monthly: {}, yearly: {}, total: 0, byCategory: {}, count: 0 };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INVESTMENTS PORTFOLIO MODULE
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Full portfolio tracking: holdings with units, prices, gains/losses
+// Transaction history per holding (buy/sell/dividend)
+// Types: stock, mutual_fund, fd, ppf, nps, crypto, gold, real_estate, other
+
+// ─── Investment Collection Helpers ────────────────────────────────────────────
+
+function getInvestmentsCollection(userId) {
+  return collection(db, COLLECTION_NAME, normalizeUserId(userId), 'investments');
+}
+
+function getInvestmentDoc(userId, investmentId) {
+  return doc(db, COLLECTION_NAME, normalizeUserId(userId), 'investments', investmentId);
+}
+
+function getInvestmentTransactionsCollection(userId, investmentId) {
+  return collection(db, COLLECTION_NAME, normalizeUserId(userId), 'investments', investmentId, 'transactions');
+}
+
+function getInvestmentTransactionDoc(userId, investmentId, txId) {
+  return doc(db, COLLECTION_NAME, normalizeUserId(userId), 'investments', investmentId, 'transactions', txId);
+}
+
+export const INVESTMENT_TYPES = [
+  { id: 'stock', label: 'Stocks', icon: 'trending-up', color: 'emerald' },
+  { id: 'mutual_fund', label: 'Mutual Funds', icon: 'pie-chart', color: 'blue' },
+  { id: 'fd', label: 'Fixed Deposit', icon: 'lock', color: 'amber' },
+  { id: 'ppf', label: 'PPF', icon: 'shield', color: 'cyan' },
+  { id: 'nps', label: 'NPS', icon: 'building', color: 'purple' },
+  { id: 'crypto', label: 'Crypto', icon: 'bitcoin', color: 'orange' },
+  { id: 'gold', label: 'Gold', icon: 'gem', color: 'yellow' },
+  { id: 'real_estate', label: 'Real Estate', icon: 'home', color: 'stone' },
+  { id: 'epf', label: 'EPF', icon: 'briefcase', color: 'teal' },
+  { id: 'bonds', label: 'Bonds', icon: 'file-text', color: 'indigo' },
+  { id: 'other', label: 'Other', icon: 'circle', color: 'gray' },
+];
+
+/**
+ * Add a new investment holding
+ */
+export async function addInvestment(userId, investmentData) {
+  if (!isFirebaseConfigured() || !userId || !investmentData.name) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const investmentId = `inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const docRef = getInvestmentDoc(userId, investmentId);
+    
+    const units = investmentData.units || 0;
+    const avgBuyPrice = investmentData.avgBuyPrice || 0;
+    const currentPrice = investmentData.currentPrice || avgBuyPrice;
+    const totalInvested = units * avgBuyPrice;
+    const currentValue = units * currentPrice;
+    const unrealizedGain = currentValue - totalInvested;
+    const gainPercent = totalInvested > 0 ? (unrealizedGain / totalInvested) * 100 : 0;
+    
+    const sanitizedData = sanitizeForFirestore({
+      id: investmentId,
+      name: investmentData.name,
+      type: investmentData.type || 'other',
+      symbol: investmentData.symbol || null,
+      units,
+      avgBuyPrice,
+      currentPrice,
+      currentValue,
+      totalInvested,
+      unrealizedGain,
+      gainPercent: Math.round(gainPercent * 100) / 100,
+      lastUpdated: new Date().toISOString().split('T')[0],
+      notes: investmentData.notes || null,
+      isActive: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    
+    await setDoc(docRef, sanitizedData);
+    cache.invalidate(userPrefix(userId, 'inv'));
+    
+    return { success: true, id: investmentId, investment: sanitizedData };
+  } catch (error) {
+    console.error('Error adding investment:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get all investments
+ */
+export async function getInvestments(userId, options = {}) {
+  if (!isFirebaseConfigured() || !userId) {
+    return [];
+  }
+
+  const { includeInactive = false, useCache = true } = options;
+  const cacheKey = userPrefix(userId, 'inv') + `_${includeInactive ? 'all' : 'active'}`;
+  
+  if (useCache) {
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+  }
+
+  try {
+    const q = query(
+      getInvestmentsCollection(userId),
+      orderBy('name', 'asc')
+    );
+    
+    const snapshot = await getDocs(q);
+    let investments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    if (!includeInactive) {
+      investments = investments.filter(i => i.isActive !== false);
+    }
+    
+    cache.set(cacheKey, investments);
+    return investments;
+  } catch (error) {
+    console.error('Error fetching investments:', error);
+    return [];
+  }
+}
+
+/**
+ * Update an investment (including price updates)
+ */
+export async function updateInvestment(userId, investmentId, data) {
+  if (!isFirebaseConfigured() || !userId || !investmentId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const docRef = getInvestmentDoc(userId, investmentId);
+    
+    // If updating price or units, recalculate values
+    let updateData = { ...data };
+    if (data.currentPrice !== undefined || data.units !== undefined || data.avgBuyPrice !== undefined) {
+      const docSnap = await getDoc(docRef);
+      const existing = docSnap.exists() ? docSnap.data() : {};
+      
+      const units = data.units ?? existing.units ?? 0;
+      const avgBuyPrice = data.avgBuyPrice ?? existing.avgBuyPrice ?? 0;
+      const currentPrice = data.currentPrice ?? existing.currentPrice ?? avgBuyPrice;
+      const totalInvested = units * avgBuyPrice;
+      const currentValue = units * currentPrice;
+      const unrealizedGain = currentValue - totalInvested;
+      const gainPercent = totalInvested > 0 ? (unrealizedGain / totalInvested) * 100 : 0;
+      
+      updateData = {
+        ...updateData,
+        units,
+        avgBuyPrice,
+        currentPrice,
+        currentValue,
+        totalInvested,
+        unrealizedGain,
+        gainPercent: Math.round(gainPercent * 100) / 100,
+        lastUpdated: new Date().toISOString().split('T')[0],
+      };
+    }
+    
+    const sanitizedData = sanitizeForFirestore({
+      ...updateData,
+      updatedAt: serverTimestamp(),
+    });
+    await setDoc(docRef, sanitizedData, { merge: true });
+    
+    cache.invalidate(userPrefix(userId, 'inv'));
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating investment:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Delete an investment (or mark as inactive)
+ */
+export async function deleteInvestment(userId, investmentId, hardDelete = false) {
+  if (!isFirebaseConfigured() || !userId || !investmentId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    if (hardDelete) {
+      await deleteDoc(getInvestmentDoc(userId, investmentId));
+    } else {
+      // Soft delete - mark as inactive
+      await setDoc(getInvestmentDoc(userId, investmentId), {
+        isActive: false,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    }
+    
+    cache.invalidate(userPrefix(userId, 'inv'));
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting investment:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Add a transaction to an investment (buy/sell/dividend)
+ */
+export async function addInvestmentTransaction(userId, investmentId, txData) {
+  if (!isFirebaseConfigured() || !userId || !investmentId || !txData.type) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const txId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const txRef = getInvestmentTransactionDoc(userId, investmentId, txId);
+    
+    const sanitizedTx = sanitizeForFirestore({
+      id: txId,
+      type: txData.type, // buy, sell, dividend, split
+      date: txData.date || new Date().toISOString().split('T')[0],
+      units: txData.units || 0,
+      pricePerUnit: txData.pricePerUnit || 0,
+      totalAmount: txData.totalAmount || (txData.units * txData.pricePerUnit) || 0,
+      fees: txData.fees || 0,
+      notes: txData.notes || null,
+      createdAt: serverTimestamp(),
+    });
+    
+    await setDoc(txRef, sanitizedTx);
+    
+    // Update the investment's units and avg price after buy/sell
+    const investmentDoc = await getDoc(getInvestmentDoc(userId, investmentId));
+    if (investmentDoc.exists()) {
+      const investment = investmentDoc.data();
+      let newUnits = investment.units || 0;
+      let totalCost = (investment.units || 0) * (investment.avgBuyPrice || 0);
+      
+      if (txData.type === 'buy') {
+        newUnits += txData.units || 0;
+        totalCost += (txData.units || 0) * (txData.pricePerUnit || 0);
+      } else if (txData.type === 'sell') {
+        newUnits -= txData.units || 0;
+        // Keep avg buy price the same on sell
+      }
+      
+      const newAvgPrice = newUnits > 0 ? totalCost / newUnits : 0;
+      
+      await updateInvestment(userId, investmentId, {
+        units: Math.max(0, newUnits),
+        avgBuyPrice: newAvgPrice,
+      });
+    }
+    
+    return { success: true, id: txId };
+  } catch (error) {
+    console.error('Error adding investment transaction:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get transactions for an investment
+ */
+export async function getInvestmentTransactions(userId, investmentId) {
+  if (!isFirebaseConfigured() || !userId || !investmentId) {
+    return [];
+  }
+
+  try {
+    const q = query(
+      getInvestmentTransactionsCollection(userId, investmentId),
+      orderBy('date', 'desc')
+    );
+    
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error fetching investment transactions:', error);
+    return [];
+  }
+}
+
+/**
+ * Get portfolio summary (aggregate metrics)
+ */
+export async function getPortfolioSummary(userId) {
+  if (!isFirebaseConfigured() || !userId) {
+    return {
+      totalInvested: 0,
+      currentValue: 0,
+      totalGain: 0,
+      gainPercent: 0,
+      byType: {},
+      holdingsCount: 0,
+    };
+  }
+
+  try {
+    const investments = await getInvestments(userId, { useCache: true });
+    
+    const summary = {
+      totalInvested: 0,
+      currentValue: 0,
+      totalGain: 0,
+      gainPercent: 0,
+      byType: {},
+      holdingsCount: investments.length,
+    };
+    
+    for (const inv of investments) {
+      summary.totalInvested += inv.totalInvested || 0;
+      summary.currentValue += inv.currentValue || 0;
+      
+      const type = inv.type || 'other';
+      if (!summary.byType[type]) {
+        summary.byType[type] = { invested: 0, current: 0, count: 0 };
+      }
+      summary.byType[type].invested += inv.totalInvested || 0;
+      summary.byType[type].current += inv.currentValue || 0;
+      summary.byType[type].count += 1;
+    }
+    
+    summary.totalGain = summary.currentValue - summary.totalInvested;
+    summary.gainPercent = summary.totalInvested > 0 
+      ? Math.round((summary.totalGain / summary.totalInvested) * 10000) / 100 
+      : 0;
+    
+    return summary;
+  } catch (error) {
+    console.error('Error calculating portfolio summary:', error);
+    return {
+      totalInvested: 0,
+      currentValue: 0,
+      totalGain: 0,
+      gainPercent: 0,
+      byType: {},
+      holdingsCount: 0,
+    };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // IMPROVEMENT 3: Parallel initial data load
 // ═══════════════════════════════════════════════════════════════════════════════
 //
@@ -1231,17 +1979,18 @@ export async function saveNotificationSettings(userId, settings) {
  */
 export async function loadInitialData(userId) {
   if (!isFirebaseConfigured() || !userId) {
-    return { expenses: [], budget: null, tags: PREDEFINED_TAGS, bills: [] };
+    return { expenses: [], budget: null, tags: PREDEFINED_TAGS, bills: [], income: [] };
   }
 
-  const [expenses, budget, tags, bills] = await Promise.all([
+  const [expenses, budget, tags, bills, income] = await Promise.all([
     getExpenses(userId, { useCache: false }),
     getBudgetSettings(userId),
     getTags(userId),
     getBills(userId),
+    getIncome(userId, { useCache: false }),
   ]);
 
-  return { expenses, budget, tags, bills };
+  return { expenses, budget, tags, bills, income };
 }
 
 // ─── Export for Analytics Integration ────────────────────────────────────────

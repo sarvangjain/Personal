@@ -18,6 +18,7 @@ const ES_TAB_META = {
   budget:   { icon: Wallet,      label: 'Budget',    color: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
   bills:    { icon: CreditCard,  label: 'Bills',     color: 'text-amber-400',   bg: 'bg-amber-500/10' },
   goals:    { icon: Target,      label: 'Goals',     color: 'text-pink-400',    bg: 'bg-pink-500/10' },
+  wealth:   { icon: TrendingUp,  label: 'Wealth',    color: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
   insights: { icon: TrendingUp,  label: 'Insights',  color: 'text-purple-400',  bg: 'bg-purple-500/10' },
   labs:     { icon: FlaskConical,label: 'Labs',      color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10' },
 };
@@ -30,7 +31,7 @@ const NAV_SECTIONS = [
   },
   {
     title: 'Finance',
-    items: ['budget', 'bills', 'goals'],
+    items: ['budget', 'bills', 'wealth'],
   },
   {
     title: 'Analytics',

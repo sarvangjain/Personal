@@ -12,7 +12,7 @@ import ESBudget from './tabs/ESBudget';
 import ESInsights from './tabs/ESInsights';
 import ESLabs from './tabs/ESLabs';
 import ESBills from './tabs/ESBills';
-import ESGoals from './tabs/ESGoals';
+import ESWealth from './tabs/ESWealth';
 import ESCategoryDetail from './tabs/ESCategoryDetail';
 import QuickAddModal from './QuickAddModal';
 import { getExpenses, clearCache, updateExpense, deleteExpense, addExpenses, loadInitialData } from '../../firebase/expenseSightService';
@@ -232,11 +232,10 @@ export default function ExpenseSightApp({ userId, onClose }) {
             userId={userId}
           />
         );
-      case 'goals':
+      case 'wealth':
         return (
-          <ESGoals 
+          <ESWealth 
             userId={userId}
-            expenses={expenses}
           />
         );
       default:

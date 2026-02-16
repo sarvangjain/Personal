@@ -2,12 +2,12 @@
  * ESBottomNav - Bottom tab navigation for ExpenseSight
  */
 
-import { Home, Activity, Wallet, BarChart3, CreditCard } from 'lucide-react';
+import { Home, Activity, BarChart3, CreditCard, TrendingUp } from 'lucide-react';
 
 const TABS = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'activity', label: 'Activity', icon: Activity },
-  { id: 'budget', label: 'Budget', icon: Wallet },
+  { id: 'wealth', label: 'Wealth', icon: TrendingUp },
   { id: 'bills', label: 'Bills', icon: CreditCard },
   { id: 'insights', label: 'Insights', icon: BarChart3 },
 ];
