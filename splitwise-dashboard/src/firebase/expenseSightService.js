@@ -364,6 +364,50 @@ export async function deleteExpenses(userId, expenseIds) {
   }
 }
 
+/**
+ * Delete ALL expenses for a user (dangerous operation - use with caution!)
+ * This will permanently delete all expense records.
+ */
+export async function deleteAllExpenses(userId) {
+  if (!isFirebaseConfigured() || !userId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const collectionRef = getUserCollection(userId);
+    const snapshot = await getDocs(collectionRef);
+    
+    if (snapshot.empty) {
+      return { success: true, count: 0 };
+    }
+    
+    // Firestore batch limit is 500 operations; chunk to stay safe
+    const CHUNK_SIZE = 450;
+    const docs = snapshot.docs;
+    let totalDeleted = 0;
+    
+    for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+      const chunk = docs.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      
+      for (const docSnap of chunk) {
+        batch.delete(docSnap.ref);
+      }
+      
+      await batch.commit();
+      totalDeleted += chunk.length;
+    }
+    
+    // Clear all expense-related cache for this user
+    cache.invalidate(userPrefix(userId, 'exp'));
+    
+    return { success: true, count: totalDeleted };
+  } catch (error) {
+    console.error('Error deleting all expenses:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // ─── Analytics Queries ───────────────────────────────────────────────────────
 
 /**

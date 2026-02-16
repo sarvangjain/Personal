@@ -158,18 +158,95 @@ export function parseDateString(text) {
 // ─── Tag Extraction ──────────────────────────────────────────────────────────
 
 /**
- * Extract #hashtag tags from a line
+ * Extract person names from "with <name>" or "for <name>" patterns
+ * "Dinner with john" → ['john']
+ * "Gift for mom" → ['mom']
+ * "Coffee with sarah and mike" → ['sarah', 'mike']
+ * 
+ * Excludes common non-name words and short words
+ */
+function extractPersonTags(text) {
+  const tags = [];
+  const lower = text.toLowerCase();
+  
+  // Common words that shouldn't be treated as person names
+  const excludeWords = new Set([
+    // Common prepositions/articles that might follow "with" or "for"
+    'the', 'a', 'an', 'some', 'my', 'our', 'their', 'his', 'her', 'its',
+    // Common nouns that appear in expense descriptions
+    'lunch', 'dinner', 'breakfast', 'coffee', 'tea', 'food', 'drinks', 'meal',
+    'work', 'office', 'home', 'rent', 'bills', 'utilities', 'wifi', 'internet',
+    'travel', 'trip', 'flight', 'hotel', 'taxi', 'uber', 'ola', 'cab',
+    'shopping', 'groceries', 'vegetables', 'fruits', 'items', 'stuff',
+    'birthday', 'anniversary', 'wedding', 'party', 'event', 'celebration',
+    'medicine', 'medical', 'health', 'gym', 'fitness',
+    'months', 'month', 'days', 'day', 'weeks', 'week', 'year', 'years',
+    'emi', 'installment', 'payment', 'subscription', 'membership',
+    'free', 'discount', 'offer', 'sale', 'deal',
+    'now', 'today', 'tomorrow', 'yesterday', 'later',
+    'all', 'everyone', 'family', 'friends', 'colleagues', 'team',
+    // Numbers and amounts
+    'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+  ]);
+  
+  // Pattern: "with <name>" or "for <name>" (captures names and handles "and")
+  // Examples: "with john", "for mom", "with sarah and mike"
+  const patterns = [
+    /\bwith\s+([a-zA-Z]+(?:\s+and\s+[a-zA-Z]+)*)/gi,
+    /\bfor\s+([a-zA-Z]+(?:\s+and\s+[a-zA-Z]+)*)/gi,
+  ];
+  
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      // Split by "and" to get individual names
+      const names = match[1].split(/\s+and\s+/i);
+      for (const name of names) {
+        const cleanName = name.trim().toLowerCase();
+        // Only add if:
+        // - At least 2 characters
+        // - Not in exclude list
+        // - Not all numbers
+        if (
+          cleanName.length >= 2 &&
+          !excludeWords.has(cleanName) &&
+          !/^\d+$/.test(cleanName)
+        ) {
+          tags.push(cleanName);
+        }
+      }
+    }
+  }
+  
+  // Remove duplicates
+  return [...new Set(tags)];
+}
+
+/**
+ * Extract #hashtag tags and person tags from a line
  * "Flight to srinagar 5690 #kashmir" → { tags: ['kashmir'], cleanedLine: 'Flight to srinagar 5690' }
+ * "Dinner with john 500" → { tags: ['john'], cleanedLine: 'Dinner with john 500' }
+ * "Gift for mom 1000 #birthday" → { tags: ['birthday', 'mom'], cleanedLine: 'Gift for mom 1000' }
  */
 export function extractTags(text) {
   const tags = [];
+  
+  // 1. Extract explicit #hashtag tags
   const tagRegex = /#([a-zA-Z0-9_-]+)/g;
   let match;
   while ((match = tagRegex.exec(text)) !== null) {
     tags.push(match[1].toLowerCase());
   }
+  
+  // 2. Extract person tags from "with <name>" and "for <name>" patterns
+  const personTags = extractPersonTags(text);
+  tags.push(...personTags);
+  
+  // Remove the hashtags from the line (but keep "with/for <name>" in description)
   const cleanedLine = text.replace(/#[a-zA-Z0-9_-]+/g, '').replace(/\s{2,}/g, ' ').trim();
-  return { tags, cleanedLine };
+  
+  // Return unique tags
+  return { tags: [...new Set(tags)], cleanedLine };
 }
 
 // ─── EMI Detection ───────────────────────────────────────────────────────────
