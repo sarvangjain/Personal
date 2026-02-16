@@ -1,9 +1,17 @@
 /**
  * ExpenseSight NLP Parser
  * Parses natural language expense input into structured data
+ * 
+ * Supports:
+ * - Date headers: "16 Feb", "15 feb", "today", "yesterday"
+ * - Hashtag tags: "Flight 5690 #kashmir" → tag: kashmir
+ * - EMI splitting: "Phone 30000 (emi for 3 months)" → 3 expenses of 10000 each, 1 month apart
+ * - Math expressions: "508 + 250"
+ * - Comma amounts: "22,500"
+ * - Refunds, TBD, cancelled
  */
 
-import { parse, isValid, format } from 'date-fns';
+import { parse, isValid, format, addMonths } from 'date-fns';
 
 // ─── Category Keywords ───────────────────────────────────────────────────────
 const CATEGORY_KEYWORDS = {
@@ -62,7 +70,6 @@ const CATEGORY_KEYWORDS = {
 
 // ─── Date Parsing ────────────────────────────────────────────────────────────
 
-// Common date formats to try
 const DATE_FORMATS = [
   'd MMM',           // "11 Feb"
   'd MMMM',          // "11 February"
@@ -79,54 +86,31 @@ const DATE_FORMATS = [
   'yyyy-MM-dd',      // "2025-02-11"
 ];
 
-/**
- * Normalize date string for parsing
- * Handles: "8Jan" -> "8 Jan", "4th Jan" -> "4 Jan", "3rd Jan" -> "3 Jan"
- */
 function normalizeDateString(text) {
   let normalized = text.trim();
-  
-  // Remove ordinal suffixes (1st, 2nd, 3rd, 4th, etc.)
   normalized = normalized.replace(/(\d+)(st|nd|rd|th)\s*/gi, '$1 ');
-  
-  // Add space between number and month if missing: "8Jan" -> "8 Jan"
   normalized = normalized.replace(/(\d+)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/gi, '$1 $2');
-  
   return normalized.trim();
 }
 
-/**
- * Check if a line is a date header
- */
 export function isDateLine(line) {
   const trimmed = line.trim().toLowerCase();
   
-  // Skip common non-date patterns
-  if (trimmed.includes('no expense') || trimmed.includes('nothing')) {
-    return false;
-  }
+  if (trimmed.includes('no expense') || trimmed.includes('nothing')) return false;
   
-  // Skip if it contains numbers that look like amounts (3+ digits not at start)
-  // But allow dates like "11 Feb" which start with numbers
   const hasAmountPattern = /\s\d{3,}/.test(line) || /\d{3,}\s*$/.test(line);
-  if (hasAmountPattern) {
-    return false;
-  }
+  if (hasAmountPattern) return false;
   
-  // Skip single words that are too short to be a meaningful date (like "Feb" alone)
-  // Require at least a number + month or a recognized word like "today"/"yesterday"
-  if (!/\d/.test(trimmed) && trimmed !== 'today' && trimmed !== 'yesterday') {
-    return false;
-  }
+  // Must contain a digit or be a relative keyword
+  if (!/\d/.test(trimmed) && trimmed !== 'today' && trimmed !== 'yesterday') return false;
   
-  // Try to parse as date
+  // Should not contain hashtags (that's an expense line, not a date)
+  if (trimmed.includes('#')) return false;
+  
   const parsed = parseDateString(trimmed);
   return parsed !== null;
 }
 
-/**
- * Parse a date string into a Date object
- */
 export function parseDateString(text) {
   const normalized = normalizeDateString(text);
   const currentYear = new Date().getFullYear();
@@ -134,15 +118,12 @@ export function parseDateString(text) {
   for (const fmt of DATE_FORMATS) {
     try {
       const hasYear = fmt.includes('yyyy') || fmt.includes('yy');
-      
-      // For formats without year, append current year to both the string and format
       const dateStr = hasYear ? normalized : `${normalized} ${currentYear}`;
       const parseFormat = hasYear ? fmt : `${fmt} yyyy`;
       
       const parsed = parse(dateStr, parseFormat, new Date());
       
       if (isValid(parsed)) {
-        // If parsed date is in the future, use previous year
         if (parsed > new Date()) {
           parsed.setFullYear(parsed.getFullYear() - 1);
         }
@@ -153,7 +134,6 @@ export function parseDateString(text) {
     }
   }
   
-  // Also try common relative date words
   const lower = normalized.toLowerCase();
   if (lower === 'today') return new Date();
   if (lower === 'yesterday') {
@@ -165,41 +145,79 @@ export function parseDateString(text) {
   return null;
 }
 
-// ─── Amount Parsing ──────────────────────────────────────────────────────────
+// ─── Tag Extraction ──────────────────────────────────────────────────────────
 
 /**
- * Extract amount from expense line
- * Handles: "182", "-1500", "508 + 250", "TBD", "508 :: refunded -508"
+ * Extract #hashtag tags from a line
+ * "Flight to srinagar 5690 #kashmir" → { tags: ['kashmir'], cleanedLine: 'Flight to srinagar 5690' }
  */
+export function extractTags(text) {
+  const tags = [];
+  const tagRegex = /#([a-zA-Z0-9_-]+)/g;
+  let match;
+  while ((match = tagRegex.exec(text)) !== null) {
+    tags.push(match[1].toLowerCase());
+  }
+  const cleanedLine = text.replace(/#[a-zA-Z0-9_-]+/g, '').replace(/\s{2,}/g, ' ').trim();
+  return { tags, cleanedLine };
+}
+
+// ─── EMI Detection ───────────────────────────────────────────────────────────
+
+/**
+ * Detect EMI patterns in a line
+ * Patterns:
+ *   "(emi for 3 months)", "(divided into emi for 3 month)", "(emi 6 months)",
+ *   "(3 month emi)", "(emi x 3)"
+ * Returns { emiMonths: number | null, cleanedLine: string }
+ */
+export function extractEMI(text) {
+  const lower = text.toLowerCase();
+  
+  // Pattern: (divided into emi for N month(s)) or (emi for N month(s)) or (emi N month(s))
+  const emiPatterns = [
+    /\(?\s*(?:divided\s+into\s+)?emi\s+(?:for\s+)?(\d+)\s*months?\s*\)?/i,
+    /\(?\s*(\d+)\s*months?\s*emi\s*\)?/i,
+    /\(?\s*emi\s*[x×]\s*(\d+)\s*\)?/i,
+  ];
+  
+  for (const pattern of emiPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      const months = parseInt(match[1]);
+      if (months >= 2 && months <= 60) {
+        const cleanedLine = text.replace(match[0], '').replace(/\s{2,}/g, ' ').trim();
+        return { emiMonths: months, cleanedLine };
+      }
+    }
+  }
+  
+  return { emiMonths: null, cleanedLine: text };
+}
+
+// ─── Amount Parsing ──────────────────────────────────────────────────────────
+
 export function parseAmount(text) {
   const trimmed = text.trim().toLowerCase();
   
-  // Check for TBD/pending markers
   if (trimmed.includes('tbd') || trimmed.includes('pending') || trimmed.includes('to be paid')) {
     return { amount: null, isPending: true, isRefund: false };
   }
   
-  // Check for "no expense" or similar
   if (trimmed === 'no expense' || trimmed === 'nothing' || trimmed === 'no expenses') {
     return { amount: null, isPending: false, isRefund: false, skip: true };
   }
   
-  // Check for refund notation: "508 :: refunded -508" or similar
-  // If line contains "refund" and has both positive and negative numbers, it's likely a cancelled expense
   const refundMatch = text.match(/(\d+)\s*(?:::|->|refund|returned)\s*.*?-(\d+)/i);
   if (refundMatch && refundMatch[1] === refundMatch[2]) {
-    // Amount equals refund - it's a wash, mark as refund with 0 net
     return { amount: 0, isPending: false, isRefund: true, cancelled: true };
   }
   
-  // Check if it's explicitly a refund (contains refund keywords with negative amount)
   const isRefundLine = trimmed.includes('refund') || 
                        trimmed.includes('paid back') ||
                        trimmed.includes('returned') ||
                        trimmed.includes('cashback');
   
-  // Find all numbers and operators at the end of the line
-  // Match patterns like: "182", "-1500", "508 + 250", "508+250", "1,500", "22,500"
   const amountMatch = text.match(/(-?[\d,]+(?:\.\d+)?(?:\s*[+\-]\s*[\d,]+(?:\.\d+)?)*)\s*$/);
   
   if (!amountMatch) {
@@ -207,15 +225,10 @@ export function parseAmount(text) {
   }
   
   const amountStr = amountMatch[1];
-  
-  // Check if it's a refund (negative or contains refund keywords)
   const isRefund = amountStr.startsWith('-') || isRefundLine;
   
-  // Evaluate the expression
   try {
-    // Safe evaluation - strip commas, only allow numbers and +/-
     const sanitized = amountStr.replace(/,/g, '').replace(/[^0-9+\-.\s]/g, '');
-    // eslint-disable-next-line no-eval
     const evaluated = Function('"use strict"; return (' + sanitized + ')')();
     
     return {
@@ -228,27 +241,15 @@ export function parseAmount(text) {
   }
 }
 
-/**
- * Extract description from expense line (everything before the amount)
- */
 export function parseDescription(text) {
-  // Remove the amount part from the end (including comma-formatted numbers)
-  const withoutAmount = text.replace(/(-?\d+(?:\.\d+)?(?:\s*[+\-]\s*\d+(?:\.\d+)?)*)\s*$/, '');
-  
-  // Clean up the description
+  const withoutAmount = text.replace(/(-?[\d,]+(?:\.\d+)?(?:\s*[+\-]\s*[\d,]+(?:\.\d+)?)*)\s*$/, '');
   let description = withoutAmount.trim();
-  
-  // Remove trailing "TBD" or similar
   description = description.replace(/\s*(tbd|pending|to be paid)$/i, '').trim();
-  
   return description || 'Expense';
 }
 
 // ─── Category Inference ──────────────────────────────────────────────────────
 
-/**
- * Infer category from expense description
- */
 export function inferCategory(description) {
   const lower = description.toLowerCase();
   
@@ -265,8 +266,13 @@ export function inferCategory(description) {
 
 // ─── Main Parser ─────────────────────────────────────────────────────────────
 
+function generateId() {
+  return `exp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
 /**
- * Parse a single expense line
+ * Parse a single expense line (with tag and EMI support)
+ * Returns a single expense OR an array of expenses (for EMI)
  */
 export function parseExpenseLine(line, date) {
   const trimmed = line.trim();
@@ -274,29 +280,62 @@ export function parseExpenseLine(line, date) {
   
   if (!trimmed) return null;
   
-  // Skip "no expense" type lines
   if (lower === 'no expense' || lower === 'no expenses' || lower === 'nothing') {
     return { skip: true };
   }
   
-  const { amount, isPending, isRefund, skip, cancelled } = parseAmount(trimmed);
+  // 1. Extract hashtag tags first
+  const { tags, cleanedLine: afterTags } = extractTags(trimmed);
   
-  // Skip lines marked to be skipped
-  if (skip) {
-    return { skip: true };
-  }
+  // 2. Extract EMI info
+  const { emiMonths, cleanedLine: afterEmi } = extractEMI(afterTags);
   
-  const description = parseDescription(trimmed);
+  // 3. Parse amount from cleaned line
+  const { amount, isPending, isRefund, skip, cancelled } = parseAmount(afterEmi);
+  
+  if (skip) return { skip: true };
+  
+  const description = parseDescription(afterEmi);
   const category = inferCategory(description);
   
-  // Skip lines that don't have an amount and aren't pending
-  if (amount === null && !isPending) {
-    return null;
+  if (amount === null && !isPending) return null;
+  
+  const baseDate = date || new Date();
+  const baseDateStr = format(baseDate, 'yyyy-MM-dd');
+  
+  // 4. If EMI, split into multiple expenses
+  if (emiMonths && amount > 0) {
+    const emiAmount = Math.round(amount / emiMonths);
+    const expenses = [];
+    
+    for (let i = 0; i < emiMonths; i++) {
+      const emiDate = addMonths(baseDate, i);
+      expenses.push({
+        id: generateId(),
+        date: format(emiDate, 'yyyy-MM-dd'),
+        description: `${description} (EMI ${i + 1}/${emiMonths})`,
+        amount: emiAmount,
+        category,
+        isPending: false,
+        isRefund: false,
+        cancelled: false,
+        rawText: trimmed,
+        notes: `EMI: ₹${amount} ÷ ${emiMonths} months`,
+        tags: tags.length > 0 ? tags : undefined,
+        isEmi: true,
+        emiTotal: amount,
+        emiMonth: i + 1,
+        emiTotalMonths: emiMonths,
+      });
+    }
+    
+    return expenses; // Return array
   }
   
+  // 5. Normal single expense
   return {
     id: generateId(),
-    date: date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+    date: baseDateStr,
     description,
     amount: amount || 0,
     category,
@@ -305,18 +344,13 @@ export function parseExpenseLine(line, date) {
     cancelled: cancelled || false,
     rawText: trimmed,
     notes: null,
+    tags: tags.length > 0 ? tags : undefined,
   };
 }
 
 /**
- * Generate a unique ID
- */
-function generateId() {
-  return `exp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
-/**
- * Main parser function - parse multi-line expense text
+ * Main parser function - parse multi-line expense text with date headers
+ * This is the primary parser used by the Quick Add modal
  */
 export function parseExpenseText(text) {
   const lines = text.split('\n');
@@ -329,7 +363,6 @@ export function parseExpenseText(text) {
     lineNumber++;
     const trimmed = line.trim();
     
-    // Skip empty lines
     if (!trimmed) continue;
     
     // Check if it's a date line
@@ -343,15 +376,17 @@ export function parseExpenseText(text) {
     
     // Try to parse as expense
     try {
-      const expense = parseExpenseLine(trimmed, currentDate);
-      if (expense) {
-        // Skip lines that are marked to be skipped (like "No expense")
-        if (expense.skip) {
-          continue;
+      const result = parseExpenseLine(trimmed, currentDate);
+      if (result) {
+        if (result.skip) continue;
+        
+        // Handle array (EMI split) or single expense
+        if (Array.isArray(result)) {
+          expenses.push(...result);
+        } else {
+          expenses.push(result);
         }
-        expenses.push(expense);
       } else {
-        // Line couldn't be parsed
         errors.push({
           line: lineNumber,
           text: trimmed,
@@ -372,10 +407,6 @@ export function parseExpenseText(text) {
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
 
-/**
- * Convert ExpenseSight expense to Splitwise-like format
- * This allows reusing existing analytics utilities
- */
 export function toSplitwiseFormat(expense, userId) {
   return {
     id: expense.id,
@@ -399,7 +430,6 @@ export function toSplitwiseFormat(expense, userId) {
         net_balance: '0.00',
       },
     ],
-    // ExpenseSight specific fields
     _expenseSight: true,
     _isPending: expense.isPending,
     _isRefund: expense.isRefund,
@@ -408,42 +438,24 @@ export function toSplitwiseFormat(expense, userId) {
   };
 }
 
-/**
- * Get all unique categories from CATEGORY_KEYWORDS
- */
 export function getAllCategories() {
   return Object.keys(CATEGORY_KEYWORDS);
 }
 
-/**
- * Validate parsed expenses
- */
 export function validateExpenses(expenses) {
   const issues = [];
   
   for (const exp of expenses) {
-    // Skip validation for cancelled expenses
     if (exp.cancelled) continue;
     
     if (!exp.description || exp.description === 'Expense') {
-      issues.push({
-        expense: exp,
-        issue: 'Missing or generic description',
-      });
+      issues.push({ expense: exp, issue: 'Missing or generic description' });
     }
-    
     if (exp.amount === 0 && !exp.isPending && !exp.cancelled) {
-      issues.push({
-        expense: exp,
-        issue: 'Zero amount',
-      });
+      issues.push({ expense: exp, issue: 'Zero amount' });
     }
-    
     if (exp.amount > 100000) {
-      issues.push({
-        expense: exp,
-        issue: 'Unusually high amount - please verify',
-      });
+      issues.push({ expense: exp, issue: 'Unusually high amount - please verify' });
     }
   }
   

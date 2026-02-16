@@ -27,6 +27,90 @@ import { isFirebaseConfigured } from '../../../firebase/config';
 
 // ─── Budget Setup Wizard ─────────────────────────────────────────────────────
 
+// Category allocation row with visual bar and proper controls
+function CategoryAllocationRow({ category, budget, totalBudget, onChange }) {
+  const Icon = getCategoryIcon(category);
+  const colors = getCategoryColors(category);
+  const budgetType = getCategoryBudgetType(category);
+  const pct = totalBudget > 0 ? (budget / totalBudget) * 100 : 0;
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(budget.toString());
+
+  const handleDirect = () => {
+    setEditValue(budget.toString());
+    setIsEditing(true);
+  };
+  const commitEdit = () => {
+    const v = Math.max(0, parseInt(editValue) || 0);
+    onChange(v);
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="p-3 bg-stone-800/30 rounded-xl space-y-2.5">
+      {/* Top row: icon + name + amount */}
+      <div className="flex items-center gap-3">
+        <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${colors.gradient} flex items-center justify-center flex-shrink-0`}>
+          <Icon size={16} className={colors.text} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-stone-200 truncate">{category}</p>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+            budgetType === 'needs' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-purple-500/15 text-purple-400'
+          }`}>
+            {budgetType === 'needs' ? 'Need' : 'Want'}
+          </span>
+        </div>
+        {/* Amount display / edit */}
+        {isEditing ? (
+          <input
+            type="number"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={(e) => e.key === 'Enter' && commitEdit()}
+            autoFocus
+            className="w-24 px-2 py-1.5 bg-stone-700 border border-teal-500 rounded-lg text-sm text-teal-400 text-right font-mono focus:outline-none"
+          />
+        ) : (
+          <button
+            onClick={handleDirect}
+            className="text-right px-2 py-1.5 rounded-lg hover:bg-stone-700/50 transition-colors group"
+          >
+            <p className="text-sm font-mono font-medium text-stone-200 group-hover:text-teal-400 transition-colors">
+              {formatCurrency(budget, 'INR')}
+            </p>
+            <p className="text-[9px] text-stone-600">{pct.toFixed(0)}% of total</p>
+          </button>
+        )}
+      </div>
+
+      {/* Allocation bar + stepper */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onChange(Math.max(0, budget - 500))}
+          className="w-8 h-8 rounded-lg bg-stone-700/60 text-stone-400 hover:bg-stone-700 hover:text-stone-200 flex items-center justify-center flex-shrink-0 transition-colors active:scale-95 touch-manipulation"
+        >
+          <Minus size={14} />
+        </button>
+        {/* Visual bar */}
+        <div className="flex-1 h-3 bg-stone-700/40 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${colors.bar}`}
+            style={{ width: `${Math.min(pct, 100)}%` }}
+          />
+        </div>
+        <button
+          onClick={() => onChange(budget + 500)}
+          className="w-8 h-8 rounded-lg bg-stone-700/60 text-stone-400 hover:bg-stone-700 hover:text-stone-200 flex items-center justify-center flex-shrink-0 transition-colors active:scale-95 touch-manipulation"
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BudgetSetupWizard({ onComplete, initialBudget, initialCategoryBudgets }) {
   const [step, setStep] = useState(1);
   const [monthlyBudget, setMonthlyBudget] = useState(initialBudget || 30000);
@@ -34,18 +118,25 @@ function BudgetSetupWizard({ onComplete, initialBudget, initialCategoryBudgets }
   
   const categories = getAllCategories().filter(c => c !== 'Other' && c !== 'Payments');
   
-  // Calculate remaining budget for distribution
-  const allocatedTotal = Object.values(categoryBudgets).reduce((sum, val) => sum + val, 0);
-  const unallocated = monthlyBudget - allocatedTotal;
+  // Ensure each category has a value in state
+  useEffect(() => {
+    const updated = { ...categoryBudgets };
+    let changed = false;
+    for (const cat of categories) {
+      if (updated[cat] === undefined) {
+        updated[cat] = getDefaultCategoryBudget(cat);
+        changed = true;
+      }
+    }
+    if (changed) setCategoryBudgets(updated);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   
-  const handleCategoryBudgetChange = (category, delta) => {
-    const current = categoryBudgets[category] || getDefaultCategoryBudget(category);
-    const newValue = Math.max(0, current + delta);
-    setCategoryBudgets(prev => ({ ...prev, [category]: newValue }));
-  };
+  // Calculate remaining budget for distribution
+  const allocatedTotal = categories.reduce((sum, cat) => sum + (categoryBudgets[cat] || getDefaultCategoryBudget(cat)), 0);
+  const unallocated = monthlyBudget - allocatedTotal;
+  const allocatedPct = monthlyBudget > 0 ? Math.min((allocatedTotal / monthlyBudget) * 100, 100) : 0;
 
   const handleSave = () => {
-    // Ensure all categories have budgets
     const finalBudgets = {};
     for (const cat of getAllCategories()) {
       finalBudgets[cat] = categoryBudgets[cat] || getDefaultCategoryBudget(cat);
@@ -56,14 +147,16 @@ function BudgetSetupWizard({ onComplete, initialBudget, initialCategoryBudgets }
   return (
     <div className="space-y-4">
       {/* Progress indicator */}
-      <div className="flex items-center justify-center gap-2 mb-6">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-          step >= 1 ? 'bg-teal-500 text-white' : 'bg-stone-700 text-stone-400'
-        }`}>1</div>
-        <div className={`w-8 h-1 ${step >= 2 ? 'bg-teal-500' : 'bg-stone-700'}`} />
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-          step >= 2 ? 'bg-teal-500 text-white' : 'bg-stone-700 text-stone-400'
-        }`}>2</div>
+      <div className="flex items-center justify-center gap-2 mb-4">
+        <div className="flex items-center gap-0">
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium ${
+            step >= 1 ? 'bg-teal-500 text-white' : 'bg-stone-700 text-stone-400'
+          }`}>1</div>
+          <div className={`w-12 h-1 rounded ${step >= 2 ? 'bg-teal-500' : 'bg-stone-700'}`} />
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium ${
+            step >= 2 ? 'bg-teal-500 text-white' : 'bg-stone-700 text-stone-400'
+          }`}>2</div>
+        </div>
       </div>
 
       {step === 1 && (
@@ -77,7 +170,7 @@ function BudgetSetupWizard({ onComplete, initialBudget, initialCategoryBudgets }
           <div className="flex items-center justify-center gap-4">
             <button
               onClick={() => setMonthlyBudget(prev => Math.max(5000, prev - 5000))}
-              className="w-12 h-12 rounded-xl bg-stone-800 text-stone-300 hover:bg-stone-700 flex items-center justify-center"
+              className="w-12 h-12 rounded-xl bg-stone-800 text-stone-300 hover:bg-stone-700 flex items-center justify-center active:scale-95 transition-transform touch-manipulation"
             >
               <Minus size={20} />
             </button>
@@ -92,7 +185,7 @@ function BudgetSetupWizard({ onComplete, initialBudget, initialCategoryBudgets }
             </div>
             <button
               onClick={() => setMonthlyBudget(prev => prev + 5000)}
-              className="w-12 h-12 rounded-xl bg-stone-800 text-stone-300 hover:bg-stone-700 flex items-center justify-center"
+              className="w-12 h-12 rounded-xl bg-stone-800 text-stone-300 hover:bg-stone-700 flex items-center justify-center active:scale-95 transition-transform touch-manipulation"
             >
               <Plus size={20} />
             </button>
@@ -100,14 +193,14 @@ function BudgetSetupWizard({ onComplete, initialBudget, initialCategoryBudgets }
           
           {/* Suggested budgets */}
           <div className="flex flex-wrap justify-center gap-2">
-            {[20000, 30000, 40000, 50000].map(amt => (
+            {[20000, 30000, 40000, 50000, 75000].map(amt => (
               <button
                 key={amt}
                 onClick={() => setMonthlyBudget(amt)}
-                className={`px-3 py-1.5 rounded-lg text-sm ${
+                className={`px-3 py-1.5 rounded-lg text-sm transition-all ${
                   monthlyBudget === amt 
                     ? 'bg-teal-500/20 text-teal-400 border border-teal-500/50' 
-                    : 'bg-stone-800 text-stone-400 hover:bg-stone-700'
+                    : 'bg-stone-800 text-stone-400 hover:bg-stone-700 border border-transparent'
                 }`}
               >
                 {formatCurrency(amt, 'INR')}
@@ -117,81 +210,76 @@ function BudgetSetupWizard({ onComplete, initialBudget, initialCategoryBudgets }
           
           <button
             onClick={() => setStep(2)}
-            className="w-full py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-xl flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-xl flex items-center justify-center gap-2 transition-colors active:scale-[0.98] touch-manipulation"
           >
-            Continue <ArrowRight size={18} />
+            Set Category Limits <ArrowRight size={18} />
           </button>
         </div>
       )}
 
       {step === 2 && (
-        <div className="glass-card p-4 space-y-4">
-          <div className="text-center mb-2">
-            <h3 className="text-lg font-display text-stone-200">Category Limits</h3>
-            <p className="text-xs text-stone-500 mt-1">Allocate your budget across categories</p>
+        <div className="space-y-4">
+          {/* Budget summary bar */}
+          <div className="glass-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-stone-500">Monthly Budget</p>
+              <p className="text-sm font-display text-stone-200">{formatCurrency(monthlyBudget, 'INR')}</p>
+            </div>
+
+            {/* Visual allocation bar */}
+            <div className="h-3 bg-stone-700/40 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  unallocated < 0 ? 'bg-red-500' : unallocated === 0 ? 'bg-emerald-500' : 'bg-teal-500'
+                }`}
+                style={{ width: `${allocatedPct}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-stone-500">Allocated: {formatCurrency(allocatedTotal, 'INR')}</span>
+              <span className={`text-xs font-medium ${
+                unallocated > 0 ? 'text-teal-400' : unallocated === 0 ? 'text-emerald-400' : 'text-red-400'
+              }`}>
+                {unallocated > 0
+                  ? `${formatCurrency(unallocated, 'INR')} left`
+                  : unallocated === 0
+                  ? 'Fully allocated ✓'
+                  : `${formatCurrency(Math.abs(unallocated), 'INR')} over`
+                }
+              </span>
+            </div>
           </div>
           
-          {/* Unallocated indicator */}
-          <div className={`p-3 rounded-lg text-center ${
-            unallocated >= 0 ? 'bg-teal-500/10 border border-teal-500/30' : 'bg-red-500/10 border border-red-500/30'
-          }`}>
-            <p className="text-xs text-stone-500">Unallocated</p>
-            <p className={`text-lg font-display ${unallocated >= 0 ? 'text-teal-400' : 'text-red-400'}`}>
-              {formatCurrency(Math.abs(unallocated), 'INR')}
-              {unallocated < 0 && ' over'}
-            </p>
-          </div>
-          
-          {/* Category list */}
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+          {/* Category list — scrollable */}
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto pb-2 scrollbar-hide">
             {categories.map(category => {
-              const Icon = getCategoryIcon(category);
-              const colors = getCategoryColors(category);
               const budget = categoryBudgets[category] || getDefaultCategoryBudget(category);
-              
               return (
-                <div key={category} className="flex items-center gap-3 p-2 bg-stone-800/40 rounded-lg">
-                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colors.gradient} flex items-center justify-center flex-shrink-0`}>
-                    <Icon size={14} className={colors.text} />
-                  </div>
-                  <span className="text-sm text-stone-300 flex-1 truncate">{category}</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleCategoryBudgetChange(category, -500)}
-                      className="w-7 h-7 rounded bg-stone-700 text-stone-400 hover:bg-stone-600 flex items-center justify-center"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <input
-                      type="number"
-                      value={budget}
-                      onChange={(e) => setCategoryBudgets(prev => ({ ...prev, [category]: Math.max(0, Number(e.target.value)) }))}
-                      className="w-16 px-2 py-1 bg-stone-700 border border-stone-600 rounded text-sm text-stone-200 text-center focus:outline-none focus:border-teal-500"
-                    />
-                    <button
-                      onClick={() => handleCategoryBudgetChange(category, 500)}
-                      className="w-7 h-7 rounded bg-stone-700 text-stone-400 hover:bg-stone-600 flex items-center justify-center"
-                    >
-                      <Plus size={14} />
-                    </button>
-                  </div>
-                </div>
+                <CategoryAllocationRow
+                  key={category}
+                  category={category}
+                  budget={budget}
+                  totalBudget={monthlyBudget}
+                  onChange={(val) => setCategoryBudgets(prev => ({ ...prev, [category]: val }))}
+                />
               );
             })}
           </div>
           
-          <div className="flex gap-2">
+          {/* Action buttons — sticky feel */}
+          <div className="flex gap-3 pt-2">
             <button
               onClick={() => setStep(1)}
-              className="flex-1 py-3 bg-stone-700 hover:bg-stone-600 text-stone-200 rounded-xl"
+              className="flex-1 py-3.5 bg-stone-800 hover:bg-stone-700 text-stone-300 font-medium rounded-xl transition-colors active:scale-[0.98] touch-manipulation"
             >
               Back
             </button>
             <button
               onClick={handleSave}
-              className="flex-1 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-xl flex items-center justify-center gap-2"
+              className="flex-1 py-3.5 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-xl flex items-center justify-center gap-2 transition-colors active:scale-[0.98] touch-manipulation"
             >
-              <Save size={18} /> Save Budget
+              <Save size={16} /> Save Budget
             </button>
           </div>
         </div>
