@@ -1022,13 +1022,11 @@ export async function getContributions(userId, goalId) {
   }
 
   try {
-    const q = query(
-      getContributionsCollection(userId, goalId),
-      orderBy('date', 'desc')
-    );
-    
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Fetch without orderBy to avoid requiring a Firestore index
+    const snapshot = await getDocs(getContributionsCollection(userId, goalId));
+    const contributions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Sort by date descending (client-side)
+    return contributions.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   } catch (error) {
     console.error('Error fetching contributions:', error);
     return [];
@@ -1509,14 +1507,18 @@ export async function getIncome(userId, options = {}) {
   }
 
   try {
-    const q = query(
-      getIncomeCollection(userId),
-      orderBy('date', 'desc'),
-      limit(limitCount)
-    );
-    
-    const snapshot = await getDocs(q);
+    // Fetch without orderBy to avoid requiring a Firestore index
+    // Sort client-side instead
+    const snapshot = await getDocs(getIncomeCollection(userId));
     let incomeList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Sort by date descending (client-side)
+    incomeList.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    
+    // Apply limit
+    if (limitCount && incomeList.length > limitCount) {
+      incomeList = incomeList.slice(0, limitCount);
+    }
     
     // Apply filters in memory
     if (startDate) {
@@ -1724,13 +1726,11 @@ export async function getInvestments(userId, options = {}) {
   }
 
   try {
-    const q = query(
-      getInvestmentsCollection(userId),
-      orderBy('name', 'asc')
-    );
-    
-    const snapshot = await getDocs(q);
+    // Fetch without orderBy to avoid requiring a Firestore index
+    const snapshot = await getDocs(getInvestmentsCollection(userId));
     let investments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Sort by name ascending (client-side)
+    investments.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     
     if (!includeInactive) {
       investments = investments.filter(i => i.isActive !== false);
@@ -1889,13 +1889,11 @@ export async function getInvestmentTransactions(userId, investmentId) {
   }
 
   try {
-    const q = query(
-      getInvestmentTransactionsCollection(userId, investmentId),
-      orderBy('date', 'desc')
-    );
-    
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Fetch without orderBy to avoid requiring a Firestore index
+    const snapshot = await getDocs(getInvestmentTransactionsCollection(userId, investmentId));
+    const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Sort by date descending (client-side)
+    return transactions.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   } catch (error) {
     console.error('Error fetching investment transactions:', error);
     return [];
