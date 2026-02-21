@@ -1,0 +1,48 @@
+name: splitsight_app
+description: A Flutter mobile app combining SplitSight and ExpenseSight
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  flutter_riverpod: ^2.4.0
+  riverpod_annotation: ^2.3.0
+  
+  # Navigation
+  go_router: ^12.0.0
+  
+  # Firebase
+  firebase_core: ^2.24.0
+  cloud_firestore: ^4.13.0
+  
+  # HTTP & API
+  dio: ^5.4.0
+  
+  # UI Components
+  fl_chart: ^0.65.0
+  flutter_animate: ^4.3.0
+  google_fonts: ^6.1.0
+  
+  # Utilities
+  intl: ^0.18.1
+  collection: ^1.18.0
+  shared_preferences: ^2.2.2
+  
+  # Icons
+  lucide_icons: ^0.257.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.0
+  riverpod_generator: ^2.3.0
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

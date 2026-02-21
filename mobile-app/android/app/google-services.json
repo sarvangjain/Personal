@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "417289905381",
+    "project_id": "spend-sight-8482",
+    "storage_bucket": "spend-sight-8482.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:417289905381:android:af8270b11aca9e2fc0200c",
+        "android_client_info": {
+          "package_name": "com.splitsight.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4rvIHg0Mb9qAk4O1id9kyFHB_u_DyYXk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
