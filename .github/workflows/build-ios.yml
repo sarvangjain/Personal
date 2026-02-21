@@ -37,7 +37,7 @@ jobs:
       - name: Build iOS for simulator
         run: |
           cd mobile-app
-          flutter build ios --release --simulator
+          flutter build ios --release
       
       - name: Build iOS for device (no codesign)
         run: |
