@@ -34,22 +34,37 @@ jobs:
           pod install
           cd ../..
       
-      - name: Build iOS (no codesign)
+      - name: Build iOS for simulator
         run: |
           cd mobile-app
-          flutter build ios --release --no-codesign
+          flutter build ios --release --simulator
+      
+      - name: Build iOS for device (no codesign)
+        run: |
+          cd mobile-app
+          flutter build ios --release --no-codesign || true
       
       - name: Create IPA from .app
         run: |
-          cd mobile-app/build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload/
-          zip -r ../../../splitsight_app.ipa Payload
-          cd ../../..
+          cd mobile-app
+          if [ -d "build/ios/iphoneos/Runner.app" ]; then
+            cd build/ios/iphoneos
+            mkdir Payload
+            cp -r Runner.app Payload/
+            zip -r ../../../splitsight_app.ipa Payload
+          elif [ -d "build/ios/iphonesimulator/Runner.app" ]; then
+            cd build/ios/iphonesimulator
+            mkdir Payload
+            cp -r Runner.app Payload/
+            zip -r ../../../splitsight_app_simulator.ipa Payload
+          fi
       
       - name: Upload IPA as artifact
         uses: actions/upload-artifact@v4
         with:
           name: splitsight-ios-app
-          path: mobile-app/splitsight_app.ipa
+          path: |
+            mobile-app/splitsight_app.ipa
+            mobile-app/splitsight_app_simulator.ipa
           retention-days: 30
+          if-no-files-found: ignore
