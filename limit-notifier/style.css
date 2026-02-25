@@ -1,0 +1,461 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #252525;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --accent: #d97706;
+  --accent-hover: #f59e0b;
+  --success: #22c55e;
+  --warning: #eab308;
+  --danger: #ef4444;
+  --border: #333333;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+header h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.settings-section {
+  background: var(--bg-secondary);
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.setting-info label {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.setting-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.setting-input input {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  width: 180px;
+}
+
+.setting-input input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.ntfy-help {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.ntfy-help details {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.ntfy-help summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.ntfy-help ol {
+  margin-top: 0.75rem;
+  padding-left: 1.25rem;
+}
+
+.ntfy-help li {
+  margin-bottom: 0.5rem;
+}
+
+.ntfy-help a {
+  color: var(--accent);
+}
+
+.ntfy-help code {
+  background: var(--bg-tertiary);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+}
+
+.input-section {
+  background: var(--bg-secondary);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+
+.input-section label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+.input-section input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  transition: border-color 0.2s;
+}
+
+.input-section input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.input-section input::placeholder {
+  color: var(--text-secondary);
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  background: var(--accent);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: var(--accent);
+  color: var(--text-primary);
+}
+
+.btn-cancel {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background: var(--danger);
+  color: var(--text-primary);
+}
+
+.examples {
+  background: var(--bg-secondary);
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+
+.examples p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.examples ul {
+  list-style: none;
+}
+
+.examples li {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  padding: 0.25rem 0;
+}
+
+.examples code {
+  background: var(--bg-tertiary);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  color: var(--accent);
+}
+
+.active-notifications {
+  background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--success);
+  margin-bottom: 1.25rem;
+}
+
+.active-notifications h3 {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--success);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.active-notifications h3::before {
+  content: "🔔";
+}
+
+.active-notifications ul {
+  list-style: none;
+}
+
+.active-notifications li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.active-notifications li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.notif-info {
+  flex: 1;
+}
+
+.notif-time {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.notif-countdown {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--success);
+  font-variant-numeric: tabular-nums;
+}
+
+.notif-meta {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.warning {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--bg-secondary);
+  padding: 0.875rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--warning);
+  margin-bottom: 1.25rem;
+}
+
+.warning span {
+  font-size: 1.25rem;
+}
+
+.warning p {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.sync-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.sync-indicator.syncing {
+  background: var(--warning);
+  animation: pulse 1s infinite;
+}
+
+.sync-indicator.error {
+  background: var(--danger);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.history {
+  background: var(--bg-secondary);
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.history h3 {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.history ul {
+  list-style: none;
+}
+
+.history li {
+  font-size: 0.875rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history li:last-child {
+  border-bottom: none;
+}
+
+.history li .time {
+  color: var(--text-secondary);
+}
+
+.history li .status-badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.history li .status-badge.sent {
+  background: rgba(34, 197, 94, 0.2);
+  color: var(--success);
+}
+
+.history li .status-badge.cancelled {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--danger);
+}
+
+.hidden {
+  display: none !important;
+}
+
+footer {
+  text-align: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+footer p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.footer-note {
+  margin-top: 0.5rem;
+  font-size: 0.75rem !important;
+}
+
+.footer-note a {
+  color: var(--accent);
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 1.5rem 1rem;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+  }
+
+  .setting-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .setting-input {
+    width: 100%;
+    margin-top: 0.75rem;
+  }
+
+  .setting-input input {
+    width: 100%;
+  }
+}

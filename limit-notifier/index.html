@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Limit Reset Notifier</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Claude Limit Reset Notifier</h1>
+      <p class="subtitle">Get notified 5 minutes before your limit resets</p>
+    </header>
+
+    <main>
+      <div class="settings-section">
+        <div class="setting-row">
+          <div class="setting-info">
+            <label for="ntfyTopic">Phone Notifications (ntfy.sh)</label>
+            <p class="setting-desc">Get notified on your phone even when this tab is closed</p>
+          </div>
+          <div class="setting-input">
+            <input 
+              type="text" 
+              id="ntfyTopic" 
+              placeholder="your-unique-topic"
+              autocomplete="off"
+            >
+          </div>
+        </div>
+        <div class="ntfy-help">
+          <details>
+            <summary>How to set up phone notifications</summary>
+            <ol>
+              <li>Install <a href="https://ntfy.sh" target="_blank">ntfy app</a> on your phone (iOS/Android)</li>
+              <li>Choose a unique topic name (e.g., <code>claude-sarvang-123</code>)</li>
+              <li>Subscribe to that topic in the ntfy app</li>
+              <li>Enter the same topic name above</li>
+            </ol>
+          </details>
+        </div>
+      </div>
+
+      <div class="input-section">
+        <label for="timeInput">Enter reset time:</label>
+        <input 
+          type="text" 
+          id="timeInput" 
+          placeholder="e.g., 'Resets 2:30 PM' or 'Resets in 3 hr 9 min'"
+          autocomplete="off"
+        >
+        <button id="setNotification" class="btn-primary">Set Notification</button>
+      </div>
+
+      <div class="examples">
+        <p>Examples:</p>
+        <ul>
+          <li><code>Resets 2:30 PM</code> - Absolute time</li>
+          <li><code>Resets in 3 hr 9 min</code> - Relative time</li>
+          <li><code>4:00 PM</code> - Just the time</li>
+          <li><code>in 30 min</code> - Just relative</li>
+        </ul>
+      </div>
+
+      <div id="activeNotifications" class="active-notifications hidden">
+        <h3>Active Notifications</h3>
+        <ul id="activeList"></ul>
+      </div>
+
+      <div id="permissionWarning" class="warning hidden">
+        <span>⚠️</span>
+        <p>Enable browser notifications for alerts when tab is open</p>
+        <button id="enableNotifications" class="btn-secondary">Enable</button>
+      </div>
+
+      <div id="syncStatus" class="sync-status">
+        <span id="syncIndicator" class="sync-indicator"></span>
+        <span id="syncText">Synced</span>
+      </div>
+
+      <div id="history" class="history">
+        <h3>Recent Notifications</h3>
+        <ul id="historyList"></ul>
+      </div>
+    </main>
+
+    <footer>
+      <p>Phone notifications work even when this tab is closed</p>
+      <p class="footer-note">Powered by <a href="https://ntfy.sh" target="_blank">ntfy.sh</a></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

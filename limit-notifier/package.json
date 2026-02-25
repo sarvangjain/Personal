@@ -1,0 +1,11 @@
+{
+  "name": "limit-notifier",
+  "version": "1.0.0",
+  "description": "Claude limit reset notifier with phone notifications",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.0.0"
+  }
+}
