@@ -170,10 +170,81 @@ class LimitNotifier {
       this.setSyncStatus('synced');
       await this.syncNotifications();
     } catch (error) {
-      console.error('Error creating notification:', error);
+      console.error('Error creating notification, using local mode:', error);
+      
+      // Fallback to local-only mode (browser notifications only)
+      const localId = `local_${Date.now()}`;
+      const notification = {
+        id: localId,
+        targetTime: targetTime.toISOString(),
+        notifyTime: notifyTime.toISOString(),
+        originalInput,
+        ntfyTopic,
+      };
+      
+      this.setupLocalTimeout(notification);
+      this.saveLocalNotification(notification);
+      this.renderActiveNotifications(this.getLocalNotifications());
       this.setSyncStatus('error');
-      this.showError('Failed to save. Check connection.');
+      
+      // Try to send directly to ntfy if topic is set
+      if (ntfyTopic) {
+        this.scheduleDirectNtfy(notification);
+      }
     }
+  }
+
+  saveLocalNotification(notification) {
+    const notifications = this.getLocalNotifications();
+    notifications.push(notification);
+    localStorage.setItem('localNotifications', JSON.stringify(notifications));
+  }
+
+  getLocalNotifications() {
+    try {
+      const stored = localStorage.getItem('localNotifications');
+      const notifications = stored ? JSON.parse(stored) : [];
+      // Filter out expired ones
+      const now = Date.now();
+      return notifications.filter(n => new Date(n.targetTime).getTime() > now);
+    } catch {
+      return [];
+    }
+  }
+
+  removeLocalNotification(id) {
+    const notifications = this.getLocalNotifications().filter(n => n.id !== id);
+    localStorage.setItem('localNotifications', JSON.stringify(notifications));
+  }
+
+  scheduleDirectNtfy(notification) {
+    const notifyTime = new Date(notification.notifyTime).getTime();
+    const now = Date.now();
+    const delay = notifyTime - now;
+
+    if (delay <= 0) return;
+
+    setTimeout(async () => {
+      try {
+        const targetTime = new Date(notification.targetTime);
+        const timeStr = targetTime.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+
+        await fetch(`https://ntfy.sh/${notification.ntfyTopic}`, {
+          method: 'POST',
+          headers: {
+            'Title': 'Claude Limit Reset Soon!',
+            'Priority': 'high',
+            'Tags': 'alarm_clock',
+          },
+          body: `Your Claude limit resets in 5 minutes (at ${timeStr})`,
+        });
+      } catch (e) {
+        console.error('Failed to send ntfy:', e);
+      }
+    }, delay);
   }
 
   async syncNotifications() {
@@ -190,7 +261,13 @@ class LimitNotifier {
       this.renderActiveNotifications(activeNotifications);
       this.setSyncStatus('synced');
     } catch (error) {
-      console.error('Sync error:', error);
+      console.error('Sync error, using local mode:', error);
+      
+      // Fallback to local notifications
+      const localNotifications = this.getLocalNotifications();
+      this.clearLocalTimeouts();
+      localNotifications.forEach(n => this.setupLocalTimeout(n));
+      this.renderActiveNotifications(localNotifications);
       this.setSyncStatus('error');
     }
   }
@@ -307,7 +384,13 @@ class LimitNotifier {
 
   async cancelNotification(id) {
     try {
-      await fetch(`${this.API_BASE}/${id}`, { method: 'DELETE' });
+      // Try to delete from server
+      if (!id.startsWith('local_')) {
+        await fetch(`${this.API_BASE}/${id}`, { method: 'DELETE' });
+      } else {
+        // Remove local notification
+        this.removeLocalNotification(id);
+      }
 
       const timeout = this.localTimeouts.get(id);
       if (timeout) {
@@ -320,6 +403,14 @@ class LimitNotifier {
       await this.syncNotifications();
     } catch (error) {
       console.error('Error cancelling:', error);
+      // Still try to clean up locally
+      this.removeLocalNotification(id);
+      const timeout = this.localTimeouts.get(id);
+      if (timeout) {
+        clearTimeout(timeout.timeoutId);
+        this.localTimeouts.delete(id);
+      }
+      this.renderActiveNotifications(this.getLocalNotifications());
     }
   }
 
@@ -340,7 +431,7 @@ class LimitNotifier {
       text.textContent = 'Syncing...';
     } else if (status === 'error') {
       indicator.classList.add('error');
-      text.textContent = 'Sync error';
+      text.textContent = 'Local mode (keep tab open)';
     } else {
       text.textContent = 'Synced';
     }

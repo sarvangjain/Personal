@@ -1,9 +1,12 @@
 [build]
+  base = "."
+  command = "npm install"
   publish = "."
   functions = "netlify/functions"
 
 [functions]
   node_bundler = "esbuild"
+  included_files = ["node_modules/**"]
 
 # Scheduled function to check and send notifications every minute
 [functions."check-notifications"]
