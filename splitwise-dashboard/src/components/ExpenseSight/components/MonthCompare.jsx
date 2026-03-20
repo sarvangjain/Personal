@@ -28,7 +28,8 @@ export default function MonthCompare({ expenses }) {
     let sumB = 0;
 
     for (const exp of expenses) {
-      if (exp.cancelled || exp.isRefund) continue;
+      // Exclude cancelled, refunds, and income
+      if (exp.cancelled || exp.isRefund || exp.isIncome) continue;
       const d = parseISO(exp.date);
       const cat = exp.category || 'Other';
 

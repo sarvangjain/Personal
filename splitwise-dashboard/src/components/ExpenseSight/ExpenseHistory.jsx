@@ -111,8 +111,8 @@ function ExpenseRow({ expense, userId, onUpdate, onDelete }) {
           {expense.category}
         </span>
       </div>
-      <p className={`text-sm font-mono ${expense.isRefund ? 'text-emerald-400' : 'text-stone-200'}`}>
-        {expense.isRefund ? '+' : ''}{formatCurrency(expense.amount, 'INR')}
+      <p className={`text-sm font-mono ${(expense.isRefund || expense.isIncome) ? 'text-emerald-400' : 'text-stone-200'}`}>
+        {(expense.isRefund || expense.isIncome) ? '+' : ''}{formatCurrency(expense.amount, 'INR')}
       </p>
       <div className="flex items-center gap-1">
         <button onClick={() => setEditing(true)} className="p-1.5 text-stone-500 hover:text-stone-300">
@@ -183,11 +183,13 @@ export default function ExpenseHistory({ expenses, userId, onRefresh, isRefreshi
   const totals = useMemo(() => {
     let total = 0;
     let refunds = 0;
+    let income = 0;
     for (const exp of filteredExpenses) {
       if (exp.isRefund) refunds += exp.amount;
+      else if (exp.isIncome) income += exp.amount;
       else total += exp.amount;
     }
-    return { total, refunds, net: total - refunds };
+    return { total, refunds, income, net: total - refunds };
   }, [filteredExpenses]);
 
   // Group by date
@@ -212,7 +214,7 @@ export default function ExpenseHistory({ expenses, userId, onRefresh, isRefreshi
     const csv = [
       'Date,Description,Amount,Category,Type',
       ...filteredExpenses.map(e => 
-        `${e.date},"${e.description}",${e.amount},${e.category},${e.isRefund ? 'Refund' : 'Expense'}`
+        `${e.date},"${e.description}",${e.amount},${e.category},${e.isRefund ? 'Refund' : e.isIncome ? 'Income' : 'Expense'}`
       )
     ].join('\n');
     

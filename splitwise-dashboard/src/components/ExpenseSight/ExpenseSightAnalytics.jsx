@@ -18,7 +18,8 @@ function CategoryBreakdown({ expenses }) {
   const data = useMemo(() => {
     const categories = {};
     for (const exp of expenses) {
-      if (exp.isRefund) continue;
+      // Exclude refunds and income from category breakdown
+      if (exp.isRefund || exp.isIncome) continue;
       const cat = exp.category || 'Other';
       categories[cat] = (categories[cat] || 0) + exp.amount;
     }
@@ -108,9 +109,9 @@ function MonthlyTrend({ expenses }) {
       months[key] = { month: key, label: format(date, 'MMM'), amount: 0 };
     }
     
-    // Aggregate expenses
+    // Aggregate expenses (exclude refunds and income)
     for (const exp of expenses) {
-      if (exp.isRefund) continue;
+      if (exp.isRefund || exp.isIncome) continue;
       const month = exp.date.substring(0, 7);
       if (months[month]) {
         months[month].amount += exp.amount;
@@ -246,7 +247,8 @@ function StatsCards({ expenses }) {
     let totalRefunds = 0;
     
     for (const exp of expenses) {
-      if (exp.isRefund) {
+      // Exclude refunds and income from expense totals
+      if (exp.isRefund || exp.isIncome) {
         totalRefunds += exp.amount;
         continue;
       }
@@ -318,7 +320,8 @@ function StatsCards({ expenses }) {
 function TopExpenses({ expenses }) {
   const top = useMemo(() => {
     return expenses
-      .filter(e => !e.isRefund)
+      // Exclude refunds and income from top expenses
+      .filter(e => !e.isRefund && !e.isIncome)
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
   }, [expenses]);

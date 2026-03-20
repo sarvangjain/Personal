@@ -336,7 +336,8 @@ export default function ESInsights({ expenses }) {
   const filteredExpenses = useMemo(() => {
     const now = new Date();
     return expenses.filter(exp => {
-      if (exp.cancelled || exp.isRefund) return false;
+      // Exclude cancelled, refunds, and income from expense analysis
+      if (exp.cancelled || exp.isRefund || exp.isIncome) return false;
       const expDate = parseISO(exp.date);
       switch (timeFilter) {
         case 'month':
@@ -366,7 +367,8 @@ export default function ESInsights({ expenses }) {
       const end = endOfMonth(month);
       
       const monthExpenses = expenses.filter(e => {
-        if (e.cancelled || e.isRefund) return false;
+        // Exclude cancelled, refunds, and income
+        if (e.cancelled || e.isRefund || e.isIncome) return false;
         const expDate = parseISO(e.date);
         return isWithinInterval(expDate, { start, end });
       });
@@ -416,7 +418,7 @@ export default function ESInsights({ expenses }) {
 
   // Detect recurring expenses (subscriptions)
   const recurringExpenses = useMemo(() => {
-    const validExpenses = expenses.filter(e => !e.cancelled && !e.isRefund);
+    const validExpenses = expenses.filter(e => !e.cancelled && !e.isRefund && !e.isIncome);
     if (validExpenses.length < 5) return [];
     
     // Group expenses by normalized description

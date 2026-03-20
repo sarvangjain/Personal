@@ -154,11 +154,11 @@ function ExpenseRow({ expense, onUpdate, onDelete }) {
         <p className={`text-sm font-mono font-medium ${
           expense.cancelled 
             ? 'text-stone-500 line-through' 
-            : expense.isRefund 
+            : (expense.isRefund || expense.isIncome)
               ? 'text-emerald-400' 
               : 'text-stone-200'
         }`}>
-          {expense.isRefund && !expense.cancelled ? '+' : ''}{formatCurrency(expense.amount, 'INR')}
+          {(expense.isRefund || expense.isIncome) && !expense.cancelled ? '+' : ''}{formatCurrency(expense.amount, 'INR')}
         </p>
       </div>
       
@@ -209,11 +209,11 @@ export default function ExpensePreview({ parseResult, onBack, onSave }) {
     for (const exp of expenses) {
       if (exp.cancelled) {
         cancelled++;
-        continue; // Don't count cancelled expenses in totals
+        continue;
       }
       if (exp.isPending) {
         pending++;
-      } else if (exp.isRefund) {
+      } else if (exp.isRefund || exp.isIncome) {
         refunds += exp.amount;
       } else {
         total += exp.amount;

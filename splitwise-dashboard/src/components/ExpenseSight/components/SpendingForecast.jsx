@@ -18,10 +18,10 @@ export default function SpendingForecast({ expenses, budget }) {
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
 
-    // Current month spending
+    // Current month spending (exclude refunds and income)
     let currentSpent = 0;
     for (const exp of expenses) {
-      if (exp.cancelled || exp.isRefund) continue;
+      if (exp.cancelled || exp.isRefund || exp.isIncome) continue;
       const d = parseISO(exp.date);
       if (isWithinInterval(d, { start: monthStart, end: monthEnd })) {
         currentSpent += exp.amount;
@@ -36,7 +36,7 @@ export default function SpendingForecast({ expenses, budget }) {
       const e = endOfMonth(m);
       let total = 0;
       for (const exp of expenses) {
-        if (exp.cancelled || exp.isRefund) continue;
+        if (exp.cancelled || exp.isRefund || exp.isIncome) continue;
         const d = parseISO(exp.date);
         if (isWithinInterval(d, { start: s, end: e })) {
           total += exp.amount;
@@ -67,10 +67,10 @@ export default function SpendingForecast({ expenses, budget }) {
       const dateStr = format(new Date(now.getFullYear(), now.getMonth(), day), 'yyyy-MM-dd');
       
       if (day <= dayOfMonth) {
-        // Actual data
+        // Actual data (exclude refunds and income)
         let dayTotal = 0;
         for (const exp of expenses) {
-          if (exp.cancelled || exp.isRefund) continue;
+          if (exp.cancelled || exp.isRefund || exp.isIncome) continue;
           if (exp.date === dateStr) dayTotal += exp.amount;
         }
         cumulative += dayTotal;

@@ -205,7 +205,8 @@ export default function ESCategoryDetail({ expenses, onClose }) {
   const filteredExpenses = useMemo(() => {
     const now = new Date();
     return expenses.filter(exp => {
-      if (exp.cancelled || exp.isRefund) return false;
+      // Exclude cancelled, refunds, and income
+      if (exp.cancelled || exp.isRefund || exp.isIncome) return false;
       const expDate = parseISO(exp.date);
       switch (timeFilter) {
         case 'month':

@@ -61,9 +61,9 @@ function RecentExpenseItem({ expense }) {
         </p>
       </div>
       <p className={`text-sm font-mono font-medium ${
-        expense.isRefund ? 'text-emerald-400' : 'text-stone-200'
+        (expense.isRefund || expense.isIncome) ? 'text-emerald-400' : 'text-stone-200'
       }`}>
-        {expense.isRefund ? '+' : ''}{formatCurrency(expense.amount, 'INR')}
+        {(expense.isRefund || expense.isIncome) ? '+' : ''}{formatCurrency(expense.amount, 'INR')}
       </p>
     </div>
   );
@@ -156,7 +156,8 @@ export default function ESHome({ expenses, userId, onRefresh, onAddExpense, onNa
       
       const expDate = parseISO(exp.date);
       
-      if (exp.isRefund) {
+      // Exclude refunds and income from expense totals
+      if (exp.isRefund || exp.isIncome) {
         refunds += exp.amount;
       } else {
         totalSpent += exp.amount;
@@ -230,7 +231,8 @@ export default function ESHome({ expenses, userId, onRefresh, onAddExpense, onNa
       const dateStr = format(day, 'yyyy-MM-dd');
       let total = 0;
       for (const exp of expenses) {
-        if (exp.cancelled || exp.isRefund) continue;
+        // Exclude cancelled, refunds, and income
+        if (exp.cancelled || exp.isRefund || exp.isIncome) continue;
         if (exp.date === dateStr) total += exp.amount;
       }
       data.push(total);
@@ -242,7 +244,8 @@ export default function ESHome({ expenses, userId, onRefresh, onAddExpense, onNa
   const biggestToday = useMemo(() => {
     let biggest = null;
     for (const exp of expenses) {
-      if (exp.cancelled || exp.isRefund) continue;
+      // Exclude cancelled, refunds, and income
+      if (exp.cancelled || exp.isRefund || exp.isIncome) continue;
       if (!isToday(parseISO(exp.date))) continue;
       if (!biggest || exp.amount > biggest.amount) biggest = exp;
     }
@@ -253,7 +256,8 @@ export default function ESHome({ expenses, userId, onRefresh, onAddExpense, onNa
   const todayTotal = useMemo(() => {
     let total = 0;
     for (const exp of expenses) {
-      if (exp.cancelled || exp.isRefund) continue;
+      // Exclude cancelled, refunds, and income
+      if (exp.cancelled || exp.isRefund || exp.isIncome) continue;
       if (isToday(parseISO(exp.date))) total += exp.amount;
     }
     return total;

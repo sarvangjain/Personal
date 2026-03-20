@@ -45,7 +45,8 @@ function YearInReviewCard({ expenses, year }) {
     const end = endOfYear(new Date(year, 0, 1));
     
     const yearExpenses = expenses.filter(e => {
-      if (e.cancelled || e.isRefund) return false;
+      // Exclude cancelled, refunds, and income
+      if (e.cancelled || e.isRefund || e.isIncome) return false;
       const expDate = parseISO(e.date);
       return isWithinInterval(expDate, { start, end });
     });
@@ -165,7 +166,8 @@ function LifestyleScoreCard({ expenses }) {
     let grandTotal = 0;
     
     for (const exp of expenses) {
-      if (exp.cancelled || exp.isRefund) continue;
+      // Exclude cancelled, refunds, and income
+      if (exp.cancelled || exp.isRefund || exp.isIncome) continue;
       const dimension = CATEGORY_DIMENSIONS[exp.category] || 'other';
       if (dimension !== 'other') {
         totals[dimension] += exp.amount;
@@ -267,7 +269,7 @@ function SpendingStreaksCard({ expenses }) {
     
     const expenseDates = new Set(
       expenses
-        .filter(e => !e.cancelled && !e.isRefund)
+        .filter(e => !e.cancelled && !e.isRefund && !e.isIncome)
         .map(e => e.date)
     );
     
@@ -347,7 +349,8 @@ function SpendingPersonalityCard({ expenses }) {
   const personality = useMemo(() => {
     const categories = {};
     for (const exp of expenses) {
-      if (exp.cancelled || exp.isRefund) continue;
+      // Exclude cancelled, refunds, and income
+      if (exp.cancelled || exp.isRefund || exp.isIncome) continue;
       categories[exp.category] = (categories[exp.category] || 0) + exp.amount;
     }
     

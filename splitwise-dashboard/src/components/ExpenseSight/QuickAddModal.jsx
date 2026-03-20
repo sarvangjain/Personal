@@ -121,7 +121,9 @@ function ExpenseCard({ expense, onUpdate, onDelete, onKeepAnyway, availableTags,
           </div>
         </div>
         <div className="text-right">
-          <p className={`text-sm font-mono font-medium ${isDimmed ? 'text-stone-500' : 'text-stone-200'}`}>{formatCurrency(expense.amount, 'INR')}</p>
+          <p className={`text-sm font-mono font-medium ${isDimmed ? 'text-stone-500' : (expense.isRefund || expense.isIncome) ? 'text-emerald-400' : 'text-stone-200'}`}>
+            {(expense.isRefund || expense.isIncome) ? '+' : ''}{formatCurrency(expense.amount, 'INR')}
+          </p>
           {expense.isEmi && <p className="text-[9px] text-stone-600">of {formatCurrency(expense.emiTotal, 'INR')}</p>}
         </div>
         <div className="flex items-center gap-1">
@@ -165,7 +167,8 @@ function AutocompleteDropdown({ suggestions, selectedIndex, onSelect, show }) {
 }
 
 function SuccessSummary({ expenses, duplicatesExcluded, onAddMore, onClose }) {
-  const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+  // Calculate totals separately for expenses and income
+  const total = expenses.reduce((sum, e) => sum + ((e.isRefund || e.isIncome) ? 0 : e.amount), 0);
   const categories = [...new Set(expenses.map(e => e.category))];
   const dates = [...new Set(expenses.map(e => e.date))].sort();
   const emiCount = expenses.filter(e => e.isEmi).length;
@@ -196,7 +199,9 @@ function SuccessSummary({ expenses, duplicatesExcluded, onAddMore, onClose }) {
               <div key={exp.id} className="flex justify-between text-xs">
                 <span className="text-stone-400 truncate flex-1">{exp.description}</span>
                 <span className="text-stone-600 mx-2">{format(parseISO(exp.date), 'MMM d')}</span>
-                <span className="text-stone-300 font-mono">{formatCurrency(exp.amount, 'INR')}</span>
+                <span className={`font-mono ${(exp.isRefund || exp.isIncome) ? 'text-emerald-400' : 'text-stone-300'}`}>
+                  {(exp.isRefund || exp.isIncome) ? '+' : ''}{formatCurrency(exp.amount, 'INR')}
+                </span>
               </div>
             ))}
           </div>
@@ -388,7 +393,8 @@ export default function QuickAddModal({ isOpen, onClose, userId, onSaved }) {
   };
 
   const expensesToSave = getExpensesToSave(parsedExpenses);
-  const total = expensesToSave.reduce((sum, exp) => sum + exp.amount, 0);
+  // Exclude income and refunds from total (they show as positive/green)
+  const total = expensesToSave.reduce((sum, exp) => sum + ((exp.isRefund || exp.isIncome) ? 0 : exp.amount), 0);
   const duplicateCount = getDuplicateCount(parsedExpenses);
   const lineCount = inputText.split('\n').filter(l => l.trim()).length;
   const emiCount = parsedExpenses.filter(e => e.isEmi).length;

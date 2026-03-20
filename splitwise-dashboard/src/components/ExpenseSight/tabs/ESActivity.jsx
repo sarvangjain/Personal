@@ -158,9 +158,9 @@ function ExpenseItem({ expense, onEdit, onDelete, isEditing, editData, setEditDa
       <div className="flex items-center gap-2">
         <div className="text-right">
           <p className={`text-sm font-mono font-medium ${
-            expense.isRefund ? 'text-emerald-400' : 'text-stone-200'
+            (expense.isRefund || expense.isIncome) ? 'text-emerald-400' : 'text-stone-200'
           }`}>
-            {expense.isRefund ? '+' : ''}{formatCurrency(expense.amount, 'INR')}
+            {(expense.isRefund || expense.isIncome) ? '+' : ''}{formatCurrency(expense.amount, 'INR')}
           </p>
         </div>
         {/* Edit/Delete buttons - always visible on mobile, hover on desktop */}
@@ -350,7 +350,8 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
     
     for (const exp of filteredExpenses) {
       const date = parseISO(exp.date);
-      const amount = exp.isRefund ? 0 : exp.amount;
+      // Exclude refunds and income from expense totals
+      const amount = (exp.isRefund || exp.isIncome) ? 0 : exp.amount;
       
       if (isToday(date)) {
         groups.today.expenses.push(exp);
@@ -374,7 +375,7 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
   }, [filteredExpenses]);
 
   // Total for filtered expenses
-  const filteredTotal = filteredExpenses.reduce((sum, e) => sum + (e.isRefund ? 0 : e.amount), 0);
+  const filteredTotal = filteredExpenses.reduce((sum, e) => sum + ((e.isRefund || e.isIncome) ? 0 : e.amount), 0);
 
   return (
     <div className="space-y-4">

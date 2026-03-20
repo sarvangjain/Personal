@@ -71,7 +71,8 @@ export default function CategoryQuickCards({
     let grandTotal = 0;
     
     for (const exp of expenses) {
-      if (exp.cancelled || exp.isRefund) continue;
+      // Exclude cancelled, refunds, and income
+      if (exp.cancelled || exp.isRefund || exp.isIncome) continue;
       
       const cat = exp.category || 'Other';
       if (!data[cat]) {
@@ -126,7 +127,7 @@ export default function CategoryQuickCards({
             {formatCurrency(categoryData.grandTotal, 'INR')}
           </p>
           <p className="text-[10px] text-stone-500 mt-0.5">
-            {expenses.filter(e => !e.cancelled && !e.isRefund).length} items
+            {expenses.filter(e => !e.cancelled && !e.isRefund && !e.isIncome).length} items
           </p>
         </button>
 

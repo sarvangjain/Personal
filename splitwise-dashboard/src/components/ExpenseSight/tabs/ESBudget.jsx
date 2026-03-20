@@ -563,7 +563,8 @@ function AllowanceCards({ remaining, daysLeft, expenses, month }) {
   const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
   
   const thisWeekSpent = expenses.filter(e => {
-    if (e.cancelled || e.isRefund) return false;
+    // Exclude cancelled, refunds, and income from spending calculations
+    if (e.cancelled || e.isRefund || e.isIncome) return false;
     const expDate = parseISO(e.date);
     return isWithinInterval(expDate, { start: weekStart, end: weekEnd });
   }).reduce((sum, e) => sum + e.amount, 0);
@@ -620,7 +621,7 @@ function SpendingPaceChart({ expenses, budget, month }) {
     return days.map((day, i) => {
       const dateStr = format(day, 'yyyy-MM-dd');
       const dayExpenses = expenses.filter(e => 
-        e.date === dateStr && !e.isRefund && !e.cancelled
+        e.date === dateStr && !e.isRefund && !e.isIncome && !e.cancelled
       );
       const dayTotal = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
       cumulative += dayTotal;
@@ -1124,7 +1125,8 @@ export default function ESBudget({ expenses, userId }) {
     const end = endOfMonth(month);
     
     return expenses.filter(e => {
-      if (e.cancelled || e.isRefund) return false;
+      // Exclude cancelled, refunds, and income from budget tracking
+      if (e.cancelled || e.isRefund || e.isIncome) return false;
       const expDate = parseISO(e.date);
       return isWithinInterval(expDate, { start, end });
     });

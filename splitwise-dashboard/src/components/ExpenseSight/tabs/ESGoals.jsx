@@ -34,7 +34,8 @@ export default function ESGoals({ userId, expenses = [] }) {
     const spending = {};
     
     for (const exp of expenses) {
-      if (exp.isRefund || exp.cancelled || exp.isPending) continue;
+      // Exclude refunds, income, cancelled, and pending
+      if (exp.isRefund || exp.isIncome || exp.cancelled || exp.isPending) continue;
       
       const expDate = parseISO(exp.date);
       if (!isWithinInterval(expDate, monthInterval)) continue;
