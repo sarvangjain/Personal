@@ -7,7 +7,8 @@ import {
   ShoppingCart, Car, Utensils, Zap, ShoppingBag,
   Tv, Heart, Plane, User, CreditCard, HelpCircle,
   Coffee, Home, Fuel, Train, Bus, Bike, Smartphone,
-  Gift, Scissors, Dumbbell, Music, Gamepad2, Film, Building2
+  Gift, Scissors, Dumbbell, Music, Gamepad2, Film, Building2,
+  Wallet, TrendingUp
 } from 'lucide-react';
 
 // ─── Needs vs Wants Classification ───────────────────────────────────────────
@@ -36,6 +37,16 @@ export const BUDGET_TYPES = {
     border: 'border-purple-500/30',
     gradient: 'from-purple-500/20 to-pink-500/20',
   },
+  income: {
+    label: 'Income',
+    description: 'Money received',
+    color: 'green',
+    icon: '💰',
+    text: 'text-green-400',
+    bg: 'bg-green-500/20',
+    border: 'border-green-500/30',
+    gradient: 'from-green-500/20 to-emerald-500/20',
+  },
 };
 
 // Map each expense category to needs or wants
@@ -55,6 +66,9 @@ export const CATEGORY_BUDGET_TYPE = {
   'Travel': 'wants',         // Vacations and trips
   'Personal': 'wants',       // Grooming, spa, salon
   'Other': 'wants',          // Generally discretionary
+  
+  // INCOME - Not an expense, tracked separately
+  'Income': 'income',        // Money received
 };
 
 /**
@@ -234,7 +248,21 @@ export const CATEGORIES = {
     bar: 'bg-teal-500',
     keywords: [
       'paid back', 'repaid', 'returned', 'settled', 'transfer', 'refund',
-      'refunded', 'cashback', 'cash'
+      'refunded', 'cashback'
+    ],
+  },
+  'Income': {
+    icon: TrendingUp,
+    color: 'green',
+    gradient: 'from-green-500/20 to-emerald-500/20',
+    text: 'text-green-400',
+    bg: 'bg-green-500/20',
+    border: 'border-green-500/30',
+    bar: 'bg-green-500',
+    keywords: [
+      'salary', 'income', 'received', 'got', 'bonus', 'reimbursement',
+      'freelance', 'payment received', 'credited', 'paid by', 'cash from',
+      'money from'
     ],
   },
   'Other': {

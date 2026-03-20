@@ -64,9 +64,114 @@ const CATEGORY_KEYWORDS = {
   ],
   'Payments': [
     'paid back', 'repaid', 'returned', 'settled', 'transfer', 'refund',
-    'refunded', 'cashback', 'cash'
+    'refunded', 'cashback'
+  ],
+  'Income': [
+    'salary', 'income', 'received', 'got', 'bonus', 'reimbursement',
+    'freelance', 'payment received', 'credited'
   ],
 };
+
+// ─── Income Detection ─────────────────────────────────────────────────────────
+
+/**
+ * Patterns that indicate incoming money (income, not refund)
+ * "Paid by sam" → income (someone paid you)
+ * "Cash from dad" → income
+ * "Received from company" → income
+ * "Got salary" → income
+ */
+const INCOME_PATTERNS = [
+  /\bpaid\s+by\b/i,           // "Paid by sam", "Paid by pluxee"
+  /\bcash\s+from\b/i,         // "Cash from dad"
+  /\bmoney\s+from\b/i,        // "Money from mom"
+  /\breceived\s+from\b/i,     // "Received from company"
+  /\bgot\s+from\b/i,          // "Got from friend"
+  /\bfrom\s+\w+\s*$/i,        // Ends with "from <name>"
+  /\breimbursement\b/i,       // "Reimbursement"
+  /\bsalary\b/i,              // "Salary"
+  /\bbonus\b/i,               // "Bonus"
+  /\bfreelance\b/i,           // "Freelance payment"
+  /\bcredited\b/i,            // "Amount credited"
+  /\bincome\b/i,              // "Side income"
+];
+
+/**
+ * Patterns that indicate refunds (returned purchases)
+ * "Refund from amazon" → refund
+ * "Cashback on card" → refund
+ * "Returned shoes" → refund
+ */
+const REFUND_PATTERNS = [
+  /\brefund\b/i,              // "Refund from amazon"
+  /\brefunded\b/i,            // "Refunded by swiggy"
+  /\bcashback\b/i,            // "Cashback on cred"
+  /\breturned\b/i,            // "Returned item"
+  /\bcancelled\b/i,           // "Order cancelled"
+  /\bpaid\s+back\b/i,         // "Friend paid back"
+];
+
+/**
+ * Check if a line represents income (money received) vs expense or refund
+ * @param {string} text - The expense description
+ * @param {boolean} isNegativeAmount - Whether the amount was negative
+ * @returns {{ isIncome: boolean, isRefund: boolean, sourceName: string | null }}
+ */
+function detectIncomeOrRefund(text, isNegativeAmount) {
+  const lower = text.toLowerCase();
+  
+  // If amount is not negative, it's a regular expense
+  if (!isNegativeAmount) {
+    return { isIncome: false, isRefund: false, sourceName: null };
+  }
+  
+  // Check for refund patterns first (more specific)
+  for (const pattern of REFUND_PATTERNS) {
+    if (pattern.test(lower)) {
+      return { isIncome: false, isRefund: true, sourceName: null };
+    }
+  }
+  
+  // Check for income patterns
+  for (const pattern of INCOME_PATTERNS) {
+    if (pattern.test(lower)) {
+      // Try to extract the source/person name
+      const sourceName = extractIncomSource(text);
+      return { isIncome: true, isRefund: false, sourceName };
+    }
+  }
+  
+  // Default: negative amount without clear pattern = treat as income
+  // (more common case than refund when using negative)
+  const sourceName = extractIncomSource(text);
+  return { isIncome: true, isRefund: false, sourceName };
+}
+
+/**
+ * Extract the source name from income description
+ * "Paid by sam" → "sam"
+ * "Cash from dad" → "dad"
+ * "Received from company" → "company"
+ */
+function extractIncomSource(text) {
+  const patterns = [
+    /\bpaid\s+by\s+(\w+)/i,
+    /\bcash\s+from\s+(\w+)/i,
+    /\bmoney\s+from\s+(\w+)/i,
+    /\breceived\s+from\s+(\w+)/i,
+    /\bgot\s+from\s+(\w+)/i,
+    /\bfrom\s+(\w+)\s*$/i,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      return match[1].toLowerCase();
+    }
+  }
+  
+  return null;
+}
 
 // ─── Date Parsing ────────────────────────────────────────────────────────────
 
@@ -288,31 +393,26 @@ export function parseAmount(text) {
   const trimmed = text.trim().toLowerCase();
   
   if (trimmed.includes('tbd') || trimmed.includes('pending') || trimmed.includes('to be paid')) {
-    return { amount: null, isPending: true, isRefund: false };
+    return { amount: null, isPending: true, isRefund: false, isNegative: false };
   }
   
   if (trimmed === 'no expense' || trimmed === 'nothing' || trimmed === 'no expenses') {
-    return { amount: null, isPending: false, isRefund: false, skip: true };
+    return { amount: null, isPending: false, isRefund: false, skip: true, isNegative: false };
   }
   
   const refundMatch = text.match(/(\d+)\s*(?:::|->|refund|returned)\s*.*?-(\d+)/i);
   if (refundMatch && refundMatch[1] === refundMatch[2]) {
-    return { amount: 0, isPending: false, isRefund: true, cancelled: true };
+    return { amount: 0, isPending: false, isRefund: true, cancelled: true, isNegative: false };
   }
-  
-  const isRefundLine = trimmed.includes('refund') || 
-                       trimmed.includes('paid back') ||
-                       trimmed.includes('returned') ||
-                       trimmed.includes('cashback');
   
   const amountMatch = text.match(/(-?[\d,]+(?:\.\d+)?(?:\s*[+\-]\s*[\d,]+(?:\.\d+)?)*)\s*$/);
   
   if (!amountMatch) {
-    return { amount: null, isPending: false, isRefund: false };
+    return { amount: null, isPending: false, isRefund: false, isNegative: false };
   }
   
   const amountStr = amountMatch[1];
-  const isRefund = amountStr.startsWith('-') || isRefundLine;
+  const isNegative = amountStr.startsWith('-');
   
   try {
     const sanitized = amountStr.replace(/,/g, '').replace(/[^0-9+\-.\s]/g, '');
@@ -321,10 +421,11 @@ export function parseAmount(text) {
     return {
       amount: Math.abs(evaluated),
       isPending: false,
-      isRefund: isRefund || evaluated < 0,
+      isRefund: false, // Will be determined by detectIncomeOrRefund
+      isNegative: evaluated < 0 || isNegative,
     };
   } catch {
-    return { amount: null, isPending: false, isRefund: false };
+    return { amount: null, isPending: false, isRefund: false, isNegative: false };
   }
 }
 
@@ -378,19 +479,45 @@ export function parseExpenseLine(line, date) {
   const { emiMonths, cleanedLine: afterEmi } = extractEMI(afterTags);
   
   // 3. Parse amount from cleaned line
-  const { amount, isPending, isRefund, skip, cancelled } = parseAmount(afterEmi);
+  const { amount, isPending, skip, cancelled, isNegative } = parseAmount(afterEmi);
   
   if (skip) return { skip: true };
   
   const description = parseDescription(afterEmi);
-  const category = inferCategory(description);
+  
+  // 4. Detect if this is income or refund (for negative amounts)
+  const { isIncome, isRefund, sourceName } = detectIncomeOrRefund(description, isNegative);
+  
+  // 5. Determine category - use "Income" for income entries
+  let category;
+  if (isIncome) {
+    category = 'Income';
+  } else {
+    category = inferCategory(description);
+  }
   
   if (amount === null && !isPending) return null;
   
   const baseDate = date || new Date();
   const baseDateStr = format(baseDate, 'yyyy-MM-dd');
   
-  // 4. If EMI, split into multiple expenses
+  // 6. Build tags array - add source name for income and auto-tag
+  const finalTags = [...tags];
+  if (isIncome) {
+    // Add "income" tag
+    if (!finalTags.includes('income')) {
+      finalTags.push('income');
+    }
+    // Add source person as tag if detected
+    if (sourceName && !finalTags.includes(sourceName)) {
+      finalTags.push(sourceName);
+    }
+  }
+  if (isRefund && !finalTags.includes('refund')) {
+    finalTags.push('refund');
+  }
+  
+  // 7. If EMI, split into multiple expenses
   if (emiMonths && amount > 0) {
     const emiAmount = Math.round(amount / emiMonths);
     const expenses = [];
@@ -405,10 +532,11 @@ export function parseExpenseLine(line, date) {
         category,
         isPending: false,
         isRefund: false,
+        isIncome: false,
         cancelled: false,
         rawText: trimmed,
         notes: `EMI: ₹${amount} ÷ ${emiMonths} months`,
-        tags: tags.length > 0 ? tags : [],
+        tags: finalTags,
         isEmi: true,
         emiTotal: amount,
         emiMonth: i + 1,
@@ -419,7 +547,7 @@ export function parseExpenseLine(line, date) {
     return expenses; // Return array
   }
   
-  // 5. Normal single expense
+  // 8. Normal single expense/income
   return {
     id: generateId(),
     date: baseDateStr,
@@ -428,10 +556,11 @@ export function parseExpenseLine(line, date) {
     category,
     isPending,
     isRefund,
+    isIncome,
     cancelled: cancelled || false,
     rawText: trimmed,
-    notes: null,
-    tags: tags.length > 0 ? tags : [],
+    notes: isIncome && sourceName ? `Received from ${sourceName}` : null,
+    tags: finalTags,
   };
 }
 
@@ -507,7 +636,7 @@ export function toSplitwiseFormat(expense, userId) {
       name: expense.category,
     },
     group_id: 0,
-    payment: expense.isRefund,
+    payment: expense.isRefund || expense.isIncome,
     deleted_at: expense.cancelled ? new Date().toISOString() : null,
     users: [
       {
@@ -520,6 +649,7 @@ export function toSplitwiseFormat(expense, userId) {
     _expenseSight: true,
     _isPending: expense.isPending,
     _isRefund: expense.isRefund,
+    _isIncome: expense.isIncome || false,
     _cancelled: expense.cancelled || false,
     _rawText: expense.rawText,
   };

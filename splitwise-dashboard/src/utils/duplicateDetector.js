@@ -174,13 +174,18 @@ export function checkDuplicate(expense1, expense2) {
     };
   }
   
-  // Potential duplicate: same date + same amount (even if description differs slightly)
-  if (amountMatch && expense1.amount > 0) {
-    // Only flag if amounts are exact and non-trivial
-    if (expense1.amount === expense2.amount && expense1.amount >= 50) {
+  // For same amount on same date, only flag as duplicate if descriptions have SOME similarity
+  // This prevents flagging completely unrelated expenses just because they happen to have the same amount
+  if (amountMatch && expense1.amount > 0 && expense1.amount === expense2.amount && expense1.amount >= 50) {
+    // Check if descriptions have at least some word overlap or partial similarity
+    const wordOverlap = calculateWordOverlap(expense1.description, expense2.description);
+    
+    // Only flag if there's at least 30% word overlap (weak similarity)
+    // This catches cases like "Grocery" vs "Grocery store" but not "Grocery" vs "Paid by sam pluxee"
+    if (wordOverlap >= 30) {
       return {
         isDuplicate: true,
-        confidence: 60,
+        confidence: 50 + Math.round(wordOverlap / 3), // Scale confidence based on similarity
         reason: 'Same amount on same date',
       };
     }
