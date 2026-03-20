@@ -1,0 +1,100 @@
+{
+  "name": "cursor-agent-visualizer",
+  "displayName": "Cursor Agent Visualizer",
+  "description": "Visualize active Cursor agents with pixel art characters",
+  "version": "0.1.0",
+  "publisher": "sarvang-jain",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sarvang-jain/cursor-agent-visualizer"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cursorAgents.showPanel",
+        "title": "Show Agent Visualizer",
+        "category": "Cursor Agents"
+      },
+      {
+        "command": "cursorAgents.focusTerminal",
+        "title": "Focus Agent Terminal",
+        "category": "Cursor Agents"
+      },
+      {
+        "command": "cursorAgents.stopAgent",
+        "title": "Stop Agent",
+        "category": "Cursor Agents"
+      },
+      {
+        "command": "cursorAgents.openLogs",
+        "title": "Open Agent Logs",
+        "category": "Cursor Agents"
+      },
+      {
+        "command": "cursorAgents.restartAgent",
+        "title": "Restart Agent",
+        "category": "Cursor Agents"
+      },
+      {
+        "command": "cursorAgents.debug",
+        "title": "Debug Info",
+        "category": "Cursor Agents"
+      }
+    ],
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "cursorAgentsPanel",
+          "title": "Cursor Agents",
+          "icon": "$(robot)"
+        }
+      ]
+    },
+    "views": {
+      "cursorAgentsPanel": [
+        {
+          "type": "webview",
+          "id": "cursorAgents.mainView",
+          "name": "Agent Visualizer"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "npm run compile:extension && npm run compile:webview",
+    "compile:extension": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
+    "compile:webview": "cd webview-ui && npm run build",
+    "watch": "concurrently \"npm run watch:extension\" \"npm run watch:webview\"",
+    "watch:extension": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
+    "watch:webview": "cd webview-ui && npm run dev",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^7.x",
+    "@typescript-eslint/parser": "^7.x",
+    "concurrently": "^8.x",
+    "esbuild": "^0.20.x",
+    "eslint": "^8.x",
+    "typescript": "^5.x",
+    "@vscode/vsce": "^2.x"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0"
+  }
+}

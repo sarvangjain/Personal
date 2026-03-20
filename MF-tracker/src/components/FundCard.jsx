@@ -1,4 +1,4 @@
-export default function FundCard({ fund, onRemove }) {
+export default function FundCard({ fund, onRemove, onViewDetails }) {
   const { schemeName, navData, isLoading, error } = fund;
 
   const formatChange = (value) => {
@@ -51,17 +51,25 @@ export default function FundCard({ fund, onRemove }) {
             <span className="text-xs text-gray-500">{navData.latestDate}</span>
           </div>
 
-          <div className="mt-3 flex gap-3">
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${getChangeColor(navData.weeklyChange)}`}>
-              <span>{getChangeIcon(navData.weeklyChange)}</span>
-              <span>{formatChange(navData.weeklyChange)}</span>
-              <span className="text-gray-500 ml-1">1W</span>
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex gap-3">
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${getChangeColor(navData.weeklyChange)}`}>
+                <span>{getChangeIcon(navData.weeklyChange)}</span>
+                <span>{formatChange(navData.weeklyChange)}</span>
+                <span className="text-gray-500 ml-1">1W</span>
+              </div>
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${getChangeColor(navData.monthlyChange)}`}>
+                <span>{getChangeIcon(navData.monthlyChange)}</span>
+                <span>{formatChange(navData.monthlyChange)}</span>
+                <span className="text-gray-500 ml-1">1M</span>
+              </div>
             </div>
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${getChangeColor(navData.monthlyChange)}`}>
-              <span>{getChangeIcon(navData.monthlyChange)}</span>
-              <span>{formatChange(navData.monthlyChange)}</span>
-              <span className="text-gray-500 ml-1">1M</span>
-            </div>
+            <button
+              onClick={onViewDetails}
+              className="text-blue-600 hover:text-blue-800 text-xs font-medium transition-colors"
+            >
+              View Chart
+            </button>
           </div>
         </>
       ) : null}

@@ -60,3 +60,32 @@ function findNAVNearDays(navHistory, daysAgo) {
   
   return null;
 }
+
+export function getChartData(navHistory, days) {
+  if (!navHistory || navHistory.length === 0) return [];
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const targetDate = new Date(today);
+  targetDate.setDate(targetDate.getDate() - days);
+  
+  const filteredData = [];
+  
+  for (const entry of navHistory) {
+    const [day, month, year] = entry.date.split('-');
+    const entryDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    
+    if (entryDate >= targetDate) {
+      filteredData.push({
+        date: `${day}/${month}`,
+        nav: parseFloat(entry.nav),
+        fullDate: entry.date,
+      });
+    } else {
+      break;
+    }
+  }
+  
+  return filteredData.reverse();
+}

@@ -1,0 +1,20 @@
+Placeholder for sprite assets.
+
+The extension uses procedural rendering by default and doesn't require sprite files.
+If you want to use pixel art sprites, add the following files:
+
+characters/
+  - char1.png (32x32 character sprite sheet)
+  - char2.png
+  - char3.png
+  
+office/
+  - desk.png (32x32 desk sprite)
+  - floor.png (32x32 floor tile)
+  
+ui/
+  - icons.png (status icons sprite sheet)
+
+Recommended free assets:
+- Metro City Character Pack: https://jik-a-4.itch.io/metrocity-free-topdown-character-pack
+- Kenney Assets: https://www.kenney.nl/

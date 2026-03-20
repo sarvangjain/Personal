@@ -1,6 +1,6 @@
 import FundCard from './FundCard';
 
-export default function FundList({ funds, onRemove, onRefresh, isRefreshing }) {
+export default function FundList({ funds, onRemove, onRefresh, isRefreshing, onViewDetails }) {
   if (funds.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
@@ -57,6 +57,7 @@ export default function FundList({ funds, onRemove, onRefresh, isRefreshing }) {
             key={fund.schemeCode}
             fund={fund}
             onRemove={() => onRemove(fund.schemeCode)}
+            onViewDetails={() => onViewDetails(fund)}
           />
         ))}
       </div>
