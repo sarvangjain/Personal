@@ -2004,3 +2004,146 @@ export async function getExpensesForAnalytics(userId) {
     .filter(e => !e.isPending)
     .map(e => toSplitwiseFormat(e, userId));
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA MIGRATION - For account linking
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Migrate all ExpenseSight data from one user ID to another.
+ * Used when linking a Splitwise account to a Firebase Auth account.
+ * This copies data rather than moving it, so the original data remains intact.
+ * 
+ * @param {string} fromUserId - Source user ID (e.g., Splitwise user ID)
+ * @param {string} toUserId - Destination user ID (e.g., Firebase Auth UID)
+ * @returns {Promise<{success: boolean, migratedCount: number, error?: string}>}
+ */
+export async function migrateExpenseSightData(fromUserId, toUserId) {
+  if (!isFirebaseConfigured() || !db) {
+    return { success: false, migratedCount: 0, error: 'Firebase not configured' };
+  }
+
+  if (!fromUserId || !toUserId || fromUserId === toUserId) {
+    return { success: false, migratedCount: 0, error: 'Invalid user IDs' };
+  }
+
+  const sourceId = normalizeUserId(fromUserId);
+  const destId = normalizeUserId(toUserId);
+  
+  let totalMigrated = 0;
+
+  try {
+    // Collections to migrate
+    const collectionsToMigrate = [
+      { name: 'expenses', path: 'expenses' },
+      { name: 'tags', path: 'tags' },
+      { name: 'goals', path: 'goals' },
+      { name: 'bills', path: 'bills' },
+      { name: 'income', path: 'income' },
+      { name: 'investments', path: 'investments' },
+    ];
+
+    // Migrate each collection
+    for (const col of collectionsToMigrate) {
+      const migrated = await migrateCollection(sourceId, destId, col.path);
+      totalMigrated += migrated;
+    }
+
+    // Migrate settings documents
+    const settingsDocs = ['budget', 'notifications'];
+    for (const settingName of settingsDocs) {
+      const sourceRef = doc(db, COLLECTION_NAME, sourceId, 'settings', settingName);
+      const sourceDoc = await getDoc(sourceRef);
+      
+      if (sourceDoc.exists()) {
+        const destRef = doc(db, COLLECTION_NAME, destId, 'settings', settingName);
+        await setDoc(destRef, sourceDoc.data(), { merge: true });
+        totalMigrated++;
+      }
+    }
+
+    // Clear caches for both users to ensure fresh data
+    clearCache(sourceId);
+    clearCache(destId);
+
+    console.log(`Migration complete: ${totalMigrated} items migrated from ${sourceId} to ${destId}`);
+    return { success: true, migratedCount: totalMigrated };
+
+  } catch (error) {
+    console.error('Migration error:', error);
+    return { success: false, migratedCount: totalMigrated, error: error.message };
+  }
+}
+
+/**
+ * Helper function to migrate a single collection
+ */
+async function migrateCollection(sourceUserId, destUserId, collectionPath) {
+  const sourceCollRef = collection(db, COLLECTION_NAME, sourceUserId, collectionPath);
+  const destCollRef = collection(db, COLLECTION_NAME, destUserId, collectionPath);
+  
+  try {
+    const snapshot = await getDocs(sourceCollRef);
+    
+    if (snapshot.empty) {
+      return 0;
+    }
+
+    // Use batch for efficiency
+    const BATCH_SIZE = 450;
+    let migrated = 0;
+    let batch = writeBatch(db);
+    let batchCount = 0;
+
+    for (const docSnapshot of snapshot.docs) {
+      const destDocRef = doc(destCollRef, docSnapshot.id);
+      batch.set(destDocRef, docSnapshot.data(), { merge: true });
+      batchCount++;
+      migrated++;
+
+      // Commit batch if we hit the limit
+      if (batchCount >= BATCH_SIZE) {
+        await batch.commit();
+        batch = writeBatch(db);
+        batchCount = 0;
+      }
+    }
+
+    // Commit remaining items
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+
+    console.log(`Migrated ${migrated} documents from ${collectionPath}`);
+    return migrated;
+
+  } catch (error) {
+    console.error(`Error migrating ${collectionPath}:`, error);
+    return 0;
+  }
+}
+
+/**
+ * Check if a user has any ExpenseSight data
+ * Used to determine if account linking prompt should be shown
+ * 
+ * @param {string} userId - User ID to check
+ * @returns {Promise<boolean>}
+ */
+export async function hasExpenseSightData(userId) {
+  if (!isFirebaseConfigured() || !db || !userId) {
+    return false;
+  }
+
+  try {
+    const userDocRef = doc(db, COLLECTION_NAME, normalizeUserId(userId));
+    const expensesRef = collection(userDocRef, 'expenses');
+    const q = query(expensesRef, limit(1));
+    const snapshot = await getDocs(q);
+    
+    return !snapshot.empty;
+  } catch (error) {
+    console.debug('Error checking for ExpenseSight data:', error.message);
+    return false;
+  }
+}

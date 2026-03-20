@@ -239,20 +239,24 @@ function SlideMenu({ isOpen, onClose, onBackToSplitSight, activeTab, onNavigate,
             </div>
           </div>
           
-          {/* Back to SplitSight */}
-          <div className="h-px bg-stone-800/50 my-3" />
-          <button
-            onClick={() => { onBackToSplitSight(); onClose(); }}
-            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors"
-          >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-              <ArrowLeft size={16} className="text-white" />
-            </div>
-            <span className="text-sm font-medium text-emerald-300 flex-1 text-left">Back to SplitSight</span>
-            <span className="px-1.5 py-0.5 text-[9px] bg-emerald-500/20 text-emerald-400 rounded-full font-medium">
-              App
-            </span>
-          </button>
+          {/* Back to SplitSight - hidden in standalone mode */}
+          {onBackToSplitSight && (
+            <>
+              <div className="h-px bg-stone-800/50 my-3" />
+              <button
+                onClick={() => { onBackToSplitSight(); onClose(); }}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                  <ArrowLeft size={16} className="text-white" />
+                </div>
+                <span className="text-sm font-medium text-emerald-300 flex-1 text-left">Back to SplitSight</span>
+                <span className="px-1.5 py-0.5 text-[9px] bg-emerald-500/20 text-emerald-400 rounded-full font-medium">
+                  App
+                </span>
+              </button>
+            </>
+          )}
         </div>
         
         {/* Footer */}
@@ -328,17 +332,19 @@ export default function ESHeader({ onClose, onAddExpense, title = 'ExpenseSight'
               <Menu size={22} />
             </button>
             
-            {/* Quick App Switch Button - icon only on small screens */}
-            <button
-              onClick={onClose}
-              className="flex items-center gap-1.5 p-2 sm:px-2 sm:py-1.5 rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 hover:from-emerald-500/20 hover:to-teal-500/20 active:from-emerald-500/30 active:to-teal-500/30 transition-all group touch-manipulation"
-              title="Switch to SplitSight"
-            >
-              <SplitSightMiniLogo size={18} />
-              <span className="hidden sm:inline text-[10px] font-medium text-emerald-400 group-hover:text-emerald-300">
-                SplitSight
-              </span>
-            </button>
+            {/* Quick App Switch Button - icon only on small screens, hidden in standalone mode */}
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="flex items-center gap-1.5 p-2 sm:px-2 sm:py-1.5 rounded-lg bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 hover:from-emerald-500/20 hover:to-teal-500/20 active:from-emerald-500/30 active:to-teal-500/30 transition-all group touch-manipulation"
+                title="Switch to SplitSight"
+              >
+                <SplitSightMiniLogo size={18} />
+                <span className="hidden sm:inline text-[10px] font-medium text-emerald-400 group-hover:text-emerald-300">
+                  SplitSight
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Center: Title - flexible width */}

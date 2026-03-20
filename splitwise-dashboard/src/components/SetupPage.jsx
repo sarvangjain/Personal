@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Wallet, Key, ArrowRight, Loader2, ExternalLink, AlertCircle, CheckCircle2, HelpCircle } from 'lucide-react';
+import { Wallet, Key, ArrowRight, ArrowLeft, Loader2, ExternalLink, AlertCircle, CheckCircle2, HelpCircle } from 'lucide-react';
 import { getCurrentUser } from '../api/splitwise';
 import { saveConfig, clearConfig } from '../utils/config';
 import { createOrUpdateUser } from '../firebase/userService';
 
-export default function SetupPage({ onComplete }) {
+export default function SetupPage({ onComplete, onBack }) {
   const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -56,6 +56,17 @@ export default function SetupPage({ onComplete }) {
       </div>
 
       <div className="relative w-full max-w-md">
+        {/* Back button */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="mb-6 flex items-center gap-2 text-sm text-stone-400 hover:text-stone-200 transition-colors"
+          >
+            <ArrowLeft size={16} />
+            Back
+          </button>
+        )}
+
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-emerald-500/20">

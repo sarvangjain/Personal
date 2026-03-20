@@ -1,25 +1,37 @@
 import { useState } from 'react';
-import { X, Key, Hash, LogOut, Shield } from 'lucide-react';
+import { X, Key, Hash, LogOut, Shield, Mail, Link2 } from 'lucide-react';
 import { getConfig, saveConfig, clearConfig } from '../utils/config';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useAuth, AUTH_TYPES } from '../contexts/AuthContext';
 
 export default function SettingsModal({ onClose, onSave, onLogout }) {
+  const { currentUser, authType, logout, disconnectSplitwise } = useAuth();
   const config = getConfig() || {};
   const [apiKey, setApiKey] = useState(config.apiKey || '');
   const [userId, setUserId] = useState(String(config.userId || ''));
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
+  const [showConfirmDisconnect, setShowConfirmDisconnect] = useState(false);
   
   // Prevent background scrolling when modal is open
   useBodyScrollLock(true);
+
+  const isSplitwiseAuth = authType === AUTH_TYPES.SPLITWISE;
+  const isFirebaseAuth = authType === AUTH_TYPES.FIREBASE;
+  const hasBothAuths = currentUser?.splitwiseUserId && currentUser?.authType === AUTH_TYPES.FIREBASE;
 
   function handleSave() {
     saveConfig({ apiKey, userId: parseInt(userId) || 0, userName: config.userName });
     onSave();
   }
 
-  function handleLogout() {
-    clearConfig();
+  async function handleLogout() {
+    await logout();
     onLogout();
+  }
+
+  function handleDisconnectSplitwise() {
+    disconnectSplitwise();
+    onSave();
   }
 
   return (
@@ -40,53 +52,98 @@ export default function SettingsModal({ onClose, onSave, onLogout }) {
           </button>
         </div>
 
-        {/* Account Info */}
-        {config.userName && (
+        {/* Account Info - Splitwise User */}
+        {isSplitwiseAuth && config.userName && (
           <div className="flex items-center gap-3 p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl mb-5">
             <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center text-sm font-medium text-emerald-400">
               {config.userName[0]}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-stone-200 truncate">{config.userName}</p>
-              <p className="text-[10px] text-stone-500 font-mono">ID: {config.userId}</p>
+              <p className="text-[10px] text-stone-500 font-mono">Splitwise ID: {config.userId}</p>
             </div>
           </div>
         )}
 
-        <div className="space-y-3 sm:space-y-4">
-          <div>
-            <label className="flex items-center gap-2 text-[11px] sm:text-xs font-medium text-stone-400 mb-1 sm:mb-1.5">
-              <Key size={12} /> API Key
-            </label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
-              placeholder="Your Splitwise API key"
-              className="w-full px-3 py-3 sm:py-2.5 bg-stone-800/80 border border-stone-700/50 rounded-xl sm:rounded-lg text-[15px] sm:text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all font-mono"
-            />
+        {/* Account Info - Firebase User */}
+        {isFirebaseAuth && currentUser && (
+          <div className="flex items-center gap-3 p-3 bg-teal-500/5 border border-teal-500/10 rounded-xl mb-5">
+            <div className="w-8 h-8 rounded-full bg-teal-500/15 flex items-center justify-center">
+              <Mail size={14} className="text-teal-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-stone-200 truncate">{currentUser.displayName}</p>
+              <p className="text-[10px] text-stone-500 truncate">{currentUser.email}</p>
+            </div>
           </div>
+        )}
 
-          <div>
-            <label className="flex items-center gap-2 text-[11px] sm:text-xs font-medium text-stone-400 mb-1 sm:mb-1.5">
-              <Hash size={12} /> User ID
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={userId}
-              onChange={e => setUserId(e.target.value)}
-              placeholder="Auto-detected from API key"
-              className="w-full px-3 py-3 sm:py-2.5 bg-stone-800/80 border border-stone-700/50 rounded-xl sm:rounded-lg text-[15px] sm:text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all font-mono"
-            />
+        {/* Splitwise Connection Status for Firebase users */}
+        {isFirebaseAuth && config.apiKey && (
+          <div className="flex items-center gap-3 p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl mb-5">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center">
+              <Link2 size={14} className="text-emerald-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-stone-200">Splitwise Connected</p>
+              <p className="text-[10px] text-stone-500 font-mono">ID: {config.userId}</p>
+            </div>
+            {!showConfirmDisconnect ? (
+              <button
+                onClick={() => setShowConfirmDisconnect(true)}
+                className="text-[10px] text-red-400/70 hover:text-red-400 transition-colors"
+              >
+                Disconnect
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button onClick={handleDisconnectSplitwise} className="text-[10px] text-red-400 font-medium">Yes</button>
+                <button onClick={() => setShowConfirmDisconnect(false)} className="text-[10px] text-stone-500">No</button>
+              </div>
+            )}
           </div>
-        </div>
+        )}
+
+        {/* API Key Settings - Only for Splitwise auth */}
+        {isSplitwiseAuth && (
+          <div className="space-y-3 sm:space-y-4">
+            <div>
+              <label className="flex items-center gap-2 text-[11px] sm:text-xs font-medium text-stone-400 mb-1 sm:mb-1.5">
+                <Key size={12} /> API Key
+              </label>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={e => setApiKey(e.target.value)}
+                placeholder="Your Splitwise API key"
+                className="w-full px-3 py-3 sm:py-2.5 bg-stone-800/80 border border-stone-700/50 rounded-xl sm:rounded-lg text-[15px] sm:text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-2 text-[11px] sm:text-xs font-medium text-stone-400 mb-1 sm:mb-1.5">
+                <Hash size={12} /> User ID
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={userId}
+                onChange={e => setUserId(e.target.value)}
+                placeholder="Auto-detected from API key"
+                className="w-full px-3 py-3 sm:py-2.5 bg-stone-800/80 border border-stone-700/50 rounded-xl sm:rounded-lg text-[15px] sm:text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 transition-all font-mono"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Privacy info */}
         <div className="mt-5 flex items-start gap-2 p-3 bg-stone-800/30 border border-stone-800/40 rounded-lg">
           <Shield size={13} className="text-emerald-400 mt-0.5 flex-shrink-0" />
           <p className="text-[11px] text-stone-500 leading-relaxed">
-            Credentials are stored in your browser only. API calls go directly to Splitwise via our dev proxy. Nothing is stored on any external server.
+            {isSplitwiseAuth 
+              ? 'Credentials are stored in your browser only. API calls go directly to Splitwise via our dev proxy. Nothing is stored on any external server.'
+              : 'Your account data is securely stored in Firebase. ExpenseSight data is linked to your account.'
+            }
           </p>
         </div>
 
@@ -111,9 +168,11 @@ export default function SettingsModal({ onClose, onSave, onLogout }) {
             <button onClick={onClose} className="px-4 py-2 text-sm text-stone-400 hover:text-stone-200 transition-colors">
               Cancel
             </button>
-            <button onClick={handleSave} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm rounded-lg transition-colors font-medium">
-              Save & Reload
-            </button>
+            {isSplitwiseAuth && (
+              <button onClick={handleSave} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm rounded-lg transition-colors font-medium">
+                Save & Reload
+              </button>
+            )}
           </div>
         </div>
       </div>

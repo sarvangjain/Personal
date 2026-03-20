@@ -251,3 +251,128 @@ export async function saveUserPreferences(userId, preferences) {
     console.debug('Could not save user preferences:', error.message);
   }
 }
+
+/**
+ * Create or update Firebase Auth user profile
+ * Used when a user signs up or logs in via email/password
+ * @param {Object} firebaseUser - Firebase Auth user object
+ * @param {string} firebaseUser.uid - Firebase user ID
+ * @param {string} firebaseUser.email - User's email
+ * @param {string} firebaseUser.displayName - User's display name (optional)
+ */
+export async function createOrUpdateFirebaseAuthUser(firebaseUser) {
+  if (!isFirebaseConfigured() || !db) {
+    console.warn('Firebase not configured - skipping user creation');
+    return null;
+  }
+
+  const userId = firebaseUser.uid;
+  const userRef = doc(db, 'users', userId);
+
+  try {
+    const userDoc = await getDoc(userRef);
+    const now = serverTimestamp();
+    const device = getDeviceType();
+    const isInstalled = isPWAInstalled();
+
+    if (userDoc.exists()) {
+      // User exists - update login info
+      await updateDoc(userRef, {
+        'profile.email': firebaseUser.email,
+        'profile.name': firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+        'profile.lastLoginAt': now,
+        'profile.loginCount': increment(1),
+        'device.lastDevice': device,
+        'device.isInstalled': isInstalled,
+      });
+      console.log('Firebase Auth user updated:', userId);
+    } else {
+      // New user - create document
+      await setDoc(userRef, {
+        profile: {
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          email: firebaseUser.email,
+          authType: 'firebase',
+          firebaseUid: userId,
+          firstLoginAt: now,
+          lastLoginAt: now,
+          loginCount: 1,
+        },
+        linkedAccounts: {
+          splitwiseUserId: null,
+        },
+        preferences: {
+          defaultTab: 'home',
+          theme: 'dark',
+        },
+        analytics: {
+          tabViews: {
+            home: 0,
+            activity: 0,
+            budget: 0,
+            bills: 0,
+            wealth: 0,
+            insights: 0,
+          },
+        },
+        device: {
+          lastDevice: device,
+          isInstalled: isInstalled,
+        },
+      });
+      console.log('New Firebase Auth user created:', userId);
+    }
+
+    return userId;
+  } catch (error) {
+    console.error('Error creating/updating Firebase Auth user:', error);
+    return null;
+  }
+}
+
+/**
+ * Link a Splitwise account to a Firebase Auth user
+ * @param {string} firebaseUid - Firebase user ID
+ * @param {number} splitwiseUserId - Splitwise user ID to link
+ */
+export async function linkSplitwiseAccount(firebaseUid, splitwiseUserId) {
+  if (!isFirebaseConfigured() || !db || !firebaseUid || !splitwiseUserId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  const userRef = doc(db, 'users', firebaseUid);
+
+  try {
+    await updateDoc(userRef, {
+      'linkedAccounts.splitwiseUserId': splitwiseUserId,
+      'profile.splitwiseLinkedAt': serverTimestamp(),
+    });
+    console.log('Splitwise account linked:', splitwiseUserId, '→', firebaseUid);
+    return { success: true };
+  } catch (error) {
+    console.error('Error linking Splitwise account:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get linked Splitwise user ID for a Firebase Auth user
+ * @param {string} firebaseUid - Firebase user ID
+ * @returns {number|null} Splitwise user ID or null
+ */
+export async function getLinkedSplitwiseAccount(firebaseUid) {
+  if (!isFirebaseConfigured() || !db || !firebaseUid) return null;
+
+  const userRef = doc(db, 'users', firebaseUid);
+
+  try {
+    const userDoc = await getDoc(userRef);
+    if (userDoc.exists()) {
+      return userDoc.data()?.linkedAccounts?.splitwiseUserId || null;
+    }
+    return null;
+  } catch (error) {
+    console.debug('Could not get linked Splitwise account:', error.message);
+    return null;
+  }
+}

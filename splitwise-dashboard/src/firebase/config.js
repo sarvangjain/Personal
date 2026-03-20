@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 // Firebase configuration - uses environment variables for security
 const firebaseConfig = {
@@ -21,11 +22,13 @@ const isFirebaseConfigured = () => {
 // Initialize Firebase only if configured
 let app = null;
 let db = null;
+let auth = null;
 
 if (isFirebaseConfigured()) {
   try {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
+    auth = getAuth(app);
     console.log('Firebase initialized successfully');
     console.log('Project ID:', firebaseConfig.projectId);
   } catch (error) {
@@ -78,5 +81,5 @@ if (typeof window !== 'undefined') {
   window.testFirestore = testFirestoreConnection;
 }
 
-export { db, isFirebaseConfigured, testFirestoreConnection };
+export { db, auth, isFirebaseConfigured, testFirestoreConnection };
 export default app;

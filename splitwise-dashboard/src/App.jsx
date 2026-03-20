@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { isLoggedIn } from './utils/config';
 import { getCurrentUser, getGroups, getFriends, getExpenses } from './api/splitwise';
 import { getUserId, computeOverallBalances, computeFriendBalances, computeSmartInsights, computeSettleUpSuggestions } from './utils/analytics';
 import { usePWA, usePullToRefresh, useHaptic } from './hooks/usePWA';
 import { updateLastLogin, trackTabView, trackGroupView, trackFriendView } from './firebase/userService';
-import SetupPage from './components/SetupPage';
+import { AuthProvider, useAuth, AUTH_TYPES } from './contexts/AuthContext';
+import LandingPage from './components/LandingPage';
+import ExpenseSightStandalone from './components/ExpenseSightStandalone';
+import LoadingState from './components/LoadingState';
 import Header from './components/Header';
 import SettingsModal from './components/SettingsModal';
 import CreateExpensePage from './components/CreateExpensePage';
@@ -17,7 +19,6 @@ import GroupSelector from './components/GroupSelector';
 import GroupDetail from './components/GroupDetail';
 import FriendBalances from './components/FriendBalances';
 import FriendDetail from './components/FriendDetail';
-import LoadingState from './components/LoadingState';
 import ErrorState from './components/ErrorState';
 import YearInReview from './components/YearInReview';
 import Activity, { RecentActivityPreview } from './components/Activity';
@@ -699,12 +700,33 @@ function Dashboard() {
   );
 }
 
-export default function App() {
-  const [authenticated, setAuthenticated] = useState(isLoggedIn());
+function AppContent() {
+  const { currentUser, loading, authType } = useAuth();
+  const [forceRefresh, setForceRefresh] = useState(0);
 
-  if (!authenticated) {
-    return <SetupPage onComplete={() => setAuthenticated(true)} />;
+  // Show loading while auth state is being determined
+  if (loading) {
+    return <LoadingState />;
   }
 
+  // Not authenticated - show landing page
+  if (!currentUser) {
+    return <LandingPage onAuthSuccess={() => setForceRefresh(f => f + 1)} />;
+  }
+
+  // Firebase auth only - show ExpenseSight standalone
+  if (authType === AUTH_TYPES.FIREBASE && !currentUser.canAccessFullDashboard) {
+    return <ExpenseSightStandalone userId={currentUser.uid} />;
+  }
+
+  // Splitwise auth (with or without Firebase) - show full dashboard
   return <Dashboard />;
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
 }
