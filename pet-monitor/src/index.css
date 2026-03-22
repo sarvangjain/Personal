@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply h-full;
+  }
+  
+  body {
+    @apply h-full bg-gray-900 text-white antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #root {
+    @apply h-full;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-6 py-3 rounded-xl font-semibold transition-all duration-200 
+           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary-500 hover:bg-primary-600 text-white 
+           focus:ring-primary-500 shadow-lg shadow-primary-500/25;
+  }
+
+  .btn-secondary {
+    @apply btn bg-gray-700 hover:bg-gray-600 text-white 
+           focus:ring-gray-500;
+  }
+
+  .btn-accent {
+    @apply btn bg-accent-500 hover:bg-accent-600 text-white 
+           focus:ring-accent-500 shadow-lg shadow-accent-500/25;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-500 hover:bg-red-600 text-white 
+           focus:ring-red-500;
+  }
+
+  .btn-icon {
+    @apply p-3 rounded-full transition-all duration-200 
+           active:scale-95 focus:outline-none focus:ring-2 
+           focus:ring-offset-2 focus:ring-offset-gray-900;
+  }
+
+  .card {
+    @apply bg-gray-800 rounded-2xl p-6 shadow-xl;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl
+           text-white placeholder-gray-500 
+           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+           transition-all duration-200;
+  }
+
+  .video-container {
+    @apply relative w-full h-full bg-black rounded-2xl overflow-hidden;
+  }
+
+  .floating-controls {
+    @apply absolute bottom-0 left-0 right-0 p-4 
+           bg-gradient-to-t from-black/80 to-transparent;
+  }
+
+  .status-indicator {
+    @apply w-3 h-3 rounded-full;
+  }
+
+  .status-indicator.online {
+    @apply bg-green-500 animate-pulse;
+  }
+
+  .status-indicator.offline {
+    @apply bg-red-500;
+  }
+
+  .status-indicator.connecting {
+    @apply bg-yellow-500 animate-pulse;
+  }
+}
+
+@layer utilities {
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
