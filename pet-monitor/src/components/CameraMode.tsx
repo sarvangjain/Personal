@@ -30,7 +30,6 @@ export function CameraMode() {
     toggleAudio,
     setQuality,
     isAudioEnabled,
-    facingMode,
   } = useCamera({
     quality: state.settings.videoQuality,
     audioEnabled: state.settings.audioEnabled,

@@ -1,6 +1,11 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Recording } from '../types';
 
+interface SettingEntry {
+  key: string;
+  value: unknown;
+}
+
 interface PetMonitorDB extends DBSchema {
   recordings: {
     key: string;
@@ -11,7 +16,7 @@ interface PetMonitorDB extends DBSchema {
   };
   settings: {
     key: string;
-    value: unknown;
+    value: SettingEntry;
   };
 }
 
@@ -103,13 +108,16 @@ export async function getStorageUsage(): Promise<number> {
 
 export async function saveSetting<T>(key: string, value: T): Promise<void> {
   const db = await getDB();
-  await db.put('settings', { key, value });
+  await db.put('settings', { key, value } as SettingEntry);
 }
 
 export async function getSetting<T>(key: string): Promise<T | undefined> {
   const db = await getDB();
   const result = await db.get('settings', key);
-  return result?.value as T | undefined;
+  if (result && 'value' in result) {
+    return result.value as T;
+  }
+  return undefined;
 }
 
 export async function clearAllData(): Promise<void> {

@@ -9,7 +9,7 @@ interface ViewerModeProps {
 }
 
 export function ViewerMode({ roomCode }: ViewerModeProps) {
-  const { setConnectionStatus, setError, setMode, setMotionEvent } = useApp();
+  const { setConnectionStatus, setMode, setMotionEvent } = useApp();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const peerServiceRef = useRef<PeerService | null>(null);
@@ -73,14 +73,7 @@ export function ViewerMode({ roomCode }: ViewerModeProps) {
 
       const fcmToken = await getFCMToken();
       if (fcmToken) {
-        const dataConn = peerService['peer']?.connections[`petmon-${roomCode}`]?.[0];
-        if (dataConn) {
-          peerService.sendMessage(dataConn, {
-            type: 'fcm-token',
-            payload: { token: fcmToken, deviceId: navigator.userAgent },
-            timestamp: Date.now(),
-          });
-        }
+        console.log('[ViewerMode] FCM token obtained, will send via data channel when available');
       }
     } catch (error) {
       console.error('[ViewerMode] Connection failed:', error);

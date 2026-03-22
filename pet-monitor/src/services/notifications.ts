@@ -128,11 +128,10 @@ export function showLocalNotification(
     body,
     icon: '/pwa-192x192.png',
     badge: '/pwa-192x192.png',
-    vibrate: [200, 100, 200],
     tag: 'motion-alert',
     renotify: true,
     ...options,
-  });
+  } as NotificationOptions);
 
   notification.onclick = () => {
     window.focus();
