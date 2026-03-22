@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { PeerService } from '../services/peerService';
-import { getFCMToken, onForegroundMessage, playAlertSound, showLocalNotification } from '../services/notifications';
+import { playAlertSound } from '../services/notifications';
 import { DataMessage, MotionAlertPayload } from '../types';
 
 interface ViewerModeProps {
@@ -20,17 +20,46 @@ export function ViewerMode({ roomCode }: ViewerModeProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showMotionAlert, setShowMotionAlert] = useState(false);
   const [volume, setVolume] = useState(1);
+  const [hasStream, setHasStream] = useState(false);
+
+  const handleStreamReceived = useCallback((stream: MediaStream) => {
+    console.log('[ViewerMode] Setting up stream with tracks:', stream.getTracks().map(t => `${t.kind}:${t.enabled}`).join(', '));
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.muted = false;
+      videoRef.current.volume = volume;
+      
+      videoRef.current.play().then(() => {
+        console.log('[ViewerMode] Video playing');
+        setHasStream(true);
+        setIsConnecting(false);
+        setConnectionStatus('connected');
+      }).catch((err) => {
+        console.error('[ViewerMode] Video play error:', err);
+        videoRef.current!.muted = true;
+        videoRef.current!.play().then(() => {
+          console.log('[ViewerMode] Video playing (muted)');
+          setHasStream(true);
+          setIsConnecting(false);
+          setConnectionStatus('connected');
+          setIsMuted(true);
+        });
+      });
+    }
+  }, [volume, setConnectionStatus]);
 
   const connectToCamera = useCallback(async () => {
     setIsConnecting(true);
     setConnectionError(null);
+    setHasStream(false);
     setConnectionStatus('connecting');
 
     const peerService = new PeerService();
     peerServiceRef.current = peerService;
 
     peerService.onMessage((_peerId, message: DataMessage) => {
-      console.log('[ViewerMode] Message from camera:', message);
+      console.log('[ViewerMode] Message from camera:', message.type);
 
       if (message.type === 'motion-alert') {
         const payload = message.payload as MotionAlertPayload;
@@ -57,48 +86,27 @@ export function ViewerMode({ roomCode }: ViewerModeProps) {
     });
 
     peerService.onStream((stream) => {
-      console.log('[ViewerMode] Received stream');
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setIsConnecting(false);
-      setConnectionStatus('connected');
+      console.log('[ViewerMode] onStream callback received');
+      handleStreamReceived(stream);
     });
 
     try {
       const stream = await peerService.initializeAsViewer(roomCode);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-
-      const fcmToken = await getFCMToken();
-      if (fcmToken) {
-        console.log('[ViewerMode] FCM token obtained, will send via data channel when available');
-      }
+      console.log('[ViewerMode] initializeAsViewer resolved with stream');
+      handleStreamReceived(stream);
     } catch (error) {
       console.error('[ViewerMode] Connection failed:', error);
       setConnectionError((error as Error).message);
       setConnectionStatus('error');
       setIsConnecting(false);
     }
-  }, [roomCode, setConnectionStatus, setMotionEvent]);
+  }, [roomCode, setConnectionStatus, setMotionEvent, handleStreamReceived]);
 
   useEffect(() => {
     connectToCamera();
 
-    const unsubscribe = onForegroundMessage((payload) => {
-      console.log('[ViewerMode] Foreground notification:', payload);
-      if (payload.title) {
-        showLocalNotification(payload.title, payload.body || '');
-        setShowMotionAlert(true);
-        playAlertSound();
-        setTimeout(() => setShowMotionAlert(false), 5000);
-      }
-    });
-
     return () => {
       peerServiceRef.current?.disconnect();
-      unsubscribe?.();
     };
   }, [connectToCamera]);
 
@@ -137,7 +145,7 @@ export function ViewerMode({ roomCode }: ViewerModeProps) {
     connectToCamera();
   };
 
-  if (isConnecting) {
+  if (isConnecting && !hasStream) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-900">
         <div className="text-center">
@@ -180,6 +188,7 @@ export function ViewerMode({ roomCode }: ViewerModeProps) {
           ref={videoRef}
           autoPlay
           playsInline
+          muted={isMuted}
           className="w-full h-full object-contain bg-black"
         />
 
@@ -206,8 +215,8 @@ export function ViewerMode({ roomCode }: ViewerModeProps) {
             </button>
 
             <div className="flex items-center gap-2">
-              <div className="status-indicator online" />
-              <span className="text-sm font-medium">Live</span>
+              <div className={`status-indicator ${hasStream ? 'online' : 'connecting'}`} />
+              <span className="text-sm font-medium">{hasStream ? 'Live' : 'Connecting...'}</span>
             </div>
 
             <button

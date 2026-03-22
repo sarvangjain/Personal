@@ -1,7 +1,6 @@
-import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { formatRoomCode, isValidRoomCode } from '../services/peerService';
 import { requestNotificationPermission, isNotificationSupported } from '../services/notifications';
+import { ROOM_CODE } from '../services/peerService';
 
 interface HomeScreenProps {
   onStartCamera: () => void;
@@ -11,37 +10,16 @@ interface HomeScreenProps {
 
 export function HomeScreen({ onStartCamera, onJoinViewer, onViewRecordings }: HomeScreenProps) {
   const { state } = useApp();
-  const [roomCodeInput, setRoomCodeInput] = useState('');
-  const [inputError, setInputError] = useState<string | null>(null);
-  const [showJoinInput, setShowJoinInput] = useState(false);
-
-  const handleRoomCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatRoomCode(e.target.value);
-    setRoomCodeInput(formatted);
-    setInputError(null);
-  };
-
-  const handleJoinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!roomCodeInput) {
-      setInputError('Please enter a room code');
-      return;
-    }
-
-    if (!isValidRoomCode(roomCodeInput)) {
-      setInputError('Room code must be 6 characters');
-      return;
-    }
-
-    onJoinViewer(roomCodeInput.toUpperCase());
-  };
 
   const handleStartCamera = async () => {
     if (isNotificationSupported()) {
       await requestNotificationPermission();
     }
     onStartCamera();
+  };
+
+  const handleJoinViewer = () => {
+    onJoinViewer(ROOM_CODE);
   };
 
   return (
@@ -54,9 +32,14 @@ export function HomeScreen({ onStartCamera, onJoinViewer, onViewRecordings }: Ho
         </div>
 
         <h1 className="text-3xl font-bold mb-2">Pet Monitor</h1>
-        <p className="text-gray-400 text-center mb-12 max-w-sm">
+        <p className="text-gray-400 text-center mb-8 max-w-sm">
           Stream live video from your phone and watch from any device with motion detection alerts
         </p>
+
+        <div className="bg-gray-800 rounded-xl px-6 py-3 mb-8">
+          <p className="text-sm text-gray-400 mb-1">Room Code</p>
+          <p className="text-2xl font-mono font-bold tracking-wider">{ROOM_CODE}</p>
+        </div>
 
         <div className="w-full max-w-sm space-y-4">
           <button
@@ -69,53 +52,16 @@ export function HomeScreen({ onStartCamera, onJoinViewer, onViewRecordings }: Ho
             <span className="font-semibold">Start Camera</span>
           </button>
 
-          {!showJoinInput ? (
-            <button
-              onClick={() => setShowJoinInput(true)}
-              className="btn-secondary w-full flex items-center justify-center gap-3 py-4"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-              <span className="font-semibold">Join as Viewer</span>
-            </button>
-          ) : (
-            <form onSubmit={handleJoinSubmit} className="space-y-3">
-              <div>
-                <input
-                  type="text"
-                  value={roomCodeInput}
-                  onChange={handleRoomCodeChange}
-                  placeholder="Enter 6-digit code"
-                  className={`input text-center text-2xl font-mono tracking-widest uppercase ${
-                    inputError ? 'border-red-500 focus:ring-red-500' : ''
-                  }`}
-                  maxLength={6}
-                  autoFocus
-                />
-                {inputError && (
-                  <p className="text-red-500 text-sm mt-1 text-center">{inputError}</p>
-                )}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowJoinInput(false);
-                    setRoomCodeInput('');
-                    setInputError(null);
-                  }}
-                  className="btn-secondary flex-1"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary flex-1">
-                  Connect
-                </button>
-              </div>
-            </form>
-          )}
+          <button
+            onClick={handleJoinViewer}
+            className="btn-secondary w-full flex items-center justify-center gap-3 py-4"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            <span className="font-semibold">Join as Viewer</span>
+          </button>
         </div>
       </div>
 

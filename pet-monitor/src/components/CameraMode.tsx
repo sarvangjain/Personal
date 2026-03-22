@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { useCamera } from '../hooks/useCamera';
-import { PeerService, generateRoomCode } from '../services/peerService';
+import { PeerService, ROOM_CODE } from '../services/peerService';
 import { MotionDetector, createMotionDetector } from '../services/motionDetection';
 import { VideoRecorder, createVideoRecorder } from '../services/mediaRecorder';
 import { sendMotionNotification, playAlertSound } from '../services/notifications';
@@ -39,7 +39,6 @@ export function CameraMode() {
   const initializePeer = useCallback(async () => {
     if (!stream) return;
 
-    const roomCode = generateRoomCode();
     const peerService = new PeerService();
     peerServiceRef.current = peerService;
 
@@ -71,8 +70,8 @@ export function CameraMode() {
 
     try {
       setConnectionStatus('connecting');
-      await peerService.initializeAsCamera(roomCode);
-      setRoomCode(roomCode);
+      await peerService.initializeAsCamera(ROOM_CODE);
+      setRoomCode(ROOM_CODE);
       setStreaming(true);
       setConnectionStatus('connected');
     } catch (error) {

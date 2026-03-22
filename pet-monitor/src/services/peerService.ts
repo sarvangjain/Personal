@@ -1,24 +1,7 @@
 import Peer, { DataConnection, MediaConnection } from 'peerjs';
 import type { DataMessage, ViewerInfo } from '../types';
 
-const ROOM_CODE_LENGTH = 6;
-const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-export function generateRoomCode(): string {
-  let code = '';
-  for (let i = 0; i < ROOM_CODE_LENGTH; i++) {
-    code += ROOM_CODE_CHARS.charAt(Math.floor(Math.random() * ROOM_CODE_CHARS.length));
-  }
-  return code;
-}
-
-export function formatRoomCode(code: string): string {
-  return code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, ROOM_CODE_LENGTH);
-}
-
-export function isValidRoomCode(code: string): boolean {
-  return /^[A-Z0-9]{6}$/.test(code.toUpperCase());
-}
+export const ROOM_CODE = 'SJ2108';
 
 export class PeerService {
   private peer: Peer | null = null;

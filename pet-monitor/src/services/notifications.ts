@@ -10,13 +10,17 @@ const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
 export async function initializeFirebase(config: FirebaseConfig): Promise<void> {
   if (firebaseApp) return;
 
+  if (!config.apiKey || !config.projectId || !config.messagingSenderId) {
+    console.log('[Notifications] Firebase config incomplete, skipping initialization');
+    return;
+  }
+
   try {
     firebaseApp = initializeApp(config);
     messaging = getMessaging(firebaseApp);
     console.log('[Notifications] Firebase initialized');
   } catch (error) {
-    console.error('[Notifications] Failed to initialize Firebase:', error);
-    throw error;
+    console.warn('[Notifications] Failed to initialize Firebase:', error);
   }
 }
 
@@ -32,15 +36,15 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 export async function getFCMToken(): Promise<string | null> {
-  if (!messaging) {
-    console.warn('[Notifications] Firebase messaging not initialized');
+  if (!messaging || !VAPID_KEY) {
+    console.log('[Notifications] Firebase messaging not available');
     return null;
   }
 
   try {
     const permission = await requestNotificationPermission();
     if (permission !== 'granted') {
-      console.warn('[Notifications] Notification permission not granted');
+      console.log('[Notifications] Notification permission not granted');
       return null;
     }
 
@@ -52,11 +56,11 @@ export async function getFCMToken(): Promise<string | null> {
       console.log('[Notifications] FCM Token obtained');
       return currentToken;
     } else {
-      console.warn('[Notifications] No FCM token available');
+      console.log('[Notifications] No FCM token available');
       return null;
     }
   } catch (error) {
-    console.error('[Notifications] Failed to get FCM token:', error);
+    console.log('[Notifications] FCM token error (expected if not configured):', (error as Error).message);
     return null;
   }
 }
