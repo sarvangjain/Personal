@@ -25,6 +25,7 @@ export class PeerService {
   private roomCode: string | null = null;
   private viewers: Map<string, ViewerInfo> = new Map();
   private localStream: MediaStream | null = null;
+  private pendingViewers: Set<string> = new Set();
   
   private onViewerConnected?: (viewer: ViewerInfo) => void;
   private onViewerDisconnected?: (peerId: string) => void;
@@ -43,7 +44,14 @@ export class PeerService {
       const peerId = `petmon-${roomCode}`;
 
       this.peer = new Peer(peerId, {
-        debug: 1,
+        debug: 2,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+          ]
+        }
       });
 
       this.peer.on('open', (id) => {
@@ -62,6 +70,11 @@ export class PeerService {
           reject(err);
         }
       });
+
+      this.peer.on('disconnected', () => {
+        console.log('[PeerService] Peer disconnected, attempting to reconnect...');
+        this.peer?.reconnect();
+      });
     });
   }
 
@@ -71,8 +84,18 @@ export class PeerService {
       const viewerId = `viewer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const cameraPeerId = `petmon-${roomCode}`;
 
+      let resolved = false;
+      let timeoutId: number;
+
       this.peer = new Peer(viewerId, {
-        debug: 1,
+        debug: 2,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+          ]
+        }
       });
 
       this.peer.on('open', (id) => {
@@ -85,31 +108,55 @@ export class PeerService {
 
         dataConn.on('open', () => {
           console.log('[PeerService] Data connection opened to camera');
-          this.sendMessage(dataConn, { type: 'viewer-joined', timestamp: Date.now() });
+          this.sendMessage(dataConn, { 
+            type: 'viewer-joined', 
+            payload: { viewerId: id },
+            timestamp: Date.now() 
+          });
         });
 
         dataConn.on('data', (data) => {
           const message = data as DataMessage;
+          console.log('[PeerService] Received message from camera:', message.type);
           this.onDataMessage?.(cameraPeerId, message);
         });
 
         dataConn.on('error', (err) => {
           console.error('[PeerService] Data connection error:', err);
-          this.onError?.(err);
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeoutId);
+            reject(new Error('Failed to connect to camera.'));
+          }
         });
 
-        const mediaConn = this.peer!.call(cameraPeerId, new MediaStream());
+        dataConn.on('close', () => {
+          console.log('[PeerService] Data connection closed');
+        });
+      });
 
+      this.peer.on('call', (mediaConn: MediaConnection) => {
+        console.log('[PeerService] Receiving call from camera');
+        
+        mediaConn.answer();
+        
         mediaConn.on('stream', (remoteStream) => {
-          console.log('[PeerService] Received remote stream from camera');
+          console.log('[PeerService] Received stream from camera');
           this.onRemoteStream?.(remoteStream);
-          resolve(remoteStream);
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeoutId);
+            resolve(remoteStream);
+          }
         });
 
         mediaConn.on('error', (err) => {
           console.error('[PeerService] Media connection error:', err);
-          this.onError?.(err);
-          reject(err);
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeoutId);
+            reject(err);
+          }
         });
 
         mediaConn.on('close', () => {
@@ -120,15 +167,22 @@ export class PeerService {
       this.peer.on('error', (err) => {
         console.error('[PeerService] Peer error:', err);
         this.onError?.(err);
-        if (err.type === 'peer-unavailable') {
-          reject(new Error('Camera not found. Please check the room code.'));
-        } else {
-          reject(err);
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          if (err.type === 'peer-unavailable') {
+            reject(new Error('Camera not found. Please check the room code.'));
+          } else {
+            reject(err);
+          }
         }
       });
 
-      setTimeout(() => {
-        reject(new Error('Connection timeout. Camera may be offline.'));
+      timeoutId = window.setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          reject(new Error('Connection timeout. Camera may be offline.'));
+        }
       }, 30000);
     });
   }
@@ -140,59 +194,74 @@ export class PeerService {
       console.log('[PeerService] Incoming data connection from:', dataConn.peer);
 
       dataConn.on('open', () => {
-        console.log('[PeerService] Data connection opened with:', dataConn.peer);
+        console.log('[PeerService] Data connection opened with viewer:', dataConn.peer);
+        
+        if (this.localStream && !this.pendingViewers.has(dataConn.peer)) {
+          this.pendingViewers.add(dataConn.peer);
+          
+          setTimeout(() => {
+            this.callViewer(dataConn.peer, dataConn);
+          }, 500);
+        }
       });
 
       dataConn.on('data', (data) => {
         const message = data as DataMessage;
-        console.log('[PeerService] Received data from viewer:', message);
+        console.log('[PeerService] Received data from viewer:', message.type);
         this.onDataMessage?.(dataConn.peer, message);
       });
 
       dataConn.on('close', () => {
         console.log('[PeerService] Data connection closed with:', dataConn.peer);
+        this.pendingViewers.delete(dataConn.peer);
         this.removeViewer(dataConn.peer);
       });
 
       dataConn.on('error', (err) => {
         console.error('[PeerService] Data connection error:', err);
+        this.pendingViewers.delete(dataConn.peer);
       });
     });
+  }
 
-    this.peer.on('call', (mediaConn: MediaConnection) => {
-      console.log('[PeerService] Incoming call from:', mediaConn.peer);
+  private callViewer(viewerId: string, dataConn: DataConnection): void {
+    if (!this.peer || !this.localStream) {
+      console.warn('[PeerService] Cannot call viewer - no peer or stream');
+      return;
+    }
 
-      if (this.localStream) {
-        mediaConn.answer(this.localStream);
-        console.log('[PeerService] Answered call with local stream');
+    console.log('[PeerService] Calling viewer:', viewerId);
+    
+    const mediaConn = this.peer.call(viewerId, this.localStream);
 
-        const existingViewer = this.viewers.get(mediaConn.peer);
-        const viewerInfo: ViewerInfo = {
-          peerId: mediaConn.peer,
-          connectedAt: existingViewer?.connectedAt || new Date(),
-          dataConnection: existingViewer?.dataConnection || null!,
-          mediaConnection: mediaConn,
-        };
+    mediaConn.on('stream', () => {
+      console.log('[PeerService] Media connection established with viewer');
+    });
 
-        this.viewers.set(mediaConn.peer, viewerInfo);
-        this.onViewerConnected?.(viewerInfo);
+    const viewerInfo: ViewerInfo = {
+      peerId: viewerId,
+      connectedAt: new Date(),
+      dataConnection: dataConn,
+      mediaConnection: mediaConn,
+    };
 
-        mediaConn.on('close', () => {
-          console.log('[PeerService] Media connection closed with:', mediaConn.peer);
-          this.removeViewer(mediaConn.peer);
-        });
+    this.viewers.set(viewerId, viewerInfo);
+    this.pendingViewers.delete(viewerId);
+    this.onViewerConnected?.(viewerInfo);
 
-        mediaConn.on('error', (err) => {
-          console.error('[PeerService] Media connection error:', err);
-        });
-      } else {
-        console.warn('[PeerService] No local stream available to answer call');
-      }
+    mediaConn.on('close', () => {
+      console.log('[PeerService] Media connection closed with:', viewerId);
+      this.removeViewer(viewerId);
+    });
+
+    mediaConn.on('error', (err) => {
+      console.error('[PeerService] Media connection error with viewer:', err);
     });
   }
 
   setLocalStream(stream: MediaStream): void {
     this.localStream = stream;
+    console.log('[PeerService] Local stream set, tracks:', stream.getTracks().map(t => t.kind).join(', '));
   }
 
   private removeViewer(peerId: string): void {
@@ -205,6 +274,8 @@ export class PeerService {
   sendMessage(connection: DataConnection, message: DataMessage): void {
     if (connection.open) {
       connection.send(message);
+    } else {
+      console.warn('[PeerService] Cannot send message - connection not open');
     }
   }
 
@@ -236,6 +307,7 @@ export class PeerService {
       viewer.mediaConnection?.close();
     });
     this.viewers.clear();
+    this.pendingViewers.clear();
 
     if (this.peer) {
       this.peer.destroy();
