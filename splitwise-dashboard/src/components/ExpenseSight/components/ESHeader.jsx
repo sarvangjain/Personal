@@ -6,28 +6,29 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   Menu, Plus, X, ArrowLeft, Settings, HelpCircle, Info, 
   Clock, Home, Receipt, Wallet, TrendingUp, FlaskConical,
-  ChevronRight, Target, PieChart, CreditCard, Bell
+  ChevronRight, Target, PieChart, CreditCard, Bell, CalendarDays
 } from 'lucide-react';
 import NotificationSettings from './NotificationSettings';
 import useNotifications from '../../../hooks/useNotifications';
 
 // Tab metadata for ExpenseSight
 const ES_TAB_META = {
-  home:     { icon: Home,        label: 'Home',      color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  activity: { icon: Receipt,     label: 'Activity',  color: 'text-teal-400',    bg: 'bg-teal-500/10' },
-  budget:   { icon: Wallet,      label: 'Budget',    color: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
-  bills:    { icon: CreditCard,  label: 'Bills',     color: 'text-amber-400',   bg: 'bg-amber-500/10' },
-  goals:    { icon: Target,      label: 'Goals',     color: 'text-pink-400',    bg: 'bg-pink-500/10' },
-  wealth:   { icon: TrendingUp,  label: 'Wealth',    color: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
-  insights: { icon: TrendingUp,  label: 'Insights',  color: 'text-purple-400',  bg: 'bg-purple-500/10' },
-  labs:     { icon: FlaskConical,label: 'Labs',      color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10' },
+  home:     { icon: Home,        label: 'Home',       color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  activity: { icon: Receipt,     label: 'Activity',   color: 'text-teal-400',    bg: 'bg-teal-500/10' },
+  month:    { icon: CalendarDays,label: 'Month View', color: 'text-blue-400',    bg: 'bg-blue-500/10' },
+  budget:   { icon: Wallet,      label: 'Budget',     color: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
+  bills:    { icon: CreditCard,  label: 'Bills',      color: 'text-amber-400',   bg: 'bg-amber-500/10' },
+  goals:    { icon: Target,      label: 'Goals',      color: 'text-pink-400',    bg: 'bg-pink-500/10' },
+  wealth:   { icon: TrendingUp,  label: 'Wealth',     color: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
+  insights: { icon: TrendingUp,  label: 'Insights',   color: 'text-purple-400',  bg: 'bg-purple-500/10' },
+  labs:     { icon: FlaskConical,label: 'Labs',       color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10' },
 };
 
 // Navigation sections
 const NAV_SECTIONS = [
   {
     title: 'Main',
-    items: ['home', 'activity'],
+    items: ['home', 'activity', 'month'],
   },
   {
     title: 'Finance',
