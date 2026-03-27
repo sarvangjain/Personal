@@ -14,6 +14,7 @@ import ESLabs from './tabs/ESLabs';
 import ESBills from './tabs/ESBills';
 import ESWealth from './tabs/ESWealth';
 import ESCategoryDetail from './tabs/ESCategoryDetail';
+import ESMonthView from './tabs/ESMonthView';
 import QuickAddModal from './QuickAddModal';
 import { getExpenses, clearCache, updateExpense, deleteExpense, addExpenses, loadInitialData } from '../../firebase/expenseSightService';
 import { isFirebaseConfigured } from '../../firebase/config';
@@ -216,6 +217,13 @@ export default function ExpenseSightApp({ userId, onClose }) {
         return (
           <ESInsights 
             expenses={expenses}
+          />
+        );
+      case 'month':
+        return (
+          <ESMonthView 
+            expenses={expenses}
+            userId={userId}
           />
         );
       case 'labs':
