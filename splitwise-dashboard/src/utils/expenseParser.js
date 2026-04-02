@@ -23,13 +23,13 @@ const CATEGORY_KEYWORDS = {
   'Transport': [
     'cab', 'uber', 'ola', 'auto', 'metro', 'bus', 'train', 'flight', 
     'petrol', 'fuel', 'parking', 'toll', 'rapido', 'commute', 'office commute',
-    'blabla', 'car pool', 'carpool', 'drop', 'to and from', 'to and fro'
+    'blabla', 'car pool', 'carpool', 'drop', 'to and from', 'to and fro', 'car'
   ],
   'Food & Dining': [
     'food order', 'food', 'zomato', 'swiggy', 'restaurant', 'dinner', 'lunch', 
     'breakfast', 'cafe', 'coffee', 'pizza', 'burger', 'biryani', 'chai', 'tea',
     'drinks', 'bar', 'pub', 'f&b', 'garlic bread', 'dominos', 'mcd', 'thali',
-    'kfc', 'order'
+    'kfc', 'order', 'snack', 'snacks'
   ],
   'Rent': [
     'rent', 'house rent', 'room rent', 'flat rent', 'apartment', 'monthly rent',
@@ -38,7 +38,7 @@ const CATEGORY_KEYWORDS = {
   'Utilities': [
     'wifi', 'internet', 'electricity', 'electric', 'water', 'gas', 'cylinder',
     'bill', 'maintenance', 'society', 'airtel', 'jio', 'vodafone',
-    'mobile bill', 'recharge', 'icloud'
+    'mobile bill', 'recharge', 'icloud', 'cook', 'maid'
   ],
   'Shopping': [
     'amazon', 'flipkart', 'myntra', 'cred', 'gift', 'clothes', 'shoes',
