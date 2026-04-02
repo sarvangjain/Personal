@@ -6,13 +6,14 @@ import { useMemo, useState, useCallback } from 'react';
 import { 
   FlaskConical, Sparkles, Target, Flame,
   Star, Heart, Coffee, ShoppingBag, Home,
-  Trash2, AlertTriangle, Loader2
+  Trash2, AlertTriangle, Loader2, Database
 } from 'lucide-react';
 import { format, parseISO, startOfYear, endOfYear, isWithinInterval, subDays, eachDayOfInterval } from 'date-fns';
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from 'recharts';
 import { formatCurrency } from '../../../utils/analytics';
 import { CHART_COLORS } from '../../../utils/chartConfig';
 import { deleteAllExpenses } from '../../../firebase/expenseSightService';
+import DataManagement from '../components/DataManagement';
 
 // Category to lifestyle dimension mapping
 const CATEGORY_DIMENSIONS = {
@@ -521,6 +522,15 @@ export default function ESLabs({ expenses, userId, onDeleteAllSuccess }) {
       
       {/* Previous Year */}
       <YearInReviewCard expenses={expenses} year={currentYear - 1} />
+
+      {/* Data Management - Export/Import */}
+      <div className="pt-4 border-t border-stone-800">
+        <div className="flex items-center gap-2 mb-3">
+          <Database size={16} className="text-cyan-400" />
+          <p className="text-xs text-stone-400 uppercase tracking-wider">Data Management</p>
+        </div>
+        <DataManagement userId={userId} />
+      </div>
       
       {/* Data Management - Danger Zone */}
       <div className="pt-4 border-t border-stone-800">
