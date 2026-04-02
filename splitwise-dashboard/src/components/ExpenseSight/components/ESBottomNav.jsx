@@ -1,8 +1,13 @@
 /**
  * ESBottomNav - Bottom tab navigation for ExpenseSight
+ * 
+ * Nav height: 60px base + safe-area-inset-bottom
+ * Main content should use pb-[calc(60px+env(safe-area-inset-bottom,0px))] to avoid overlap
  */
 
 import { Home, Activity, BarChart3, CreditCard, TrendingUp } from 'lucide-react';
+
+export const BOTTOM_NAV_HEIGHT = 60;
 
 const TABS = [
   { id: 'home', label: 'Home', icon: Home },
@@ -14,14 +19,9 @@ const TABS = [
 
 export default function ESBottomNav({ activeTab, onTabChange }) {
   return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 z-40 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/50"
-      style={{ 
-        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)'
-      }}
-    >
-      {/* Main nav content with padding */}
-      <div className="flex items-center justify-around px-2 py-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-stone-950/95 backdrop-blur-xl border-t border-stone-800/50">
+      {/* Main nav content - fixed 60px height */}
+      <div className="flex items-center justify-around px-2 h-[60px]">
         {TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -50,6 +50,8 @@ export default function ESBottomNav({ activeTab, onTabChange }) {
           );
         })}
       </div>
+      {/* Safe area spacer - fills the home indicator area on notched phones */}
+      <div className="safe-bottom" />
     </nav>
   );
 }
