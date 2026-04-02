@@ -252,7 +252,7 @@ export default function ExpenseSightApp({ userId, onClose }) {
   };
 
   return (
-    <div className="h-screen h-[100dvh] bg-stone-950 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-stone-950 flex flex-col overflow-hidden">
       {/* Header */}
       <ESHeader 
         onClose={onClose}
@@ -263,18 +263,18 @@ export default function ExpenseSightApp({ userId, onClose }) {
         userId={userId}
       />
 
-      {/* Main content - scrollable area */}
+      {/* Main content - only this area scrolls */}
       <main 
-        className="flex-1 overflow-y-auto px-4 pt-4 pb-20"
+        className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4"
         style={{ 
-          overscrollBehavior: 'none',
+          paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 16px)',
           WebkitOverflowScrolling: 'touch',
         }}
       >
         {renderTabContent()}
       </main>
 
-      {/* Bottom navigation */}
+      {/* Bottom navigation - fixed at bottom */}
       <ESBottomNav 
         activeTab={activeTab}
         onTabChange={handleTabChange}
