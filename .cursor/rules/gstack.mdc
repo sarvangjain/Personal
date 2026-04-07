@@ -1,0 +1,62 @@
+---
+description: 
+alwaysApply: true
+---
+
+# gstack Skills
+
+gstack provides specialized AI workflows. When a user request matches a skill, read and follow its SKILL.md file.
+
+## Skill Directory
+
+All skills are located at: `gstack/[skill-name]/SKILL.md`
+
+## Quick Reference
+
+| Trigger | Skill | Read This File |
+|---|----|----|
+| `/qa [url]` or "test the site" | QA Testing | `gstack/qa/SKILL.md` |
+| `/review` or "review my code" | Code Review | `gstack/review/SKILL.md` |
+| `/ship` or "push this" | Ship & PR | `gstack/ship/SKILL.md` |
+| `/investigate` or "why is this broken" | Debug | `gstack/investigate/SKILL.md` |
+| `/browse` or "open [url]" | Headless Browser | `gstack/browse/SKILL.md` |
+| `/office-hours` or "is this worth building" | Product Ideation | `gstack/office-hours/SKILL.md` |
+| `/design-review` | Visual Design Audit | `gstack/design-review/SKILL.md` |
+| `/cso` | Security Audit | `gstack/cso/SKILL.md` |
+| `/plan-eng-review` | Architecture Review | `gstack/plan-eng-review/SKILL.md` |
+| `/plan-ceo-review` | Strategy Review | `gstack/plan-ceo-review/SKILL.md` |
+| `/retro` | Weekly Retrospective | `gstack/retro/SKILL.md` |
+
+## How to Invoke
+
+When you see a trigger phrase or slash command:
+
+1. Read the corresponding SKILL.md file from the gstack directory
+2. Follow the instructions in that file exactly
+3. Use the skill's structured workflow instead of answering ad-hoc
+
+## Browse Tool
+
+The `/browse` skill provides a headless browser. After setup, use:
+
+```bash
+# Set the browse binary path
+B=gstack/browse/dist/browse
+
+# Common commands
+$B goto https://example.com    # Navigate
+$B snapshot -i                 # See interactive elements
+$B click @e3                   # Click element by ref
+$B screenshot /tmp/shot.png    # Take screenshot
+$B text                        # Get page text
+```
+
+## Routing Rules
+
+- Bugs, errors, "why broken" → `/investigate`
+- Ship, deploy, PR → `/ship`
+- Test site, QA, find bugs → `/qa`
+- Review code, check diff → `/review`
+- Product ideas, brainstorming → `/office-hours`
+- Visual polish, design audit → `/design-review`
+- Security concerns → `/cso`

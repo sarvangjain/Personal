@@ -85,6 +85,9 @@ export function AuthProvider({ children }) {
   const signUp = useCallback(async (email, password) => {
     const result = await signUpWithEmail(email, password);
     if (result.user) {
+      // Clear any existing Splitwise config to ensure clean state for new Firebase user
+      clearConfig();
+      setSplitwiseConfig(null);
       setAuthType(AUTH_TYPES.FIREBASE);
       // Create user profile in Firestore (non-blocking)
       createOrUpdateFirebaseAuthUser(result.user).catch(console.error);
@@ -96,6 +99,10 @@ export function AuthProvider({ children }) {
   const signIn = useCallback(async (email, password) => {
     const result = await signInWithEmail(email, password);
     if (result.user) {
+      // Clear any existing Splitwise config to ensure clean state for Firebase user
+      // User can reconnect their Splitwise account after login if needed
+      clearConfig();
+      setSplitwiseConfig(null);
       setAuthType(AUTH_TYPES.FIREBASE);
       // Update user profile in Firestore (non-blocking)
       createOrUpdateFirebaseAuthUser(result.user).catch(console.error);
