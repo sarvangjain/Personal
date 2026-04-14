@@ -88,6 +88,9 @@ export function AuthProvider({ children }) {
       // Clear any existing Splitwise config to ensure clean state for new Firebase user
       clearConfig();
       setSplitwiseConfig(null);
+      // Set both firebaseUser and authType immediately to avoid race condition
+      // (onAuthStateChanged callback may fire later)
+      setFirebaseUser(result.user);
       setAuthType(AUTH_TYPES.FIREBASE);
       // Create user profile in Firestore (non-blocking)
       createOrUpdateFirebaseAuthUser(result.user).catch(console.error);
@@ -103,6 +106,9 @@ export function AuthProvider({ children }) {
       // User can reconnect their Splitwise account after login if needed
       clearConfig();
       setSplitwiseConfig(null);
+      // Set both firebaseUser and authType immediately to avoid race condition
+      // (onAuthStateChanged callback may fire later)
+      setFirebaseUser(result.user);
       setAuthType(AUTH_TYPES.FIREBASE);
       // Update user profile in Firestore (non-blocking)
       createOrUpdateFirebaseAuthUser(result.user).catch(console.error);

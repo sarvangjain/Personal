@@ -16,6 +16,7 @@ const ES_TAB_META = {
   home:     { icon: Home,        label: 'Home',       color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
   activity: { icon: Receipt,     label: 'Activity',   color: 'text-teal-400',    bg: 'bg-teal-500/10' },
   month:    { icon: CalendarDays,label: 'Month View', color: 'text-blue-400',    bg: 'bg-blue-500/10' },
+  history:  { icon: Clock,       label: 'History',    color: 'text-indigo-400',  bg: 'bg-indigo-500/10' },
   budget:   { icon: Wallet,      label: 'Budget',     color: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
   bills:    { icon: CreditCard,  label: 'Bills',      color: 'text-amber-400',   bg: 'bg-amber-500/10' },
   goals:    { icon: Target,      label: 'Goals',      color: 'text-pink-400',    bg: 'bg-pink-500/10' },
@@ -28,7 +29,7 @@ const ES_TAB_META = {
 const NAV_SECTIONS = [
   {
     title: 'Main',
-    items: ['home', 'activity', 'month'],
+    items: ['home', 'activity', 'month', 'history'],
   },
   {
     title: 'Finance',

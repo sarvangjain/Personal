@@ -15,6 +15,7 @@ import ESBills from './tabs/ESBills';
 import ESWealth from './tabs/ESWealth';
 import ESCategoryDetail from './tabs/ESCategoryDetail';
 import ESMonthView from './tabs/ESMonthView';
+import ESHistory from './tabs/ESHistory';
 import QuickAddModal from './QuickAddModal';
 import { getExpenses, clearCache, updateExpense, deleteExpense, addExpenses, loadInitialData } from '../../firebase/expenseSightService';
 import { isFirebaseConfigured } from '../../firebase/config';
@@ -204,6 +205,18 @@ export default function ExpenseSightApp({ userId, onClose }) {
             onUpdateExpense={handleUpdateExpense}
             onDeleteExpense={handleDeleteExpense}
             onRestoreExpense={handleRestoreExpense}
+            onNavigateToHistory={() => handleTabChange('history')}
+          />
+        );
+      case 'history':
+        return (
+          <ESHistory
+            expenses={expenses}
+            userId={userId}
+            onRefresh={handleRefresh}
+            isRefreshing={isRefreshing}
+            onUpdateExpense={handleUpdateExpense}
+            onDeleteExpense={handleDeleteExpense}
           />
         );
       case 'budget':

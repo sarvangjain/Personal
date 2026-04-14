@@ -5,7 +5,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   Search, RefreshCw, Calendar, ChevronDown,
-  DollarSign, X, Edit2, Trash2, Check, RotateCcw, Hash, Tag
+  DollarSign, X, Edit2, Trash2, Check, RotateCcw, Hash, Tag, SlidersHorizontal
 } from 'lucide-react';
 import { format, parseISO, isToday, isYesterday, isThisWeek, isThisMonth, subDays, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { formatCurrency } from '../../../utils/analytics';
@@ -185,7 +185,7 @@ function ExpenseItem({ expense, onEdit, onDelete, isEditing, editData, setEditDa
   );
 }
 
-export default function ESActivity({ expenses, userId, onRefresh, onShowCategoryDetail, onUpdateExpense, onDeleteExpense, onRestoreExpense }) {
+export default function ESActivity({ expenses, userId, onRefresh, onShowCategoryDetail, onUpdateExpense, onDeleteExpense, onRestoreExpense, onNavigateToHistory }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState(null);
@@ -385,12 +385,24 @@ export default function ESActivity({ expenses, userId, onRefresh, onShowCategory
           <h2 className="text-xl font-display text-stone-200">Activity</h2>
           <p className="text-xs text-stone-500">{filteredExpenses.length} expenses</p>
         </div>
-        <button
-          onClick={onRefresh}
-          className="p-2 rounded-xl bg-stone-800/50 text-stone-400 hover:text-stone-200 hover:bg-stone-800 transition-colors"
-        >
-          <RefreshCw size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          {onNavigateToHistory && (
+            <button
+              onClick={onNavigateToHistory}
+              title="Advanced filters / History"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 border border-indigo-500/20 transition-colors text-xs"
+            >
+              <SlidersHorizontal size={14} />
+              <span>View all</span>
+            </button>
+          )}
+          <button
+            onClick={onRefresh}
+            className="p-2 rounded-xl bg-stone-800/50 text-stone-400 hover:text-stone-200 hover:bg-stone-800 transition-colors"
+          >
+            <RefreshCw size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Search */}
