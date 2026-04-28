@@ -181,7 +181,7 @@ function DailySpending({ expenses }) {
     return days.map(day => {
       const dateStr = format(day, 'yyyy-MM-dd');
       const dayTotal = expenses
-        .filter(e => e.date === dateStr && !e.isRefund)
+        .filter(e => e.date === dateStr && !e.isRefund && !e.isIncome && !e.cancelled)
         .reduce((sum, e) => sum + e.amount, 0);
       
       return {

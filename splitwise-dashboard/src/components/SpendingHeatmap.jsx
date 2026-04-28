@@ -76,8 +76,8 @@ export default function SpendingHeatmap({ expenses, userId, currency = 'INR' }) 
         const userShare = exp.users.find(u => u.user_id === userId);
         amount = userShare ? parseFloat(userShare.owed_share || 0) : 0;
       } else if (typeof exp.amount === 'number') {
-        // ExpenseSight format - skip refunds for heatmap
-        if (exp.isRefund) return;
+        // ExpenseSight format - skip refunds and income for heatmap
+        if (exp.isRefund || exp.isIncome) return;
         amount = exp.amount;
       }
       

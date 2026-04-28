@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   ArrowLeft, Plus, Users, User, Loader2, Check, AlertCircle, 
   Search, ChevronDown, Tag, Sparkles, X
@@ -21,26 +22,58 @@ const CATEGORY_KEYWORDS = {
 };
 
 // Searchable Dropdown Component
+// NOTE: The dropdown menu is rendered via a Portal to document.body to escape
+// the stacking contexts created by parent .glass-card elements (which use
+// backdrop-filter). Without this, the menu gets visually clipped behind
+// subsequent sibling glass-cards regardless of z-index.
 function SearchableDropdown({ 
   options, value, onChange, placeholder, renderOption, renderSelected,
   searchKeys = ['name'], icon: Icon, emptyText = "No options available"
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
   const wrapperRef = useRef(null);
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
 
-  // Close on click outside
+  // Position the portal-rendered menu directly under the trigger button.
+  // Recompute on open, scroll, and resize so it stays anchored.
+  useLayoutEffect(() => {
+    if (!open) return;
+    function updatePosition() {
+      if (!triggerRef.current) return;
+      const rect = triggerRef.current.getBoundingClientRect();
+      setMenuPos({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+    updatePosition();
+    // Use capture phase so we catch scrolls in any ancestor.
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [open]);
+
+  // Close on click outside (must check both the trigger wrapper AND the
+  // portal menu, since the menu lives outside the wrapper in the DOM).
   useEffect(() => {
+    if (!open) return;
     function handleClickOutside(e) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+      const insideTrigger = wrapperRef.current?.contains(e.target);
+      const insideMenu = menuRef.current?.contains(e.target);
+      if (!insideTrigger && !insideMenu) {
         setOpen(false);
         setSearch('');
       }
     }
-    if (open) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
   const filteredOptions = options.filter(opt => {
@@ -55,8 +88,9 @@ function SearchableDropdown({
   const selectedOption = options.find(o => o.id?.toString() === value?.toString());
 
   return (
-    <div ref={wrapperRef} className="relative" style={{ zIndex: open ? 100 : 1 }}>
+    <div ref={wrapperRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(!open)}
         className={`w-full flex items-center gap-2 px-3 py-3 bg-stone-800/60 border rounded-xl text-left transition-all ${
@@ -70,8 +104,17 @@ function SearchableDropdown({
         <ChevronDown size={14} className={`text-stone-500 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-stone-900/95 backdrop-blur-xl border border-stone-700/50 rounded-xl shadow-2xl overflow-hidden" style={{ zIndex: 101 }}>
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          className="fixed bg-stone-900/95 backdrop-blur-xl border border-stone-700/50 rounded-xl shadow-2xl overflow-hidden"
+          style={{
+            top: menuPos.top,
+            left: menuPos.left,
+            width: menuPos.width,
+            zIndex: 9999,
+          }}
+        >
           <div className="p-2 border-b border-stone-800/50">
             <div className="flex items-center gap-2 px-2.5 py-2 bg-stone-800/60 rounded-lg">
               <Search size={13} className="text-stone-500 flex-shrink-0" />
@@ -106,7 +149,8 @@ function SearchableDropdown({
               ))
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
